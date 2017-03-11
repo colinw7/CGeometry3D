@@ -1,0 +1,51 @@
+#include <CGeomVertex3D.h>
+#include <CGeomZBuffer.h>
+#include <CGeomCamera3D.h>
+
+CGeomVertex3D::
+CGeomVertex3D(CGeomObject3D *pobject, const CPoint3D &point) :
+ CGeomPoint3D(point), pobject_(pobject)
+{
+}
+
+CGeomVertex3D::
+CGeomVertex3D(const CGeomVertex3D &vertex) :
+ CGeomPoint3D(vertex),
+ pobject_    (vertex.pobject_),
+ ind_        (0),
+ color_      (vertex.color_),
+ normal_     (vertex.normal_),
+ vnormal_    (vertex.vnormal_),
+ tmap_       (vertex.tmap_),
+ clip_side_  (vertex.clip_side_)
+{
+}
+
+CGeomVertex3D &
+CGeomVertex3D::
+operator=(const CGeomVertex3D &vertex)
+{
+  pobject_    = vertex.pobject_;
+  ind_        = 0;
+  color_      = vertex.color_;
+  normal_     = vertex.normal_;
+  vnormal_    = vertex.vnormal_;
+  tmap_       = vertex.tmap_;
+  clip_side_  = vertex.clip_side_;
+
+  return *this;
+}
+
+CGeomVertex3D *
+CGeomVertex3D::
+dup() const
+{
+  return new CGeomVertex3D(*this);
+}
+
+void
+CGeomVertex3D::
+draw(CGeomZBuffer *zbuffer)
+{
+  zbuffer->getRenderer()->drawPoint(CIPoint2D(pixel_.x, pixel_.y));
+}
