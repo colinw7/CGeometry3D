@@ -2,6 +2,7 @@
 #include <CGeomZBuffer.h>
 #include <CGeomLight3D.h>
 #include <CGeomUtil3D.h>
+#include <CMathRound.h>
 
 CGeomFace3D::
 CGeomFace3D(CGeomObject3D *pobject) :
@@ -340,14 +341,14 @@ fill(CGeomZBuffer *zbuffer)
   // get y limits
   const CPoint3D &pixel = pobject_->getVertex(vertices_[0]).getPixel();
 
-  int ypmin = CMathGen::RoundUp  (pixel.y);
-  int ypmax = CMathGen::RoundDown(pixel.y);
+  int ypmin = CMathRound::RoundUp  (pixel.y);
+  int ypmax = CMathRound::RoundDown(pixel.y);
 
   for (uint i1 = 1; i1 < num_points; ++i1) {
     const CPoint3D &pixel = pobject_->getVertex(vertices_[i1]).getPixel();
 
-    ypmin = std::min(ypmin, CMathGen::RoundUp  (pixel.y));
-    ypmax = std::max(ypmax, CMathGen::RoundDown(pixel.y));
+    ypmin = std::min(ypmin, CMathRound::RoundUp  (pixel.y));
+    ypmax = std::max(ypmax, CMathRound::RoundDown(pixel.y));
   }
 
   int    i1min, i2min, i1max, i2max;
@@ -376,7 +377,7 @@ fill(CGeomZBuffer *zbuffer)
       // get x intersect
       double fx = (pixel2.x - pixel1.x)/(pixel2.y - pixel1.y);
 
-      xp = CMathGen::Round((yp - pixel1.y)*fx + pixel1.x);
+      xp = CMathRound::Round((yp - pixel1.y)*fx + pixel1.x);
 
       // update min and/or max
       if (! set) {

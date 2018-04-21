@@ -1,3 +1,8 @@
+#ifndef CGeom3DRenderer_H
+#define CGeom3DRenderer_H
+
+#include <CFont.h>
+
 class CGeom3DRenderer {
  public:
   CGeom3DRenderer() { }
@@ -19,3 +24,5 @@ class CGeom3DRenderer {
 
   virtual void fillCircle(const CIPoint2D &c, double r) = 0;
 };
+
+#endif
