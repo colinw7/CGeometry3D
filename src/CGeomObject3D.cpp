@@ -487,8 +487,10 @@ void
 CGeomObject3D::
 addBodyRev(double *x, double *y, uint num_xy, uint num_patches)
 {
-  double *c = new double [num_patches];
-  double *s = new double [num_patches];
+  std::vector<double> c, s;
+
+  c.resize(num_patches);
+  s.resize(num_patches);
 
   double theta           = 0.0;
   double theta_increment = 2.0*M_PI/num_patches;
@@ -502,11 +504,13 @@ addBodyRev(double *x, double *y, uint num_xy, uint num_patches)
 
   uint num_vertices = 0;
 
-  uint *index1 = new uint [num_patches + 1];
-  uint *index2 = new uint [num_patches + 1];
+  std::vector<uint> index1, index2;
 
-  uint *pindex1 = index1;
-  uint *pindex2 = index2;
+  index1.resize(num_patches + 1);
+  index2.resize(num_patches + 1);
+
+  uint *pindex1 = &index1[0];
+  uint *pindex2 = &index2[0];
 
   if (fabs(x[0]) < CMathGen::EPSILON_E6) {
     CPoint3D p(0.0, y[0], 0.0);
@@ -601,11 +605,6 @@ addBodyRev(double *x, double *y, uint num_xy, uint num_patches)
     pindex2 = pindex1;
     pindex1 = pindex;
   }
-
-  delete [] c;
-  delete [] s;
-  delete [] index1;
-  delete [] index2;
 }
 
 //--------
