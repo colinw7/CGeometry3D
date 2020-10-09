@@ -411,6 +411,8 @@ class CGeomObjectInst3D {
    object_(object), coord_frame_() {
   }
 
+  const CGeomObject3D &object() const { return object_; }
+
  private:
   CGeomObject3D &object_;
   CCoordFrame3D  coord_frame_;

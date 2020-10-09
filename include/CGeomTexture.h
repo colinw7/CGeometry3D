@@ -20,9 +20,9 @@ class CGeomTextureImage {
     *height = image_->getHeight();
   }
 
-  CRGBA getRGBA(uint x, uint y) const {
-    x = std::min(std::max(x, 0U), image_->getWidth () - 1);
-    y = std::min(std::max(y, 0U), image_->getHeight() - 1);
+  CRGBA getRGBA(int x, int y) const {
+    x = std::min(std::max(x, 0), int(image_->getWidth () - 1));
+    y = std::min(std::max(y, 0), int(image_->getHeight() - 1));
 
     CRGBA rgba;
 

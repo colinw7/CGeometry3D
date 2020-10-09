@@ -13,7 +13,7 @@ class CGeomUtil3D {
   static CPoint3D  getMidPoint(const std::vector<CGeomVertex3D *> &vertices);
   static CVector3D getNormal  (const std::vector<CGeomVertex3D *> &vertices);
 
-  static void triangulate(const std::list<CPoint3D> points,
+  static void triangulate(const std::list<CPoint3D> &points,
                           std::vector<CTriangle3D> &triangle_list);
 };
 

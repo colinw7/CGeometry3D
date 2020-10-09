@@ -40,13 +40,13 @@ class CGeomMaskImage {
     *height = image_->getHeight();
   }
 
-  bool getSet(uint x, uint y) const {
+  bool getSet(int x, int y) const {
     uint w, h;
 
     getSize(&w, &h);
 
-    x = std::min(std::max(x, 0U), w - 1);
-    y = std::min(std::max(y, 0U), h - 1);
+    x = std::min(std::max(x, 0), int(w - 1));
+    y = std::min(std::max(y, 0), int(h - 1));
 
     uint ind = y*w + x;
 

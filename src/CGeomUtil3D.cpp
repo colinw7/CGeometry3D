@@ -48,7 +48,7 @@ class CTriangulate3D {
   const std::list<CPoint3D> &points_;
 
  public:
-  CTriangulate3D(const std::list<CPoint3D> points);
+  CTriangulate3D(const std::list<CPoint3D> &points);
 
   void exec(std::vector<CTriangle3D> &triangle_list);
 
@@ -86,7 +86,7 @@ class CTriangulate3D {
 
 void
 CGeomUtil3D::
-triangulate(const std::list<CPoint3D> points, std::vector<CTriangle3D> &triangle_list)
+triangulate(const std::list<CPoint3D> &points, std::vector<CTriangle3D> &triangle_list)
 {
   CTriangulate3D triangulate(points);
 
@@ -94,7 +94,7 @@ triangulate(const std::list<CPoint3D> points, std::vector<CTriangle3D> &triangle
 }
 
 CTriangulate3D::
-CTriangulate3D(const std::list<CPoint3D> points) :
+CTriangulate3D(const std::list<CPoint3D> &points) :
  points_(points)
 {
 }

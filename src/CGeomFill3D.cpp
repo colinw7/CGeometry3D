@@ -80,10 +80,10 @@ fill(const VertexAdapter &vadapter)
   int ypmax = CMathRound::RoundDown(pixel.y);
 
   for (uint i1 = 1; i1 < num_vertices; ++i1) {
-    const CPoint3D &pixel = vadapter.getVertex(i1).getPixel();
+    const CPoint3D &pixel1 = vadapter.getVertex(i1).getPixel();
 
-    ypmin = std::min(ypmin, CMathRound::RoundUp  (pixel.y));
-    ypmax = std::max(ypmax, CMathRound::RoundDown(pixel.y));
+    ypmin = std::min(ypmin, CMathRound::RoundUp  (pixel1.y));
+    ypmax = std::max(ypmax, CMathRound::RoundDown(pixel1.y));
   }
 
   ypmin = std::max(ypmin, 0);
@@ -296,9 +296,9 @@ fill(const VertexAdapter &vadapter)
     point.m       = mmin;
 #endif
 
-    for (int xp = xpmin; xp <= xpmax; ++xp, point.z += dz) {
-      if (xp >= 0 && xp < w)
-        setPoint(xp, yp, point);
+    for (int xp1 = xpmin; xp1 <= xpmax; ++xp1, point.z += dz) {
+      if (xp1 >= 0 && xp1 < w)
+        setPoint(xp1, yp, point);
 
       if (! getFlat())
         point.rgba += drgba;

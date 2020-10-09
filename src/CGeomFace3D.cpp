@@ -29,13 +29,13 @@ CGeomFace3D(const CGeomFace3D &face) :
   SubFaceList::const_iterator pf2 = face.sub_faces_.end  ();
 
   for ( ; pf1 != pf2; ++pf1) {
-    CGeomFace3D *face = (*pf1)->dup();
+    CGeomFace3D *face1 = (*pf1)->dup();
 
-    sub_faces_.push_back(face);
+    sub_faces_.push_back(face1);
 
     uint ind = sub_faces_.size() - 1;
 
-    face->setInd(ind);
+    face1->setInd(ind);
   }
 
   SubLineList::const_iterator pl1 = face.sub_lines_.begin();
@@ -345,10 +345,10 @@ fill(CGeomZBuffer *zbuffer)
   int ypmax = CMathRound::RoundDown(pixel.y);
 
   for (uint i1 = 1; i1 < num_points; ++i1) {
-    const CPoint3D &pixel = pobject_->getVertex(vertices_[i1]).getPixel();
+    const CPoint3D &pixel1 = pobject_->getVertex(vertices_[i1]).getPixel();
 
-    ypmin = std::min(ypmin, CMathRound::RoundUp  (pixel.y));
-    ypmax = std::max(ypmax, CMathRound::RoundDown(pixel.y));
+    ypmin = std::min(ypmin, CMathRound::RoundUp  (pixel1.y));
+    ypmax = std::max(ypmax, CMathRound::RoundDown(pixel1.y));
   }
 
   int    i1min, i2min, i1max, i2max;
@@ -481,8 +481,8 @@ fill(CGeomZBuffer *zbuffer)
     t  = tmin;
     m  = mmin;
 
-    for (int xp = xpmin; xp <= xpmax; ++xp, zz += dz) {
-      if (xp < 0 || xp >= w) {
+    for (int xp1 = xpmin; xp1 <= xpmax; ++xp1, zz += dz) {
+      if (xp1 < 0 || xp1 >= w) {
         if (texture_)
           t += dt;
 
@@ -499,15 +499,15 @@ fill(CGeomZBuffer *zbuffer)
         }
 
         if (mask_) {
-          bool set = mask_->getImageSet(int(m.x), int(m.y));
+          bool set1 = mask_->getImageSet(int(m.x), int(m.y));
 
           m += dm;
 
-          if (! set)
+          if (! set1)
             continue;
         }
 
-        zbuffer->drawFacePoint(this, xp, yp, zz);
+        zbuffer->drawFacePoint(this, xp1, yp, zz);
       }
     }
   }
