@@ -36,7 +36,7 @@ class CGeomLight3DData {
    quadratic_attenuation_(data.quadratic_attenuation_) {
   }
 
-  const CGeomLight3DData &operator=(const CGeomLight3DData &data) {
+  CGeomLight3DData &operator=(const CGeomLight3DData &data) {
     ambient_               = data.ambient_;
     diffuse_               = data.diffuse_;
     specular_              = data.specular_;
