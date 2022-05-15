@@ -22,7 +22,7 @@ class CGeomMaskImage {
 
     for (uint i = 0, y = 0; y < h; ++y) {
       for (uint x = 0; x < w; ++x, ++i) {
-        image_->getRGBAPixel(x, y, rgba);
+        image_->getRGBAPixel(int(x), int(y), rgba);
 
         set_[i] = (rgba.getGray() > 0.5);
       }
@@ -48,7 +48,7 @@ class CGeomMaskImage {
     x = std::min(std::max(x, 0), int(w - 1));
     y = std::min(std::max(y, 0), int(h - 1));
 
-    uint ind = y*w + x;
+    uint ind = uint(y)*w + uint(x);
 
     return set_[ind];
   }
@@ -99,7 +99,7 @@ class CGeomMaskMapping {
    points_(mapping.points_) {
   }
 
-  uint numPoints() const { return points_.size(); }
+  uint numPoints() const { return uint(points_.size()); }
 
   const CPoint2D &getPoint(uint i) const { return points_[i]; }
 
@@ -182,7 +182,7 @@ class CGeomMask {
 
     mapping_ = new CGeomMaskMapping(points);
 
-    num_points_ = points.size();
+    num_points_ = uint(points.size());
   }
 
   bool hasMapping() const { return mapping_; }
@@ -206,7 +206,7 @@ class CGeomMask {
   }
 
   bool getImageSet(uint x, uint y) const {
-    return image_->getSet(x, y);
+    return image_->getSet(int(x), int(y));
   }
 
   // disable assign/copy

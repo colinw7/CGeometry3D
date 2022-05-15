@@ -77,10 +77,10 @@ class CGeomZBuffer {
         }
       }
 
-      int width  = getWidth ();
-      int height = getHeight();
+      auto width  = getWidth ();
+      auto height = getHeight();
 
-      if (CMathGeom2D::clipLine(0, 0, width - 1, height - 1, &x1, &y1, &x2, &y2))
+      if (CMathGeom2D::clipLine(0, 0, int(width - 1), int(height - 1), &x1, &y1, &x2, &y2))
         bresenham_.drawLine(x1, y1, x2, y2);
 
       setZAlpha(alpha1);
@@ -299,8 +299,8 @@ class CGeomZBuffer {
 
     if (! lines_[y].set) {
       line->set   = true;
-      line->start = x;
-      line->end   = x;
+      line->start = uint(x);
+      line->end   = uint(x);
     }
     else {
       line->start = std::min(line->start, uint(x));
@@ -349,8 +349,8 @@ class CGeomZBuffer {
 
     if (! lines_[y].set) {
       line->set   = true;
-      line->start = x;
-      line->end   = x;
+      line->start = uint(x);
+      line->end   = uint(x);
     }
     else {
       line->start = std::min(line->start, uint(x));
@@ -380,13 +380,13 @@ class CGeomZBuffer {
   }
 
   void drawImage(int x, int y, double z, CImagePtr image) {
-    int iwidth  = image->getWidth ();
-    int iheight = image->getHeight();
+    auto iwidth  = image->getWidth ();
+    auto iheight = image->getHeight();
 
     int x1 = 0;
-    int x2 = iwidth  - 1;
+    int x2 = int(iwidth  - 1);
     int y1 = 0;
-    int y2 = iheight - 1;
+    int y2 = int(iheight - 1);
 
     CRGBA rgba;
 
@@ -402,13 +402,13 @@ class CGeomZBuffer {
   }
 
   void drawOverlayImage(int x, int y, CImagePtr image) {
-    int iwidth  = image->getWidth ();
-    int iheight = image->getHeight();
+    auto iwidth  = image->getWidth ();
+    auto iheight = image->getHeight();
 
     int x1 = 0;
-    int x2 = iwidth  - 1;
+    int x2 = int(iwidth  - 1);
     int y1 = 0;
-    int y2 = iheight - 1;
+    int y2 = int(iheight - 1);
 
     CRGBA rgba;
 
@@ -463,7 +463,7 @@ class CGeomZBuffer {
 
         renderer_->setForeground(pixel->rgba);
 
-        renderer_->drawPoint(CIPoint2D(x, y));
+        renderer_->drawPoint(CIPoint2D(int(x), int(y)));
       }
     }
   }

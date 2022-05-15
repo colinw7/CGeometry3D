@@ -92,7 +92,7 @@ getNumSelectedObjects() const
 {
   ObjectList objects = getSelectedObjects();
 
-  return objects.size();
+  return uint(objects.size());
 }
 
 CGeomScene3D::ObjectList
@@ -448,9 +448,9 @@ drawInit()
   getCamera()->createProjectionMatrix(-1, 1, -1, 1);
 
   if (use_zbuffer_)
-    getCamera()->createWorldMatrix(zbuffer_ ->getWidth(), zbuffer_ ->getHeight());
+    getCamera()->createWorldMatrix(int(zbuffer_ ->getWidth()), int(zbuffer_ ->getHeight()));
   else
-    getCamera()->createWorldMatrix(renderer_->getWidth(), renderer_->getHeight());
+    getCamera()->createWorldMatrix(int(renderer_->getWidth()), int(renderer_->getHeight()));
 
   if (use_zbuffer_)
     zbuffer_->setForeground(CRGBA(0,0,0));

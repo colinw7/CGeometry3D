@@ -53,10 +53,10 @@ mapTexture(CGeomTexture *texture)
 
   texture->getImageSize(&twidth, &theight);
 
-  double dx = (twidth  - 1)/((double) num_patches_);
-  double dy = (theight - 1)/((double) num_xy_ - 1);
+  double dx = (twidth  - 1)/double(num_patches_);
+  double dy = (theight - 1)/double(num_xy_ - 1);
 
-  int pos = 0;
+  size_t pos = 0;
 
   double y1 = theight - 1;
 
@@ -75,17 +75,17 @@ mapTexture(CGeomTexture *texture)
       std::vector<CPoint2D> points;
 
       if (y > 0 && y < num_xy_ - 2) {
-        points.push_back(CPoint2D((double) ((int) x2), (double) ((int) y1)));
-        points.push_back(CPoint2D((double) ((int) x2), (double) ((int) y2)));
-        points.push_back(CPoint2D((double) ((int) x1), (double) ((int) y2)));
-        points.push_back(CPoint2D((double) ((int) x1), (double) ((int) y1)));
+        points.push_back(CPoint2D(double(int(x2)), double(int(y1))));
+        points.push_back(CPoint2D(double(int(x2)), double(int(y2))));
+        points.push_back(CPoint2D(double(int(x1)), double(int(y2))));
+        points.push_back(CPoint2D(double(int(x1)), double(int(y1))));
       }
       else {
         double x3 = (x1 + x2)/2;
 
-        points.push_back(CPoint2D((double) ((int) x2), (double) ((int) y1)));
-        points.push_back(CPoint2D((double) ((int) x3), (double) ((int) y2)));
-        points.push_back(CPoint2D((double) ((int) x1), (double) ((int) y1)));
+        points.push_back(CPoint2D(double(int(x2)), double(int(y1))));
+        points.push_back(CPoint2D(double(int(x3)), double(int(y2))));
+        points.push_back(CPoint2D(double(int(x1)), double(int(y1))));
       }
 
       faces[pos]->setTextureMapping(points);
@@ -114,10 +114,10 @@ mapMask(CGeomMask *mask)
 
   mask->getImageSize(&twidth, &theight);
 
-  double dx = (twidth  - 1)/((double) num_patches_);
-  double dy = (theight - 1)/((double) num_xy_ - 1);
+  double dx = (twidth  - 1)/double(num_patches_);
+  double dy = (theight - 1)/double(num_xy_ - 1);
 
-  int pos = 0;
+  size_t pos = 0;
 
   double y1 = theight - 1;
 
@@ -136,17 +136,17 @@ mapMask(CGeomMask *mask)
       std::vector<CPoint2D> points;
 
       if (y > 0 && y < num_xy_ - 2) {
-        points.push_back(CPoint2D((double) ((int) x2), (double) ((int) y1)));
-        points.push_back(CPoint2D((double) ((int) x2), (double) ((int) y2)));
-        points.push_back(CPoint2D((double) ((int) x1), (double) ((int) y2)));
-        points.push_back(CPoint2D((double) ((int) x1), (double) ((int) y1)));
+        points.push_back(CPoint2D(double(int(x2)), double(int(y1))));
+        points.push_back(CPoint2D(double(int(x2)), double(int(y2))));
+        points.push_back(CPoint2D(double(int(x1)), double(int(y2))));
+        points.push_back(CPoint2D(double(int(x1)), double(int(y1))));
       }
       else {
         double x3 = (x1 + x2)/2;
 
-        points.push_back(CPoint2D((double) ((int) x2), (double) ((int) y1)));
-        points.push_back(CPoint2D((double) ((int) x3), (double) ((int) y2)));
-        points.push_back(CPoint2D((double) ((int) x1), (double) ((int) y1)));
+        points.push_back(CPoint2D(double(int(x2)), double(int(y1))));
+        points.push_back(CPoint2D(double(int(x3)), double(int(y2))));
+        points.push_back(CPoint2D(double(int(x1)), double(int(y1))));
       }
 
       faces[pos]->setMaskMapping(points);

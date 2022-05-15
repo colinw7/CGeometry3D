@@ -146,7 +146,7 @@ class CGeomLight3DMgr {
 
   void deleteLight(CGeomLight3D *light);
 
-  uint getNumLights() const { return lights_.size(); }
+  uint getNumLights() const { return uint(lights_.size()); }
 
   CGeomLight3D *getLight(uint i) const {
     if (i < getNumLights())

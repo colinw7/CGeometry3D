@@ -8,7 +8,7 @@ draw(CGeomZBuffer *zbuffer)
   zbuffer->setForeground(color_);
 
   if (size_ <= 1)
-    zbuffer->getRenderer()->drawPoint(CIPoint2D(pixel_.x, pixel_.y));
+    zbuffer->getRenderer()->drawPoint(CIPoint2D(int(pixel_.x), int(pixel_.y)));
   else
-    zbuffer->getRenderer()->fillCircle(CIPoint2D(pixel_.x, pixel_.y), size_);
+    zbuffer->getRenderer()->fillCircle(CIPoint2D(int(pixel_.x), int(pixel_.y)), size_);
 }

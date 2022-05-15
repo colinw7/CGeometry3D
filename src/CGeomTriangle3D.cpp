@@ -1,5 +1,4 @@
 #include <CGeomTriangle3D.h>
-#include <CGeomTexture.h>
 #include <CGeomMask.h>
 
 #define NUM_XY      40

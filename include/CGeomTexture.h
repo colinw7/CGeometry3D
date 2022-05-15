@@ -15,9 +15,11 @@ class CGeomTextureImage {
 
  ~CGeomTextureImage() { }
 
+  const CImagePtr &image() const { return image_; }
+
   void getSize(int *width, int *height) {
-    *width  = image_->getWidth ();
-    *height = image_->getHeight();
+    *width  = int(image_->getWidth ());
+    *height = int(image_->getHeight());
   }
 
   CRGBA getRGBA(int x, int y) const {
@@ -77,7 +79,7 @@ class CGeomTextureMapping {
    points_(mapping.points_) {
   }
 
-  uint numPoints() const { return points_.size(); }
+  uint numPoints() const { return uint(points_.size()); }
 
   const CPoint2D &getPoint(uint i) const { return points_[i]; }
 
@@ -131,6 +133,11 @@ class CGeomTexture {
     return new CGeomTexture(*this);
   }
 
+  int id() const { return id_; }
+  void setId(int i) { id_ = i; }
+
+  CGeomTextureImage *image() const { return image_; }
+
   void setImage(CGeomTextureImage *image) {
     delete image_;
 
@@ -148,23 +155,21 @@ class CGeomTexture {
   void setMapping(CGeomTextureImage *image, uint num_points=4) {
     delete mapping_;
 
-    mapping_ = new CGeomTextureMapping(image, num_points);
-
+    mapping_    = new CGeomTextureMapping(image, int(num_points));
     num_points_ = num_points;
   }
 
   void setMapping(const std::vector<CPoint2D> &points) {
     delete mapping_;
 
-    mapping_ = new CGeomTextureMapping(points);
-
-    num_points_ = points.size();
+    mapping_    = new CGeomTextureMapping(points);
+    num_points_ = uint(points.size());
   }
 
   bool hasMapping() const { return mapping_; }
 
   void getImageSize(int *width, int *height) {
-    return image_->getSize(width, height);
+    return image()->getSize(width, height);
   }
 
   uint numMappingPoints() const { return mapping_->numPoints(); }
@@ -174,11 +179,11 @@ class CGeomTexture {
   }
 
   CRGBA getImageRGBA(const CIPoint2D &point) {
-    return image_->getRGBA(point.x, point.y);
+    return image()->getRGBA(point.x, point.y);
   }
 
   CRGBA getImageRGBA(uint x, uint y) const {
-    return image_->getRGBA(x, y);
+    return image()->getRGBA(int(x), int(y));
   }
 
   // disable assign/copy
@@ -186,9 +191,10 @@ class CGeomTexture {
   CGeomTexture &operator=(const CGeomTexture &texture);
 
  private:
-  CGeomTextureImage   *image_ { nullptr };
-  CGeomTextureMapping *mapping_ { nullptr };
-  int                  num_points_ { 0 };
+  int                  id_         { -1 };
+  CGeomTextureImage   *image_      { nullptr };
+  CGeomTextureMapping *mapping_    { nullptr };
+  uint                 num_points_ { 0 };
 };
 
 #endif

@@ -88,7 +88,9 @@ class CGeometry3D {
   }
 
   CGeomTexture *createTexture(CImagePtr image) const {
-    return factory_->createTexture(image);
+    auto *texture = factory_->createTexture(image);
+    texture->setId(++textureId_);
+    return texture;
   }
 
   CGeomMask *createMask(CImagePtr image) const {
@@ -100,7 +102,8 @@ class CGeometry3D {
   }
 
  private:
-  CGeometryFactory *factory_ { nullptr };
+  CGeometryFactory *factory_   { nullptr };
+  mutable int       textureId_ { -1 };
 };
 
 #endif

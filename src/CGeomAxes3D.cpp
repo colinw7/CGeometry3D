@@ -14,8 +14,8 @@ CGeomAxes3D(CGeomScene3D *pscene, const std::string &name) :
   vertices[5] = addVertex(CPoint3D(-1,  0,  0));
 
   for (int i = 0; i < 3; ++i) {
-    int v1 = vertices[2*i    ];
-    int v2 = vertices[2*i + 1];
+    auto v1 = vertices[2*i    ];
+    auto v2 = vertices[2*i + 1];
 
     addLine(v1, v2);
   }

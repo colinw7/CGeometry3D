@@ -25,13 +25,13 @@ class CGeomObject3D {
 
   class Group {
    public:
-    Group(const std::string &name, int id) :
+    Group(const std::string &name, uint id) :
      name_(name), id_(id) {
     }
 
     uint id() const { return id_; }
 
-    void addFace(int faceNum) { faceList_.push_back(faceNum); }
+    void addFace(uint faceNum) { faceList_.push_back(faceNum); }
 
    private:
     std::string name_;
@@ -140,6 +140,16 @@ class CGeomObject3D {
 
   //---
 
+  uint addTexturePoint(const CPoint3D &point);
+  const CPoint3D &texturePoint(uint i) const;
+
+  //---
+
+  uint addNormal(const CVector3D &point);
+  const CVector3D &normal(uint i) const;
+
+  //---
+
   uint addLine(uint start, uint end);
 
   //---
@@ -165,7 +175,7 @@ class CGeomObject3D {
 
   const VertexList &getVertices() const { return vertices_; }
 
-  uint getNumVertices() const { return vertices_.size(); }
+  uint getNumVertices() const { return uint(vertices_.size()); }
 
   const CGeomVertex3D &getVertex(uint i) const { return *vertices_[i]; }
 
@@ -177,7 +187,7 @@ class CGeomObject3D {
 
   const LineList &getLines() const { return lines_; }
 
-  uint getNumLines() const { return lines_.size(); }
+  uint getNumLines() const { return uint(lines_.size()); }
 
   CGeomLine3D &getLine(uint i) const { return *lines_[i]; }
 
@@ -187,7 +197,7 @@ class CGeomObject3D {
 
   FaceList &getFaces() { return faces_; }
 
-  uint getNumFaces() const { return faces_.size(); }
+  uint getNumFaces() const { return uint(faces_.size()); }
 
   const CGeomFace3D &getFace(uint i) const { return *faces_[i]; }
 
@@ -199,7 +209,7 @@ class CGeomObject3D {
     auto p = groups_.find(name);
 
     if (p == groups_.end()) {
-      uint id = groups_.size() + 1;
+      uint id = uint(groups_.size() + 1);
 
       p = groups_.insert(p, Groups::value_type(name, Group(name, id)));
     }
@@ -215,6 +225,10 @@ class CGeomObject3D {
   void setFaceMaterial(uint face_num, const CMaterial &material);
 
   void setFaceTexture(uint face_num, CGeomTexture *texture);
+
+  void setFaceDiffuseTexture (uint face_num, CGeomTexture *texture);
+  void setFaceSpecularTexture(uint face_num, CGeomTexture *texture);
+  void setFaceNormalTexture  (uint face_num, CGeomTexture *texture);
 
   //---
 
@@ -380,6 +394,9 @@ class CGeomObject3D {
   CGeomObject3D &operator=(const CGeomObject3D &rhs);
 
  protected:
+  using TexturePoints = std::vector<CPoint3D>;
+  using Normals       = std::vector<CVector3D>;
+
   CGeomScene3D*    pscene_ { nullptr };
 
   std::string      name_;
@@ -396,6 +413,8 @@ class CGeomObject3D {
   VertexFaceList   vertex_face_list_;
   VertexFaceNormal vertex_face_normal_;
   Groups           groups_;
+  TexturePoints    texturePoints_;
+  Normals          normals_;
 
   CMatrix3D        view_matrix_;
 

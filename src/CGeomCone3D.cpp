@@ -5,7 +5,7 @@ CGeomCone3D(CGeomScene3D *pscene, const std::string &name,
             double xc, double yc, double zc, double w, double h) :
  CGeomObject3D(pscene, name)
 {
-  addGeometry(this, xc, yc, zc, w, h, num_patches_);
+  addGeometry(this, xc, yc, zc, w, h, uint(num_patches_));
 }
 
 void

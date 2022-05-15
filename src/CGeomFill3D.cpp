@@ -66,8 +66,8 @@ void
 CGeomFill3D::
 fill(const VertexAdapter &vadapter)
 {
-  int w = getWidth ();
-  int h = getHeight();
+  auto w = getWidth ();
+  auto h = getHeight();
 
   uint num_vertices = vadapter.getNumVertices();
 
@@ -87,11 +87,11 @@ fill(const VertexAdapter &vadapter)
   }
 
   ypmin = std::max(ypmin, 0);
-  ypmax = std::min(ypmax, h - 1);
+  ypmax = std::min(ypmax, int(h - 1));
 
   //------
 
-  int    i1min, i2min, i1max, i2max;
+  uint   i1min, i2min, i1max, i2max;
   double zmin, zmax;
 
   CPoint2D tmin(0,0), tmax(0,0);
@@ -179,24 +179,24 @@ fill(const VertexAdapter &vadapter)
 
     // interp color at minimum (if required)
     if (! getFlat()) {
-      const CRGBA &rgba1 = vadapter.getVertex(i1min).getColor();
-      const CRGBA &rgba2 = vadapter.getVertex(i2min).getColor();
+      const auto &rgba1 = vadapter.getVertex(i1min).getColor();
+      const auto &rgba2 = vadapter.getVertex(i2min).getColor();
 
       rgba_min = (rgba2 - rgba1)*id + rgba1;
     }
 
     // interp normal at maximum (if required)
     if (getSmooth()) {
-      const CVector3D &normal1 = vadapter.getVertex(i1min).getNormal();
-      const CVector3D &normal2 = vadapter.getVertex(i2min).getNormal();
+      const auto &normal1 = vadapter.getVertex(i1min).getNormal();
+      const auto &normal2 = vadapter.getVertex(i2min).getNormal();
 
       normal_min = (normal2 - normal1)*id + normal1;
     }
 
     // interp texture map at minimum (if required)
     if (getTexture()) {
-      const CPoint3D &point1 = vadapter.getVertex(i1min).getTextureMap();
-      const CPoint3D &point2 = vadapter.getVertex(i2min).getTextureMap();
+      const auto &point1 = vadapter.getVertex(i1min).getTextureMap();
+      const auto &point2 = vadapter.getVertex(i2min).getTextureMap();
 
       tmin.x = (point2.x - point1.x)*id + point1.x;
       tmin.y = (point2.y - point1.y)*id + point1.y;
@@ -229,24 +229,24 @@ fill(const VertexAdapter &vadapter)
 
     // interp color at maximum (if required)
     if (! getFlat()) {
-      const CRGBA &rgba1 = vadapter.getVertex(i1max).getColor();
-      const CRGBA &rgba2 = vadapter.getVertex(i2max).getColor();
+      const auto &rgba1 = vadapter.getVertex(i1max).getColor();
+      const auto &rgba2 = vadapter.getVertex(i2max).getColor();
 
       rgba_max = (rgba2 - rgba1)*id + rgba1;
     }
 
     // interp normal at maximum (if required)
     if (getSmooth()) {
-      const CVector3D &normal1 = vadapter.getVertex(i1max).getNormal();
-      const CVector3D &normal2 = vadapter.getVertex(i2max).getNormal();
+      const auto &normal1 = vadapter.getVertex(i1max).getNormal();
+      const auto &normal2 = vadapter.getVertex(i2max).getNormal();
 
       normal_max = (normal2 - normal1)*id + normal1;
     }
 
     // interp texture map at maximum (if required)
     if (getTexture()) {
-      const CPoint3D &point1 = vadapter.getVertex(i1max).getTextureMap();
-      const CPoint3D &point2 = vadapter.getVertex(i2max).getTextureMap();
+      const auto &point1 = vadapter.getVertex(i1max).getTextureMap();
+      const auto &point2 = vadapter.getVertex(i2max).getTextureMap();
 
       tmax.x = (point2.x - point1.x)*id + point1.x;
       tmax.y = (point2.y - point1.y)*id + point1.y;
@@ -297,8 +297,8 @@ fill(const VertexAdapter &vadapter)
 #endif
 
     for (int xp1 = xpmin; xp1 <= xpmax; ++xp1, point.z += dz) {
-      if (xp1 >= 0 && xp1 < w)
-        setPoint(xp1, yp, point);
+      if (xp1 >= 0 && xp1 < int(w))
+        setPoint(uint(xp1), uint(yp), point);
 
       if (! getFlat())
         point.rgba += drgba;
@@ -324,22 +324,22 @@ stipple(CImagePtr stipple)
   double gray;
   int    x1, y1;
 
-  int w = stipple->getWidth ();
-  int h = stipple->getHeight();
+  auto w = stipple->getWidth ();
+  auto h = stipple->getHeight();
 
   for (uint y = 0; y < height_; ++y) {
     Line *line = &lines_[y];
 
     if (! line->set) continue;
 
-    y1 = y % h;
+    y1 = int(y % h);
 
     for (uint x = line->start; x <= line->end; ++x) {
       Point *point = &line->points[x];
 
       if (! point->set || point->stippled) continue;
 
-      x1 = x % w;
+      x1 = int(x % w);
 
       stipple->getGrayPixel(x1, y1, &gray);
 
@@ -467,7 +467,7 @@ render(CGeom3DRenderer *renderer)
 
       renderer->setForeground(point->rgba);
 
-      renderer->drawPoint(CIPoint2D(x, y));
+      renderer->drawPoint(CIPoint2D(int(x), int(y)));
     }
   }
 }
@@ -488,7 +488,7 @@ render(CGeomZBuffer *buffer)
 
       buffer->setForeground(point->rgba);
 
-      buffer->drawFacePoint(0, x, y, point->z);
+      buffer->drawFacePoint(0, int(x), int(y), point->z);
     }
   }
 }

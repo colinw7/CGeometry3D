@@ -25,13 +25,13 @@ CGeomObject3D(const CGeomObject3D &object) :
   FaceList::const_iterator pf2 = object.faces_.end  ();
 
   for ( ; pf1 != pf2; ++pf1) {
-    CGeomFace3D *face = (*pf1)->dup();
+    auto *face = (*pf1)->dup();
 
     face->setObject(this);
 
     faces_.push_back(face);
 
-    uint ind = faces_.size() - 1;
+    auto ind = uint(faces_.size() - 1);
 
     face->setInd(ind);
   }
@@ -40,13 +40,13 @@ CGeomObject3D(const CGeomObject3D &object) :
   LineList::const_iterator pl2 = object.lines_.end  ();
 
   for ( ; pl1 != pl2; ++pl1) {
-    CGeomLine3D *line = (*pl1)->dup();
+    auto *line = (*pl1)->dup();
 
     line->setObject(this);
 
     lines_.push_back(line);
 
-    uint ind = lines_.size() - 1;
+    auto ind = uint(lines_.size() - 1);
 
     line->setInd(ind);
   }
@@ -55,13 +55,13 @@ CGeomObject3D(const CGeomObject3D &object) :
   VertexList::const_iterator pv2 = object.vertices_.end  ();
 
   for ( ; pv1 != pv2; ++pv1) {
-    CGeomVertex3D *vertex = (*pv1)->dup();
+    auto *vertex = (*pv1)->dup();
 
     vertex->setObject(this);
 
     vertices_.push_back(vertex);
 
-    uint ind = vertices_.size() - 1;
+    auto ind = uint(vertices_.size() - 1);
 
     vertex->setInd(ind);
   }
@@ -98,7 +98,7 @@ void
 CGeomObject3D::
 setModelCenter(const CPoint3D &point)
 {
-  CPoint3D c = getModelCenter();
+  auto c = getModelCenter();
 
   CVector3D d(c, point);
 
@@ -147,18 +147,15 @@ void
 CGeomObject3D::
 setTexture(CGeomTexture *texture)
 {
-  FaceList::iterator pf1 = faces_.begin();
-  FaceList::iterator pf2 = faces_.end  ();
-
-  for ( ; pf1 != pf2; ++pf1)
-    (*pf1)->setTexture(texture);
+  for (auto &face : faces_)
+    face->setTexture(texture);
 }
 
 void
 CGeomObject3D::
 setTexture(CImagePtr image)
 {
-  CGeomTexture *texture = CGeometryInst->createTexture(image);
+  auto *texture = CGeometryInst->createTexture(image);
 
   setTexture(texture);
 }
@@ -174,7 +171,7 @@ void
 CGeomObject3D::
 mapTexture(CImagePtr image)
 {
-  CGeomTexture *texture = CGeometryInst->createTexture(image);
+  auto *texture = CGeometryInst->createTexture(image);
 
   mapTexture(texture);
 }
@@ -194,7 +191,7 @@ void
 CGeomObject3D::
 setMask(CImagePtr image)
 {
-  CGeomMask *mask = CGeometryInst->createMask(image);
+  auto *mask = CGeometryInst->createMask(image);
 
   setMask(mask);
 }
@@ -210,7 +207,7 @@ void
 CGeomObject3D::
 mapMask(CImagePtr image)
 {
-  CGeomMask *mask = CGeometryInst->createMask(image);
+  auto *mask = CGeometryInst->createMask(image);
 
   mapMask(mask);
 }
@@ -245,7 +242,7 @@ findVertex(const CPoint3D &point, uint *ind)
   VertexList::const_iterator pv2 = vertices_.end  ();
 
   for (uint i = 0; pv1 != pv2; ++pv1, ++i) {
-    const CPoint3D &actual = (*pv1)->getModel();
+    const auto &actual = (*pv1)->getModel();
 
     if (point == actual) {
       *ind = i;
@@ -256,15 +253,17 @@ findVertex(const CPoint3D &point, uint *ind)
   return false;
 }
 
+//---
+
 uint
 CGeomObject3D::
 addVertex(const CPoint3D &point)
 {
-  CGeomVertex3D *vertex = CGeometryInst->createVertex3D(this, point);
+  auto *vertex = CGeometryInst->createVertex3D(this, point);
 
   vertices_.push_back(vertex);
 
-  uint ind = vertices_.size() - 1;
+  auto ind = uint(vertices_.size() - 1);
 
   vertex->setInd(ind);
 
@@ -280,15 +279,61 @@ addVertexFace(uint vertex_ind, uint face_ind)
   face_list.push_back(face_ind);
 }
 
+//---
+
+uint
+CGeomObject3D::
+addTexturePoint(const CPoint3D &point)
+{
+  texturePoints_.push_back(point);
+
+  auto ind = uint(texturePoints_.size() - 1);
+
+  return ind;
+}
+
+const CPoint3D &
+CGeomObject3D::
+texturePoint(uint i) const
+{
+  assert(i < texturePoints_.size());
+
+  return texturePoints_[i];
+}
+
+//---
+
+uint
+CGeomObject3D::
+addNormal(const CVector3D &v)
+{
+  normals_.push_back(v);
+
+  auto ind = uint(normals_.size() - 1);
+
+  return ind;
+}
+
+const CVector3D &
+CGeomObject3D::
+normal(uint i) const
+{
+  assert(i < normals_.size());
+
+  return normals_[i];
+}
+
+//---
+
 uint
 CGeomObject3D::
 addLine(uint start, uint end)
 {
-  CGeomLine3D *line = CGeometryInst->createLine3D(this, start, end);
+  auto *line = CGeometryInst->createLine3D(this, start, end);
 
   lines_.push_back(line);
 
-  uint ind = lines_.size() - 1;
+  auto ind = uint(lines_.size() - 1);
 
   line->setInd(ind);
 
@@ -340,11 +385,11 @@ uint
 CGeomObject3D::
 addFace(const VertexIList &vertices)
 {
-  CGeomFace3D *face = CGeometryInst->createFace3D(this, vertices);
+  auto *face = CGeometryInst->createFace3D(this, vertices);
 
   faces_.push_back(face);
 
-  uint ind = faces_.size() - 1;
+  auto ind = uint(faces_.size() - 1);
 
   face->setInd(ind);
 
@@ -394,7 +439,28 @@ void
 CGeomObject3D::
 setFaceTexture(uint face_num, CGeomTexture *texture)
 {
-  faces_[face_num]->setTexture(texture);
+  setFaceDiffuseTexture(face_num, texture);
+}
+
+void
+CGeomObject3D::
+setFaceDiffuseTexture(uint face_num, CGeomTexture *texture)
+{
+  faces_[face_num]->setDiffuseTexture(texture);
+}
+
+void
+CGeomObject3D::
+setFaceSpecularTexture(uint face_num, CGeomTexture *texture)
+{
+  faces_[face_num]->setSpecularTexture(texture);
+}
+
+void
+CGeomObject3D::
+setFaceNormalTexture(uint face_num, CGeomTexture *texture)
+{
+  faces_[face_num]->setNormalTexture(texture);
 }
 
 void
@@ -683,7 +749,7 @@ verticesMidPoint(const VertexIList &vertices) const
 {
   CPoint3D mid_point(0,0,0);
 
-  double n1 = 1.0/vertices.size();
+  double n1 = 1.0/double(vertices.size());
 
   VertexIList::const_iterator p1 = vertices.begin();
   VertexIList::const_iterator p2 = vertices.end  ();
@@ -698,9 +764,9 @@ CVector3D
 CGeomObject3D::
 verticesNormal(const VertexIList &vertices) const
 {
-  CGeomVertex3D *v1 = vertices_[vertices[0]];
-  CGeomVertex3D *v2 = vertices_[vertices[1]];
-  CGeomVertex3D *v3 = vertices_[vertices[2]];
+  auto *v1 = vertices_[vertices[0]];
+  auto *v2 = vertices_[vertices[1]];
+  auto *v3 = vertices_[vertices[2]];
 
   CVector3D diff1(v1->getViewed(), v2->getViewed());
   CVector3D diff2(v2->getViewed(), v3->getViewed());
@@ -717,7 +783,7 @@ getVertexFaceNormal(uint ind) const
   if (p != vertex_face_normal_.end())
     return (*p).second;
 
-  CGeomObject3D *th = const_cast<CGeomObject3D *>(this);
+  auto *th = const_cast<CGeomObject3D *>(this);
 
   FaceIList &faces = th->vertex_face_list_[ind];
 
@@ -731,7 +797,7 @@ getVertexFaceNormal(uint ind) const
   FaceIList::const_iterator pface2 = faces.end  ();
 
   for ( ; pface1 != pface2; ++pface1) {
-    CGeomFace3D *face = faces_[*pface1];
+    auto *face = faces_[*pface1];
 
     face->calcNormal(fn);
 
@@ -892,8 +958,8 @@ createViewMatrix(CGeom3DRenderer *renderer, CMatrix3D &matrix)
   if (! bbox.isSet())
     return;
 
-  CPoint3D  center = bbox.getCenter();
-  CVector3D size   = bbox.getSize  ();
+  auto center = bbox.getCenter();
+  auto size   = bbox.getSize  ();
 
   double scale = std::min(s/size.getX(), std::min(s/size.getY(), s/size.getZ()));
 
@@ -1035,24 +1101,24 @@ drawBBox(const CGeomCamera3D &camera, CGeomZBuffer *zbuffer)
   zbuffer->setForeground(CRGBA(1,0,0));
 
   for (int i1 = 3, i2 = 0; i2 < 4; i1 = i2, ++i2) {
-    const CPoint3D &point1 = vertices[i1].getPixel();
-    const CPoint3D &point2 = vertices[i2].getPixel();
+    const auto &point1 = vertices[i1].getPixel();
+    const auto &point2 = vertices[i2].getPixel();
 
     zbuffer->drawZLine(int(point1.x), int(point1.y), point1.z,
                        int(point2.x), int(point2.y), point2.z);
   }
 
   for (int i1 = 7, i2 = 4; i2 < 8; i1 = i2, ++i2) {
-    const CPoint3D &point1 = vertices[i1].getPixel();
-    const CPoint3D &point2 = vertices[i2].getPixel();
+    const auto &point1 = vertices[i1].getPixel();
+    const auto &point2 = vertices[i2].getPixel();
 
     zbuffer->drawZLine(int(point1.x), int(point1.y), point1.z,
                        int(point2.x), int(point2.y), point2.z);
   }
 
   for (int i1 = 0, i2 = 4; i1 < 4; ++i1, ++i2) {
-    const CPoint3D &point1 = vertices[i1].getPixel();
-    const CPoint3D &point2 = vertices[i2].getPixel();
+    const auto &point1 = vertices[i1].getPixel();
+    const auto &point2 = vertices[i2].getPixel();
 
     zbuffer->drawZLine(int(point1.x), int(point1.y), point1.z,
                        int(point2.x), int(point2.y), point2.z);
@@ -1138,7 +1204,7 @@ moveModel(const CPoint3D &d)
   CPoint3D model1;
 
   for ( ; p1 != p2; ++p1) {
-    CPoint3D model = (*p1)->getModel();
+    auto model = (*p1)->getModel();
 
     m.multiplyPoint(model, model1);
 
@@ -1209,7 +1275,7 @@ rotateModelZ(double dz)
   CPoint3D model1;
 
   for ( ; p1 != p2; ++p1) {
-    CPoint3D model = (*p1)->getModel();
+    auto model = (*p1)->getModel();
 
     m.multiplyPoint(model, model1);
 
@@ -1231,7 +1297,7 @@ rotateModelY(double dy)
   CPoint3D model1;
 
   for ( ; p1 != p2; ++p1) {
-    CPoint3D model = (*p1)->getModel();
+    auto model = (*p1)->getModel();
 
     m.multiplyPoint(model, model1);
 
@@ -1253,7 +1319,7 @@ rotateModelX(double dx)
   CPoint3D model1;
 
   for ( ; p1 != p2; ++p1) {
-    CPoint3D model = (*p1)->getModel();
+    auto model = (*p1)->getModel();
 
     m.multiplyPoint(model, model1);
 
@@ -1280,7 +1346,7 @@ resizeModelX(double dx)
   VertexList::iterator p2 = vertices_.end  ();
 
   for ( ; p1 != p2; ++p1) {
-    CPoint3D model = (*p1)->getModel();
+    auto model = (*p1)->getModel();
 
     model.x *= dx;
 
@@ -1296,7 +1362,7 @@ resizeModelY(double dy)
   VertexList::iterator p2 = vertices_.end  ();
 
   for ( ; p1 != p2; ++p1) {
-    CPoint3D model = (*p1)->getModel();
+    auto model = (*p1)->getModel();
 
     model.y *= dy;
 
@@ -1312,7 +1378,7 @@ resizeModelZ(double dz)
   VertexList::iterator p2 = vertices_.end  ();
 
   for ( ; p1 != p2; ++p1) {
-    CPoint3D model = (*p1)->getModel();
+    auto model = (*p1)->getModel();
 
     model.z *= dz;
 

@@ -47,5 +47,5 @@ void
 CGeomVertex3D::
 draw(CGeomZBuffer *zbuffer)
 {
-  zbuffer->getRenderer()->drawPoint(CIPoint2D(pixel_.x, pixel_.y));
+  zbuffer->getRenderer()->drawPoint(CIPoint2D(int(pixel_.x), int(pixel_.y)));
 }

@@ -40,7 +40,7 @@ class CGeomScene3D {
 
   void addPrimitive(CGeomObject3D *object);
 
-  uint getNumPrimitives() const { return primitives_.size(); }
+  uint getNumPrimitives() const { return uint(primitives_.size()); }
 
   CGeomObject3D &getPrimitive (uint i) const { return *primitives_[i]; }
   CGeomObject3D *getPrimitiveP(uint i) const { return  primitives_[i]; }
@@ -51,7 +51,7 @@ class CGeomScene3D {
   void addObject   (CGeomObject3D *object);
   void removeObject(CGeomObject3D *object);
 
-  uint getNumObjects() const { return objects_.size(); }
+  uint getNumObjects() const { return uint(objects_.size()); }
 
   const ObjectList &getObjects() const { return objects_; }
 

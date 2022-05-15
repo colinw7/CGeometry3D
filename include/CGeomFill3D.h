@@ -72,9 +72,7 @@ class CGeomFill3D {
      vertices_(vertices) {
     }
 
-    uint getNumVertices() const {
-      return vertices_.size();
-    }
+    uint getNumVertices() const { return uint(vertices_.size()); }
 
     const CGeomVertex3D &getVertex(uint i) const {
       return *vertices_[i];
@@ -91,9 +89,7 @@ class CGeomFill3D {
      object_(object), vertices_(vertices) {
     }
 
-    uint getNumVertices() const {
-      return vertices_.size();
-    }
+    uint getNumVertices() const { return uint(vertices_.size()); }
 
     const CGeomVertex3D &getVertex(uint i) const;
 

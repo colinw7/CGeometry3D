@@ -6,7 +6,7 @@ getMidPoint(const std::vector<CGeomVertex3D *> &vertices)
 {
   CPoint3D mid_point(0,0,0);
 
-  double n1 = 1.0/vertices.size();
+  double n1 = 1.0/double(vertices.size());
 
   std::vector<CGeomVertex3D *>::const_iterator p1 = vertices.begin();
   std::vector<CGeomVertex3D *>::const_iterator p2 = vertices.end  ();
