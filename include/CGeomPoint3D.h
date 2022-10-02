@@ -17,6 +17,8 @@ class CGeomPoint3D {
 
   virtual ~CGeomPoint3D();
 
+  CGeomPoint3D &operator=(const CGeomPoint3D &vertex);
+
   ACCESSOR(Model    , CPoint3D , model    )
   ACCESSOR(Current  , CPoint3D , current  )
   ACCESSOR(Viewed   , CPoint3D , viewed   )

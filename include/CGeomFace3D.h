@@ -119,7 +119,7 @@ class CGeomFace3D {
 
   void addVertex(uint ind);
 
-  void addVertices(uint ind, ...) {
+  void addVertices(int ind, ...) {
     va_list vargs;
 
     va_start(vargs, ind);
@@ -127,7 +127,7 @@ class CGeomFace3D {
     while (ind >= 0) {
       addVertex(ind);
 
-      ind = va_arg(vargs, uint);
+      ind = va_arg(vargs, int);
     }
 
     va_end(vargs);

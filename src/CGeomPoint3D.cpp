@@ -16,6 +16,19 @@ CGeomPoint3D::
 {
 }
 
+CGeomPoint3D &
+CGeomPoint3D::
+operator=(const CGeomPoint3D &vertex)
+{
+  model_     = vertex.model_;
+  current_   = vertex.current_;
+  viewed_    = vertex.viewed_;
+  projected_ = vertex.projected_;
+  pixel_     = vertex.pixel_;
+
+  return *this;
+}
+
 void
 CGeomPoint3D::
 place(const CMatrix3D &matrix)
