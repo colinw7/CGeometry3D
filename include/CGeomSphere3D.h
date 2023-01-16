@@ -14,17 +14,17 @@ class CGeomSphere3D : public CGeomObject3D, public CSphere3D {
 
  ~CGeomSphere3D() { }
 
-  CGeomSphere3D *dup() const;
+  CGeomSphere3D *dup() const override;
 
   static void addGeometry(CGeomObject3D *object, const CPoint3D &center,
                           double radius, uint num_xy=NUM_XY,
                           uint num_patches=NUM_PATCHES);
 
-  void mapTexture(CGeomTexture *texture);
-  void mapTexture(CImagePtr image);
+  void mapTexture(CGeomTexture *texture) override;
+  void mapTexture(CImagePtr image) override;
 
-  void mapMask(CGeomMask *mask);
-  void mapMask(CImagePtr image);
+  void mapMask(CGeomMask *mask) override;
+  void mapMask(CImagePtr image) override;
 
  private:
   CPoint3D center_;

@@ -15,11 +15,11 @@ class CGeomCylinder3D : public CGeomObject3D {
   static void addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
                           double w, double h, uint num_patches=NUM_PATCHES);
 
-  void mapTexture(CGeomTexture *texture);
-  void mapTexture(CImagePtr image);
+  void mapTexture(CGeomTexture *texture) override;
+  void mapTexture(CImagePtr image) override;
 
-  void mapMask(CGeomMask *mask);
-  void mapMask(CImagePtr image);
+  void mapMask(CGeomMask *mask) override;
+  void mapMask(CImagePtr image) override;
 
  private:
   uint num_patches_ { NUM_PATCHES };

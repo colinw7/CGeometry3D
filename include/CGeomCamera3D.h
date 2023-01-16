@@ -66,28 +66,28 @@ class CGeomPerspectiveCamera3D : public CGeomCamera3D {
  public:
   CGeomPerspectiveCamera3D() : CGeomCamera3D() { }
 
-  void createProjectionMatrix(double left, double right, double bottom, double top);
+  void createProjectionMatrix(double left, double right, double bottom, double top) override;
 };
 
 class CGeomFrustrumCamera3D : public CGeomCamera3D {
  public:
   CGeomFrustrumCamera3D() : CGeomCamera3D() { }
 
-  void createProjectionMatrix(double left, double right, double bottom, double top);
+  void createProjectionMatrix(double left, double right, double bottom, double top) override;
 };
 
 class CGeomOrthogonalCamera3D : public CGeomCamera3D {
  public:
   CGeomOrthogonalCamera3D() : CGeomCamera3D() { }
 
-  void createProjectionMatrix(double left, double right, double bottom, double top);
+  void createProjectionMatrix(double left, double right, double bottom, double top) override;
 };
 
 class CGeomObliqueCamera3D : public CGeomCamera3D {
  public:
   CGeomObliqueCamera3D() : CGeomCamera3D() { }
 
-  void createProjectionMatrix(double left, double right, double bottom, double top);
+  void createProjectionMatrix(double left, double right, double bottom, double top) override;
 };
 
 #endif

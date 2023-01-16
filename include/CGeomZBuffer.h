@@ -15,11 +15,11 @@ class CGeom3DBresenham : public CBresenham {
    renderer_(renderer) {
   }
 
-  void drawPoint(int x, int y) {
+  void drawPoint(int x, int y) override {
     renderer_->drawPoint(CIPoint2D(x, y));
   }
 
-  virtual const CILineDash &getLineDash() const {
+  const CILineDash &getLineDash() const override {
     static CILineDash dash;
 
     return dash;
@@ -43,10 +43,10 @@ class CGeomZBuffer {
       return new Renderer(buffer_);
     }
 
-    uint getWidth () const { return buffer_->getWidth (); }
-    uint getHeight() const { return buffer_->getHeight(); }
+    uint getWidth () const override { return buffer_->getWidth (); }
+    uint getHeight() const override { return buffer_->getHeight(); }
 
-    void setForeground(const CRGBA &rgba) {
+    void setForeground(const CRGBA &rgba) override {
       buffer_->setForeground(rgba);
     }
 
@@ -102,7 +102,7 @@ class CGeomZBuffer {
       drawZLine(x1, y1, 0, x2, y2, 1, false);
     }
 
-    void drawPoint(const CIPoint2D &point) {
+    void drawPoint(const CIPoint2D &point) override {
       if (! getZAlpha()) {
         buffer_->drawFacePoint(nullptr, point.x, point.y, z_);
 
@@ -112,19 +112,19 @@ class CGeomZBuffer {
         buffer_->drawOverlayPoint(point.x, point.y);
     }
 
-    void drawLine(const CIPoint2D &, const CIPoint2D &) {
+    void drawLine(const CIPoint2D &, const CIPoint2D &) override {
       //buffer_->drawOverlayZLine(point1, point2);
     }
 
-    void setFont(CFontPtr font) {
+    void setFont(CFontPtr font) override {
       buffer_->setFont(font);
     }
 
-    void drawString(const CIPoint2D &point, const std::string &str) {
+    void drawString(const CIPoint2D &point, const std::string &str) override {
       buffer_->drawOverlayImageString(point.x, point.y, str);
     }
 
-    void fillCircle(const CIPoint2D &, double) {
+    void fillCircle(const CIPoint2D &, double) override {
       //buffer_->fillCircle(c, r);
     }
 

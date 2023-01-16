@@ -12,7 +12,7 @@ class CGeomTriangle3D : public CGeomObject3D, public CTriangle3D {
 
  ~CGeomTriangle3D();
 
-  CGeomTriangle3D *dup() const;
+  CGeomTriangle3D *dup() const override;
 };
 
 #endif
