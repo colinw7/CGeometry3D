@@ -69,7 +69,7 @@ CGeomFace3D(const CGeomFace3D &face) :
   if (face.mask_)
     mask_ = face.mask_->dup();
   else
-    mask_ = 0;
+    mask_ = nullptr;
 }
 
 CGeomFace3D *

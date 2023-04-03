@@ -45,7 +45,7 @@ resize(uint width, uint height)
     }
   }
   else
-    lines_ = 0;
+    lines_ = nullptr;
 }
 
 void
@@ -488,7 +488,7 @@ render(CGeomZBuffer *buffer)
 
       buffer->setForeground(point->rgba);
 
-      buffer->drawFacePoint(0, int(x), int(y), point->z);
+      buffer->drawFacePoint(nullptr, int(x), int(y), point->z);
     }
   }
 }
