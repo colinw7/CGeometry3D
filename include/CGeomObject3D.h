@@ -15,13 +15,13 @@ class CGeom3DRenderer;
 
 class CGeomObject3D {
  public:
-  typedef std::vector<CGeomFace3D *>   FaceList;
-  typedef std::vector<uint>            FaceIList;
-  typedef std::vector<CGeomLine3D *>   LineList;
-  typedef std::vector<CGeomVertex3D *> VertexList;
-  typedef std::vector<uint>            VertexIList;
-  typedef std::map<uint,FaceIList>     VertexFaceList;
-  typedef std::map<uint,CVector3D>     VertexFaceNormal;
+  using FaceList         = std::vector<CGeomFace3D *>;
+  using FaceIList        = std::vector<uint>;
+  using LineList         = std::vector<CGeomLine3D *>;
+  using VertexList       = std::vector<CGeomVertex3D *>;
+  using VertexIList      = std::vector<uint>;
+  using VertexFaceList   = std::map<uint,FaceIList>;
+  using VertexFaceNormal = std::map<uint,CVector3D>;
 
   class Group {
    public:
@@ -39,7 +39,7 @@ class CGeomObject3D {
     FaceIList   faceList_;
   };
 
-  typedef std::map<std::string,Group> Groups;
+  using Groups = std::map<std::string,Group>;
 
  public:
   CGeomObject3D(CGeomScene3D *pscene, const std::string &name) :
@@ -59,7 +59,6 @@ class CGeomObject3D {
   CGeomScene3D *getScene() const { return pscene_; }
 
   const std::string &getName() const { return name_; }
-
   void setName(const std::string &name) { name_ = name; }
 
   ACCESSOR(Selected, bool, selected)
@@ -140,10 +139,14 @@ class CGeomObject3D {
 
   //---
 
+  uint getNumTextuePoints() const { return uint(texturePoints_.size()); }
+
   uint addTexturePoint(const CPoint3D &point);
   const CPoint3D &texturePoint(uint i) const;
 
   //---
+
+  uint getNumNormals() const { return uint(normals_.size()); }
 
   uint addNormal(const CVector3D &point);
   const CVector3D &normal(uint i) const;
