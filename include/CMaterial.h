@@ -19,12 +19,6 @@ class CMaterial {
    emission_(emission), shininess_(shininess), mirror_(mirror) {
   }
 
-  CMaterial(const CMaterial &material) :
-   ambient_(material.ambient_), diffuse_(material.diffuse_),
-   specular_(material.specular_), emission_(material.emission_),
-   shininess_(material.shininess_), mirror_(material.mirror_) {
-  }
-
   void setColor(const CRGBA &color, const CRGBA &specular=CRGBA(0,0,0,1),
                 const CRGBA &emission=CRGBA(0,0,0,1)) {
     setAmbient(color);
