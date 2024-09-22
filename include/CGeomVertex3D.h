@@ -5,10 +5,10 @@
 #include <CMatrix3D.h>
 #include <CRGBA.h>
 #include <CClipSide.h>
-#include <COptVal.h>
 #include <CGeomPoint3D.h>
 #include <accessor.h>
 #include <vector>
+#include <optional>
 
 class CGeomObject3D;
 class CGeomZBuffer;
@@ -27,36 +27,41 @@ class CGeomVertex3D : public CGeomPoint3D {
 
   virtual CGeomVertex3D *dup() const;
 
-  CGeomObject3D *getObject() const { return pobject_; }
+  //---
 
+  CGeomObject3D *getObject() const { return pobject_; }
   void setObject(CGeomObject3D *object) { pobject_ = object; }
 
-  ACCESSOR(Ind       , uint     , ind      )
-  ACCESSOR(Color     , CRGBA    , color    )
-  ACCESSOR(VNormal   , CVector3D, vnormal  )
-  ACCESSOR(TextureMap, CPoint3D , tmap     )
-  ACCESSOR(ClipSide  , CClipSide, clip_side)
+  const uint &getInd() const { return ind_; }
+  void setInd(const uint &i) { ind_ = i; }
 
-  const CVector3D &getNormal() const {
-    return normal_.getValue();
-  }
+  bool hasColor() const { return bool(color_); }
+  CRGBA getColor(const CRGBA &c=CRGBA(1, 1, 1)) const { return color_.value_or(c); }
+  void setColor(const CRGBA &c) { color_ = c; }
 
-  void setNormal(const CVector3D &normal) {
-    normal_.setValue(normal);
+  bool hasNormal() const { return bool(normal_); }
+  CVector3D getNormal(const CVector3D &n=CVector3D(0, 0, 1)) const { return normal_.value_or(n); }
+  void setNormal(const CVector3D &n) { normal_ = n; }
 
-    vnormal_ = normal;
-  }
+  bool hasTextureMap() const { return bool(tmap_); }
+  CPoint3D getTextureMap(const CPoint3D &p=CPoint3D(0, 0, 0)) const { return tmap_.value_or(p); }
+  void setTextureMap(const CPoint3D &p) { tmap_ = p; }
 
-  bool getNormalSet() const {
-    return normal_.isValid();
-  }
+  const CClipSide &getClipSide() const { return clipSide_; }
+  void setClipSide(const CClipSide &v) { clipSide_ = v; }
+
+  //---
 
   void draw(CGeomZBuffer *zbuffer);
 
   void print(std::ostream &os) const {
     CGeomPoint3D::print(os);
 
-    os << ", color=" << color_ << ", tmap=" << tmap_;
+    if (hasColor())
+      os << ", color=" << getColor();
+
+    if (hasTextureMap())
+      os << ", tmap=" << getTextureMap();
   }
 
   friend std::ostream &operator<<(std::ostream &os, const CGeomVertex3D &vertex) {
@@ -66,15 +71,18 @@ class CGeomVertex3D : public CGeomPoint3D {
   }
 
  protected:
-  typedef std::vector<CGeomFace3D *> FaceList;
+  using FaceList  = std::vector<CGeomFace3D *>;
+  using OptVector = std::optional<CVector3D>;
+  using OptColor  = std::optional<CRGBA>;
+  using OptPoint  = std::optional<CPoint3D>;
 
-  CGeomObject3D       *pobject_ { nullptr };
-  uint                 ind_ { 0 };
-  CRGBA                color_ { 0, 0, 0 };
-  COptValT<CVector3D>  normal_;
-  CVector3D            vnormal_;
-  CPoint3D             tmap_;
-  CClipSide            clip_side_ { CCLIP_SIDE_NONE };
+  CGeomObject3D *pobject_ { nullptr };
+
+  uint      ind_ { 0 };
+  OptColor  color_;
+  OptVector normal_;
+  OptPoint  tmap_;
+  CClipSide clipSide_ { CCLIP_SIDE_NONE };
 };
 
 #endif

@@ -11,13 +11,12 @@ CGeomVertex3D(CGeomObject3D *pobject, const CPoint3D &point) :
 CGeomVertex3D::
 CGeomVertex3D(const CGeomVertex3D &vertex) :
  CGeomPoint3D(vertex),
- pobject_    (vertex.pobject_),
- ind_        (0),
- color_      (vertex.color_),
- normal_     (vertex.normal_),
- vnormal_    (vertex.vnormal_),
- tmap_       (vertex.tmap_),
- clip_side_  (vertex.clip_side_)
+ pobject_   (vertex.pobject_),
+ ind_       (0),
+ color_     (vertex.color_),
+ normal_    (vertex.normal_),
+ tmap_      (vertex.tmap_),
+ clipSide_  (vertex.clipSide_)
 {
 }
 
@@ -25,13 +24,12 @@ CGeomVertex3D &
 CGeomVertex3D::
 operator=(const CGeomVertex3D &vertex)
 {
-  pobject_    = vertex.pobject_;
-  ind_        = 0;
-  color_      = vertex.color_;
-  normal_     = vertex.normal_;
-  vnormal_    = vertex.vnormal_;
-  tmap_       = vertex.tmap_;
-  clip_side_  = vertex.clip_side_;
+  pobject_  = vertex.pobject_;
+  ind_      = 0;
+  color_    = vertex.color_;
+  normal_   = vertex.normal_;
+  tmap_     = vertex.tmap_;
+  clipSide_ = vertex.clipSide_;
 
   return *this;
 }

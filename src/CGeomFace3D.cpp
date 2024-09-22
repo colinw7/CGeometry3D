@@ -25,8 +25,8 @@ CGeomFace3D(const CGeomFace3D &face) :
  normal_       (face.normal_),
  flags_        (face.flags_)
 {
-  SubFaceList::const_iterator pf1 = face.sub_faces_.begin();
-  SubFaceList::const_iterator pf2 = face.sub_faces_.end  ();
+  auto pf1 = face.sub_faces_.begin();
+  auto pf2 = face.sub_faces_.end  ();
 
   for ( ; pf1 != pf2; ++pf1) {
     CGeomFace3D *face1 = (*pf1)->dup();
@@ -38,8 +38,8 @@ CGeomFace3D(const CGeomFace3D &face) :
     face1->setInd(ind);
   }
 
-  SubLineList::const_iterator pl1 = face.sub_lines_.begin();
-  SubLineList::const_iterator pl2 = face.sub_lines_.end  ();
+  auto pl1 = face.sub_lines_.begin();
+  auto pl2 = face.sub_lines_.end  ();
 
   for ( ; pl1 != pl2; ++pl1) {
     CGeomLine3D *line = (*pl1)->dup();
@@ -95,14 +95,14 @@ setObject(CGeomObject3D *object)
 {
   pobject_ = object;
 
-  SubFaceList::const_iterator pf1 = sub_faces_.begin();
-  SubFaceList::const_iterator pf2 = sub_faces_.end  ();
+  auto pf1 = sub_faces_.begin();
+  auto pf2 = sub_faces_.end  ();
 
   for ( ; pf1 != pf2; ++pf1)
     (*pf1)->setObject(object);
 
-  SubLineList::const_iterator pl1 = sub_lines_.begin();
-  SubLineList::const_iterator pl2 = sub_lines_.end  ();
+  auto pl1 = sub_lines_.begin();
+  auto pl2 = sub_lines_.end  ();
 
   for ( ; pl1 != pl2; ++pl1)
     (*pl1)->setObject(object);
@@ -247,8 +247,8 @@ void
 CGeomFace3D::
 setSubFaceColor(const CRGBA &rgba)
 {
-  SubFaceList::iterator p1 = sub_faces_.begin();
-  SubFaceList::iterator p2 = sub_faces_.end  ();
+  auto p1 = sub_faces_.begin();
+  auto p2 = sub_faces_.end  ();
 
   for ( ; p1 != p2; ++p1)
     (*p1)->setColor(rgba);
@@ -330,8 +330,8 @@ drawLines(CGeom3DRenderer *renderer)
 
   auto ppoint1 = pobject_->getVertex(vertices_.back()).getPixel();
 
-  VertexList::iterator p1 = vertices_.begin();
-  VertexList::iterator p2 = vertices_.end  ();
+  auto p1 = vertices_.begin();
+  auto p2 = vertices_.end  ();
 
   for ( ; p1 != p2; ++p1) {
     const auto &ppoint2 = pobject_->getVertex(*p1).getPixel();
@@ -363,8 +363,8 @@ drawLines(CGeomZBuffer *zbuffer)
 
   auto ppoint1 = pobject_->getVertex(vertices_.back()).getPixel();
 
-  VertexList::iterator p1 = vertices_.begin();
-  VertexList::iterator p2 = vertices_.end  ();
+  auto p1 = vertices_.begin();
+  auto p2 = vertices_.end  ();
 
   for ( ; p1 != p2; ++p1) {
     const auto &ppoint2 = pobject_->getVertex(*p1).getPixel();
@@ -581,7 +581,7 @@ getAdjustedColor(CRGBA &rgba)
   if (flags_ & LIGHTED) {
     if (! pobject_ ||
         ! pobject_->lightPoint(mid_point, normal, frontMaterial_, rgba)) {
-      CVector3D dir(mid_point, CPoint3D(0,0,1));
+      CVector3D dir(mid_point, CPoint3D(0, 0, 1));
 
       double factor1 = normal.dotProduct(dir.normalized());
 
@@ -595,7 +595,7 @@ getAdjustedColor(CRGBA &rgba)
     }
   }
   else {
-    CVector3D dir(mid_point, CPoint3D(0,0,1));
+    CVector3D dir(mid_point, CPoint3D(0, 0, 1));
 
     double factor1 = normal.dotProduct(dir.normalized());
 
@@ -624,7 +624,7 @@ getColorFactor(double *factor)
 
   calcNormal(normal);
 
-  CVector3D dir(mid_point, CPoint3D(0,0,1));
+  CVector3D dir(mid_point, CPoint3D(0, 0, 1));
 
   *factor = normal.dotProduct(dir.normalized());
 

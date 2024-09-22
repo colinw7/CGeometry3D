@@ -14,41 +14,29 @@
 // default factory class
 class CGeometryFactory {
  public:
-  virtual ~CGeometryFactory() { }
+  CGeometryFactory();
 
-  virtual CGeomVertex3D *createVertex3D(CGeomObject3D *pobject, const CPoint3D &point) const {
-    return new CGeomVertex3D(pobject, point);
-  }
+  virtual ~CGeometryFactory();
 
-  virtual CGeomLine3D *createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const {
-    return new CGeomLine3D(pobject, v1, v2);
-  }
+  virtual CGeomVertex3D *createVertex3D(CGeomObject3D *pobject, const CPoint3D &point) const;
+
+  virtual CGeomLine3D *createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const;
 
   virtual CGeomFace3D *createFace3D(CGeomObject3D *pobject,
-                                    const std::vector<uint> &vertices) const {
-    return new CGeomFace3D(pobject, vertices);
-  }
+                                    const std::vector<uint> &vertices) const;
 
-  virtual CGeomObject3D *createObject3D(CGeomScene3D *pscene, const std::string &name) const {
-    return new CGeomObject3D(pscene, name);
-  }
+  virtual CGeomObject3D *createObject3D(CGeomScene3D *pscene, const std::string &name) const;
 
-  virtual CGeomScene3D *createScene3D() const {
-    return new CGeomScene3D();
-  }
+  virtual CGeomScene3D *createScene3D() const;
 
-  virtual CGeomTexture *createTexture(CImagePtr image) const {
-    return new CGeomTexture(image);
-  }
+  virtual CGeomTexture *createTexture(CImagePtr image) const;
 
-  virtual CGeomMask *createMask(CImagePtr image) const {
-    return new CGeomMask(image);
-  }
+  virtual CGeomMask *createMask(CImagePtr image) const;
 
-  virtual CGeomCamera3D *createCamera3D(CGeomScene3D *, const std::string &) const {
-    return new CGeomPerspectiveCamera3D();
-  }
+  virtual CGeomCamera3D *createCamera3D(CGeomScene3D *, const std::string &) const;
 };
+
+//---
 
 // factor class for all geometry objects so we can derive classes
 // from the base geometry classes and use a custom factory to
@@ -57,49 +45,26 @@ class CGeometry3D {
  public:
   static CGeometry3D *getInstance();
 
-  CGeometry3D() {
-    factory_ = new CGeometryFactory;
-  }
+  CGeometry3D();
 
-  void setFactory(CGeometryFactory *factory) {
-    delete factory_;
+  void setFactory(CGeometryFactory *factory);
 
-    factory_ = factory;
-  }
+  CGeomVertex3D *createVertex3D(CGeomObject3D *pobject, const CPoint3D &point) const;
 
-  CGeomVertex3D *createVertex3D(CGeomObject3D *pobject, const CPoint3D &point) const {
-    return factory_->createVertex3D(pobject, point);
-  }
+  CGeomLine3D *createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const;
 
-  CGeomLine3D *createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const {
-    return factory_->createLine3D(pobject, v1, v2);
-  }
+  CGeomFace3D *createFace3D(CGeomObject3D *pobject, const std::vector<uint> &vertices) const;
 
-  CGeomFace3D *createFace3D(CGeomObject3D *pobject, const std::vector<uint> &vertices) const {
-    return factory_->createFace3D(pobject, vertices);
-  }
+  CGeomObject3D *createObject3D(CGeomScene3D *pscene, const std::string &name) const;
 
-  CGeomObject3D *createObject3D(CGeomScene3D *pscene, const std::string &name) const {
-    return factory_->createObject3D(pscene, name);
-  }
+  CGeomScene3D *createScene3D() const;
 
-  CGeomScene3D *createScene3D() const {
-    return factory_->createScene3D();
-  }
+  CGeomTexture *createTexture(const std::string &filename) const;
+  CGeomTexture *createTexture(CImagePtr image) const;
 
-  CGeomTexture *createTexture(CImagePtr image) const {
-    auto *texture = factory_->createTexture(image);
-    texture->setId(++textureId_);
-    return texture;
-  }
+  CGeomMask *createMask(CImagePtr image) const;
 
-  CGeomMask *createMask(CImagePtr image) const {
-    return factory_->createMask(image);
-  }
-
-  CGeomCamera3D *createCamera3D(CGeomScene3D *pscene, const std::string &name) const {
-    return factory_->createCamera3D(pscene, name);
-  }
+  CGeomCamera3D *createCamera3D(CGeomScene3D *pscene, const std::string &name) const;
 
  private:
   CGeometryFactory *factory_   { nullptr };

@@ -106,21 +106,17 @@ class CGeomObject3D {
   //---
 
   void setTexture(CGeomTexture *texture);
-
   void setTexture(CImagePtr image);
 
   virtual void mapTexture(CGeomTexture *texture);
-
   virtual void mapTexture(CImagePtr image);
 
   //---
 
   void setMask(CGeomMask *mask);
-
   void setMask(CImagePtr image);
 
   virtual void mapMask(CGeomMask *mask);
-
   virtual void mapMask(CImagePtr image);
 
   //---
@@ -222,6 +218,17 @@ class CGeomObject3D {
 
   //---
 
+  CGeomTexture *getDiffuseTexture() const { return diffuseTexture_; }
+  void setDiffuseTexture(CGeomTexture *texture) { diffuseTexture_ = texture; }
+
+  CGeomTexture *getSpecularTexture() const { return specularTexture_; }
+  void setSpecularTexture(CGeomTexture *texture) { specularTexture_ = texture; }
+
+  CGeomTexture *getNormalTexture() const { return normalTexture_; }
+  void setNormalTexture(CGeomTexture *texture) { normalTexture_ = texture; }
+
+  //---
+
   void setFaceColor(const CRGBA &rgba);
   void setFaceColor(uint face_num, const CRGBA &rgba);
 
@@ -252,6 +259,10 @@ class CGeomObject3D {
 
   void setVertexColor(uint i, const CRGBA &rgba);
   void setVertexPixel(uint i, const CPoint3D &pixel);
+
+  void setVertexNormal(uint i, const CVector3D &n);
+
+  void setVertexTextureMap(uint i, const CPoint3D &p);
 
   //---
 
@@ -400,15 +411,19 @@ class CGeomObject3D {
   using TexturePoints = std::vector<CPoint3D>;
   using Normals       = std::vector<CVector3D>;
 
-  CGeomScene3D*    pscene_ { nullptr };
+  CGeomScene3D* pscene_ { nullptr };
 
-  std::string      name_;
-  bool             selected_ { false };
-  bool             visible_ { true };
-  bool             draw_position_ { true };
+  std::string name_;
+  bool        selected_ { false };
+  bool        visible_ { true };
+  bool        draw_position_ { true };
 
   CCoordFrame3D    coord_frame_;
   CGeomPoint3D     position_ { CPoint3D(0, 0, 0) };
+
+  CGeomTexture* diffuseTexture_  { nullptr };
+  CGeomTexture* specularTexture_ { nullptr };
+  CGeomTexture* normalTexture_   { nullptr };
 
   FaceList         faces_;
   LineList         lines_;
@@ -419,10 +434,10 @@ class CGeomObject3D {
   TexturePoints    texturePoints_;
   Normals          normals_;
 
-  CMatrix3D        view_matrix_;
+  CMatrix3D view_matrix_;
 
-  CVector3D        dv_ { 0, 0, 0 };
-  CVector3D        da_ { 0, 0, 0 };
+  CVector3D dv_ { 0, 0, 0 };
+  CVector3D da_ { 0, 0, 0 };
 };
 
 //------

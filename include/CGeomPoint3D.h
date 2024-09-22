@@ -9,7 +9,7 @@ class CGeomCamera3D;
 
 class CGeomPoint3D {
  public:
-  CGeomPoint3D(const CPoint3D &point=CPoint3D(0,0,0)) :
+  CGeomPoint3D(const CPoint3D &point=CPoint3D(0, 0, 0)) :
    model_(point), current_(point), viewed_(point), projected_(point), pixel_(point) {
   }
 

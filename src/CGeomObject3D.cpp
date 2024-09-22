@@ -15,12 +15,18 @@ CGeomObject3D(const CGeomObject3D &object) :
  draw_position_     (object.draw_position_),
  coord_frame_       (object.coord_frame_),
  position_          (object.position_),
+ diffuseTexture_    (object.diffuseTexture_),
+ specularTexture_   (object.specularTexture_),
+ normalTexture_     (object.normalTexture_),
  vertex_face_list_  (object.vertex_face_list_),
  vertex_face_normal_(object.vertex_face_normal_),
+ texturePoints_     (object.texturePoints_),
+ normals_           (object.normals_),
  view_matrix_       (object.view_matrix_),
  dv_                (object.dv_),
  da_                (object.da_)
 {
+  // copy faces
   for (auto pf = object.faces_.begin(); pf != object.faces_.end(); ++pf) {
     auto *face = (*pf)->dup();
 
@@ -33,6 +39,7 @@ CGeomObject3D(const CGeomObject3D &object) :
     face->setInd(ind);
   }
 
+  // copy lines
   for (auto pl = object.lines_.begin(); pl != object.lines_.end(); ++pl) {
     auto *line = (*pl)->dup();
 
@@ -45,6 +52,7 @@ CGeomObject3D(const CGeomObject3D &object) :
     line->setInd(ind);
   }
 
+  // copy vertices
   for (auto pv = object.vertices_.begin(); pv != object.vertices_.end(); ++pv) {
     auto *vertex = (*pv)->dup();
 
@@ -490,6 +498,20 @@ CGeomObject3D::
 setVertexPixel(uint i, const CPoint3D &pixel)
 {
   vertices_[i]->setPixel(pixel);
+}
+
+void
+CGeomObject3D::
+setVertexNormal(uint i, const CVector3D &n)
+{
+  vertices_[i]->setNormal(n);
+}
+
+void
+CGeomObject3D::
+setVertexTextureMap(uint i, const CPoint3D &p)
+{
+  vertices_[i]->setTextureMap(p);
 }
 
 void
