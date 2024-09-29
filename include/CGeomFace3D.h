@@ -19,9 +19,9 @@ class CGeom3DRenderer;
 
 class CGeomFace3D {
  public:
-  typedef std::vector<uint>          VertexList;
-  typedef std::vector<CGeomFace3D *> SubFaceList;
-  typedef std::vector<CGeomLine3D *> SubLineList;
+  using VertexList  = std::vector<uint>;
+  using SubFaceList = std::vector<CGeomFace3D *>;
+  using SubLineList = std::vector<CGeomLine3D *>;
 
   enum {
     LIGHTED   = (1<<0),

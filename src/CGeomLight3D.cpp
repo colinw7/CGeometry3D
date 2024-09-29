@@ -24,15 +24,15 @@ void
 CGeomLight3DMgr::
 deleteLight(CGeomLight3D *light)
 {
-  LightList::iterator plight1 = lights_.begin();
-  LightList::iterator plight2 = lights_.end  ();
+  auto plight1 = lights_.begin();
+  auto plight2 = lights_.end  ();
 
   for ( ; plight1 != plight2; ++plight1)
     if (*plight1 == light)
       break;
 
   if (plight1 != plight2) {
-    LightList::iterator plight0 = plight1;
+    auto plight0 = plight1;
 
     ++plight1;
 
@@ -47,8 +47,8 @@ void
 CGeomLight3DMgr::
 modelToPixel(const CGeomCamera3D &camera) const
 {
-  LightList::const_iterator plight1 = lights_.begin();
-  LightList::const_iterator plight2 = lights_.end  ();
+  auto plight1 = lights_.begin();
+  auto plight2 = lights_.end  ();
 
   for ( ; plight1 != plight2; ++plight1)
     (*plight1)->getObject()->modelToPixel(camera);
@@ -58,8 +58,8 @@ void
 CGeomLight3DMgr::
 drawWireframe(CGeomCamera3D &, CGeomZBuffer *)
 {
-//LightList::const_iterator plight1 = lights_.begin();
-//LightList::const_iterator plight2 = lights_.end  ();
+//auto plight1 = lights_.begin();
+//auto plight2 = lights_.end  ();
 
 //for ( ; plight1 != plight2; ++plight1)
 //  (*plight1)->drawWireframe(camera, zbuffer);
@@ -69,8 +69,8 @@ void
 CGeomLight3DMgr::
 drawSolid(CGeomCamera3D &, CGeomZBuffer *)
 {
-//LightList::const_iterator plight1 = lights_.begin();
-//LightList::const_iterator plight2 = lights_.end  ();
+//auto plight1 = lights_.begin();
+//auto plight2 = lights_.end  ();
 
 //for ( ; plight1 != plight2; ++plight1)
 //  (*plight1)->drawSolid(camera, zbuffer);
@@ -84,8 +84,8 @@ lightPoint(const CPoint3D &point, const CVector3D &normal, const CMaterial &mate
 
   rgba += getAmbient()*material.getAmbient();
 
-  LightList::const_iterator plight1 = lights_.begin();
-  LightList::const_iterator plight2 = lights_.end  ();
+  auto plight1 = lights_.begin();
+  auto plight2 = lights_.end  ();
 
   for ( ; plight1 != plight2; ++plight1)
     (*plight1)->lightPoint(rgba, point, normal, material);
@@ -119,8 +119,8 @@ void
 CGeomLight3DMgr::
 moveX(double dx)
 {
-  LightList::const_iterator plight1 = lights_.begin();
-  LightList::const_iterator plight2 = lights_.end  ();
+  auto plight1 = lights_.begin();
+  auto plight2 = lights_.end  ();
 
   for ( ; plight1 != plight2; ++plight1)
     (*plight1)->getObject()->moveX(dx);
@@ -130,8 +130,8 @@ void
 CGeomLight3DMgr::
 moveY(double dy)
 {
-  LightList::const_iterator plight1 = lights_.begin();
-  LightList::const_iterator plight2 = lights_.end  ();
+  auto plight1 = lights_.begin();
+  auto plight2 = lights_.end  ();
 
   for ( ; plight1 != plight2; ++plight1)
     (*plight1)->getObject()->moveY(dy);
@@ -141,8 +141,8 @@ void
 CGeomLight3DMgr::
 moveZ(double dz)
 {
-  LightList::const_iterator plight1 = lights_.begin();
-  LightList::const_iterator plight2 = lights_.end  ();
+  auto plight1 = lights_.begin();
+  auto plight2 = lights_.end  ();
 
   for ( ; plight1 != plight2; ++plight1)
     (*plight1)->getObject()->moveZ(dz);
@@ -152,8 +152,8 @@ void
 CGeomLight3DMgr::
 rotateX(double dx)
 {
-  LightList::const_iterator plight1 = lights_.begin();
-  LightList::const_iterator plight2 = lights_.end  ();
+  auto plight1 = lights_.begin();
+  auto plight2 = lights_.end  ();
 
   for ( ; plight1 != plight2; ++plight1)
     (*plight1)->getObject()->rotateX(dx);
@@ -163,8 +163,8 @@ void
 CGeomLight3DMgr::
 rotateY(double dy)
 {
-  LightList::const_iterator plight1 = lights_.begin();
-  LightList::const_iterator plight2 = lights_.end  ();
+  auto plight1 = lights_.begin();
+  auto plight2 = lights_.end  ();
 
   for ( ; plight1 != plight2; ++plight1)
     (*plight1)->getObject()->rotateY(dy);
@@ -174,8 +174,8 @@ void
 CGeomLight3DMgr::
 rotateZ(double dz)
 {
-  LightList::const_iterator plight1 = lights_.begin();
-  LightList::const_iterator plight2 = lights_.end  ();
+  auto plight1 = lights_.begin();
+  auto plight2 = lights_.end  ();
 
   for ( ; plight1 != plight2; ++plight1)
     (*plight1)->getObject()->rotateZ(dz);
