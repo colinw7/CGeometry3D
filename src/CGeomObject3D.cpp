@@ -8,61 +8,61 @@
 
 CGeomObject3D::
 CGeomObject3D(const CGeomObject3D &object) :
- pscene_            (object.pscene_),
- name_              (object.name_),
- selected_          (object.selected_),
- visible_           (object.visible_),
- draw_position_     (object.draw_position_),
- coord_frame_       (object.coord_frame_),
- position_          (object.position_),
- diffuseTexture_    (object.diffuseTexture_),
- specularTexture_   (object.specularTexture_),
- normalTexture_     (object.normalTexture_),
- vertex_face_list_  (object.vertex_face_list_),
- vertex_face_normal_(object.vertex_face_normal_),
- texturePoints_     (object.texturePoints_),
- normals_           (object.normals_),
- view_matrix_       (object.view_matrix_),
- dv_                (object.dv_),
- da_                (object.da_)
+ pscene_          (object.pscene_),
+ name_            (object.name_),
+ selected_        (object.selected_),
+ visible_         (object.visible_),
+ draw_position_   (object.draw_position_),
+ coord_frame_     (object.coord_frame_),
+ position_        (object.position_),
+ diffuseTexture_  (object.diffuseTexture_),
+ specularTexture_ (object.specularTexture_),
+ normalTexture_   (object.normalTexture_),
+ vertexFaceList_  (object.vertexFaceList_),
+ vertexFaceNormal_(object.vertexFaceNormal_),
+ texturePoints_   (object.texturePoints_),
+ normals_         (object.normals_),
+ view_matrix_     (object.view_matrix_),
+ dv_              (object.dv_),
+ da_              (object.da_)
 {
   // copy faces
-  for (auto pf = object.faces_.begin(); pf != object.faces_.end(); ++pf) {
-    auto *face = (*pf)->dup();
+  for (auto *face : object.faces_) {
+    auto *face1 = face->dup();
 
-    face->setObject(this);
+    face1->setObject(this);
 
-    faces_.push_back(face);
+    faces_.push_back(face1);
 
     auto ind = uint(faces_.size() - 1);
 
-    face->setInd(ind);
+    face1->setInd(ind);
   }
 
   // copy lines
-  for (auto pl = object.lines_.begin(); pl != object.lines_.end(); ++pl) {
-    auto *line = (*pl)->dup();
+  for (auto *line : object.lines_) {
+    auto *line1 = line->dup();
 
-    line->setObject(this);
+    line1->setObject(this);
 
-    lines_.push_back(line);
+    lines_.push_back(line1);
 
     auto ind = uint(lines_.size() - 1);
 
-    line->setInd(ind);
+    line1->setInd(ind);
   }
 
   // copy vertices
-  for (auto pv = object.vertices_.begin(); pv != object.vertices_.end(); ++pv) {
-    auto *vertex = (*pv)->dup();
+  for (auto *vertex : object.vertices_) {
+    auto *vertex1 = vertex->dup();
 
-    vertex->setObject(this);
+    vertex1->setObject(this);
 
-    vertices_.push_back(vertex);
+    vertices_.push_back(vertex1);
 
     auto ind = uint(vertices_.size() - 1);
 
-    vertex->setInd(ind);
+    vertex1->setInd(ind);
   }
 
   updatePosition();
@@ -121,14 +121,14 @@ void
 CGeomObject3D::
 validatePObject()
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    assert((*pf)->getObject() == this);
+  for (auto *face : faces_)
+    assert(face->getObject() == this);
 
-  for (auto pl = lines_.begin(); pl != lines_.end(); ++pl)
-    assert((*pl)->getObject() == this);
+  for (auto *line : lines_)
+    assert(line->getObject() == this);
 
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv)
-    assert((*pv)->getObject() == this);
+  for (auto *vertex : vertices_)
+    assert(vertex->getObject() == this);
 }
 
 //-----------
@@ -137,7 +137,7 @@ void
 CGeomObject3D::
 setTexture(CGeomTexture *texture)
 {
-  for (auto &face : faces_)
+  for (auto *face : faces_)
     face->setTexture(texture);
 }
 
@@ -170,8 +170,8 @@ void
 CGeomObject3D::
 setMask(CGeomMask *mask)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->setMask(mask);
+  for (auto *face : faces_)
+    face->setMask(mask);
 }
 
 void
@@ -203,16 +203,16 @@ void
 CGeomObject3D::
 setFaceFlags(uint flags)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->setFlags(flags);
+  for (auto *face : faces_)
+    face->setFlags(flags);
 }
 
 void
 CGeomObject3D::
 unsetFaceFlags(uint flags)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->unsetFlags(flags);
+  for (auto *face : faces_)
+    face->unsetFlags(flags);
 }
 
 bool
@@ -221,8 +221,8 @@ findVertex(const CPoint3D &point, uint *ind)
 {
   uint i = 0;
 
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv) {
-    const auto &actual = (*pv)->getModel();
+  for (auto *vertex : vertices_) {
+    const auto &actual = vertex->getModel();
 
     if (point == actual) {
       *ind = i;
@@ -256,7 +256,7 @@ void
 CGeomObject3D::
 addVertexFace(uint vertex_ind, uint face_ind)
 {
-  FaceIList &face_list = vertex_face_list_[vertex_ind];
+  FaceIList &face_list = vertexFaceList_[vertex_ind];
 
   face_list.push_back(face_ind);
 }
@@ -396,8 +396,8 @@ void
 CGeomObject3D::
 setFaceColor(const CRGBA &rgba)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->setColor(rgba);
+  for (auto *face : faces_)
+    face->setColor(rgba);
 }
 
 void
@@ -405,6 +405,22 @@ CGeomObject3D::
 setFaceColor(uint face_num, const CRGBA &rgba)
 {
   faces_[face_num]->setColor(rgba);
+}
+
+void
+CGeomObject3D::
+setFaceDiffuse(const CRGBA &rgba)
+{
+  for (auto *face : faces_)
+    face->setDiffuse(rgba);
+}
+
+void
+CGeomObject3D::
+setFaceSpecular(const CRGBA &rgba)
+{
+  for (auto *face : faces_)
+    face->setSpecular(rgba);
 }
 
 void
@@ -446,8 +462,8 @@ void
 CGeomObject3D::
 setSubFaceColor(const CRGBA &rgba)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->setSubFaceColor(rgba);
+  for (auto *face : faces_)
+    face->setSubFaceColor(rgba);
 }
 
 void
@@ -468,8 +484,8 @@ void
 CGeomObject3D::
 setLineColor(const CRGBA &rgba)
 {
-  for (auto pl = lines_.begin(); pl != lines_.end(); ++pl)
-    (*pl)->setColor(rgba);
+  for (auto *line : lines_)
+    line->setColor(rgba);
 }
 
 void
@@ -509,7 +525,7 @@ setVertexNormal(uint i, const CVector3D &n)
 
 void
 CGeomObject3D::
-setVertexTextureMap(uint i, const CPoint3D &p)
+setVertexTextureMap(uint i, const CPoint2D &p)
 {
   vertices_[i]->setTextureMap(p);
 }
@@ -518,16 +534,16 @@ void
 CGeomObject3D::
 setFrontMaterial(const CMaterial &material)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->setFrontMaterial(material);
+  for (auto *face : faces_)
+    face->setFrontMaterial(material);
 }
 
 void
 CGeomObject3D::
 setBackMaterial(const CMaterial &material)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->setBackMaterial(material);
+  for (auto *face : faces_)
+    face->setBackMaterial(material);
 }
 
 void
@@ -670,6 +686,8 @@ CGeomObject3D::
 moveBy(const CPoint3D &offset)
 {
   coord_frame_.setOrigin(coord_frame_.getOrigin() + CVector3D(offset));
+
+  updatePosition();
 }
 
 void
@@ -692,10 +710,10 @@ transform(const CMatrix3D &matrix)
 {
   CPoint3D point;
 
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv) {
-    matrix.multiplyPoint((*pv)->getModel(), point);
+  for (auto *vertex : vertices_) {
+    matrix.multiplyPoint(vertex->getModel(), point);
 
-    (*pv)->setModel(point);
+    vertex->setModel(point);
   }
 }
 
@@ -703,8 +721,8 @@ void
 CGeomObject3D::
 getModelBBox(CBBox3D &bbox) const
 {
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv)
-    bbox += (*pv)->getModel();
+  for (auto *vertex : vertices_)
+    bbox += vertex->getModel();
 }
 
 void
@@ -720,14 +738,14 @@ reset()
 
 CPoint3D
 CGeomObject3D::
-verticesMidPoint(const VertexIList &vertices) const
+verticesMidPoint(const VertexIList &ivertices) const
 {
   CPoint3D mid_point(0,0,0);
 
-  double n1 = 1.0/double(vertices.size());
+  double n1 = 1.0/double(ivertices.size());
 
-  for (auto pv = vertices.begin(); pv != vertices.end(); ++pv)
-    mid_point += n1*vertices_[(*pv)]->getViewed();
+  for (const auto &iv : ivertices)
+    mid_point += n1*vertices_[iv]->getViewed();
 
   return mid_point;
 }
@@ -750,14 +768,14 @@ CVector3D
 CGeomObject3D::
 getVertexFaceNormal(uint ind) const
 {
-  auto p = vertex_face_normal_.find(ind);
+  auto p = vertexFaceNormal_.find(ind);
 
-  if (p != vertex_face_normal_.end())
+  if (p != vertexFaceNormal_.end())
     return (*p).second;
 
   auto *th = const_cast<CGeomObject3D *>(this);
 
-  FaceIList &faces = th->vertex_face_list_[ind];
+  FaceIList &faces = th->vertexFaceList_[ind];
 
   assert(! faces.empty());
 
@@ -773,7 +791,7 @@ getVertexFaceNormal(uint ind) const
     n += fn;
   }
 
-  th->vertex_face_normal_[ind] = n;
+  th->vertexFaceNormal_[ind] = n;
 
   return n;
 }
@@ -870,24 +888,24 @@ modelToPixel(const CGeomCamera3D &camera)
 {
   position_.currentToPixel(camera);
 
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv)
-    (*pv)->modelToPixel(coord_frame_, camera);
+  for (auto *vertex : vertices_)
+    vertex->modelToPixel(coord_frame_, camera);
 }
 
 void
 CGeomObject3D::
 toCurrent(const CGeomCamera3D &)
 {
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv)
-    (*pv)->setCurrent(coord_frame_.transformFrom((*pv)->getModel()));
+  for (auto *vertex : vertices_)
+    vertex->setCurrent(coord_frame_.transformFrom(vertex->getModel()));
 }
 
 void
 CGeomObject3D::
 toView(const CGeomCamera3D &camera)
 {
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv)
-    (*pv)->setViewed(camera.transformTo((*pv)->getCurrent()));
+  for (auto *vertex : vertices_)
+    vertex->setViewed(camera.transformTo(vertex->getCurrent()));
 }
 
 void
@@ -896,8 +914,8 @@ toView(CGeom3DRenderer *renderer)
 {
   createViewMatrix(renderer, view_matrix_);
 
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv)
-    (*pv)->view(view_matrix_);
+  for (auto *vertex : vertices_)
+    vertex->view(view_matrix_);
 }
 
 void
@@ -928,56 +946,56 @@ void
 CGeomObject3D::
 project(const CGeomCamera3D &camera)
 {
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv)
-    (*pv)->project(camera);
+  for (auto *vertex : vertices_)
+    vertex->project(camera);
 }
 
 void
 CGeomObject3D::
 toPixel(const CGeomCamera3D &camera)
 {
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv)
-    (*pv)->toPixel(camera);
+  for (auto *vertex : vertices_)
+    vertex->toPixel(camera);
 }
 
 void
 CGeomObject3D::
 drawSolidFaces(CGeom3DRenderer *renderer)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->drawSolid(renderer);
+  for (auto *face : faces_)
+    face->drawSolid(renderer);
 }
 
 void
 CGeomObject3D::
 drawSolidFaces(CGeomZBuffer *zbuffer)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->drawSolid(zbuffer);
+  for (auto *face : faces_)
+    face->drawSolid(zbuffer);
 }
 
 void
 CGeomObject3D::
 drawLineFaces(CGeom3DRenderer *renderer)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->drawLines(renderer);
+  for (auto *face : faces_)
+    face->drawLines(renderer);
 }
 
 void
 CGeomObject3D::
 drawLineFaces(CGeomZBuffer *zbuffer)
 {
-  for (auto pf = faces_.begin(); pf != faces_.end(); ++pf)
-    (*pf)->drawLines(zbuffer);
+  for (auto *face : faces_)
+    face->drawLines(zbuffer);
 }
 
 void
 CGeomObject3D::
 drawSubLines(CGeomZBuffer *zbuffer)
 {
-  for (auto pl = lines_.begin(); pl != lines_.end(); ++pl)
-    (*pl)->draw(zbuffer);
+  for (auto *line : lines_)
+    line->draw(zbuffer);
 }
 
 void
@@ -1136,12 +1154,12 @@ moveModel(const CPoint3D &d)
 
   CPoint3D model1;
 
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv) {
-    auto model = (*pv)->getModel();
+  for (auto *vertex : vertices_) {
+    auto model = vertex->getModel();
 
     m.multiplyPoint(model, model1);
 
-    (*pv)->setModel(model1);
+    vertex->setModel(model1);
   }
 }
 
@@ -1204,12 +1222,12 @@ rotateModelZ(double dz)
 
   CPoint3D model1;
 
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv) {
-    auto model = (*pv)->getModel();
+  for (auto *vertex : vertices_) {
+    auto model = vertex->getModel();
 
     m.multiplyPoint(model, model1);
 
-    (*pv)->setModel(model1);
+    vertex->setModel(model1);
   }
 }
 
@@ -1223,12 +1241,12 @@ rotateModelY(double dy)
 
   CPoint3D model1;
 
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv) {
-    auto model = (*pv)->getModel();
+  for (auto *vertex : vertices_) {
+    auto model = vertex->getModel();
 
     m.multiplyPoint(model, model1);
 
-    (*pv)->setModel(model1);
+    vertex->setModel(model1);
   }
 }
 
@@ -1242,12 +1260,12 @@ rotateModelX(double dx)
 
   CPoint3D model1;
 
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv) {
-    auto model = (*pv)->getModel();
+  for (auto *vertex : vertices_) {
+    auto model = vertex->getModel();
 
     m.multiplyPoint(model, model1);
 
-    (*pv)->setModel(model1);
+    vertex->setModel(model1);
   }
 }
 
@@ -1255,20 +1273,20 @@ void
 CGeomObject3D::
 resizeModel(double factor)
 {
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv)
-    (*pv)->setModel((*pv)->getModel()*factor);
+  for (auto *vertex : vertices_)
+    vertex->setModel(vertex->getModel()*factor);
 }
 
 void
 CGeomObject3D::
 resizeModelX(double dx)
 {
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv) {
-    auto model = (*pv)->getModel();
+  for (auto *vertex : vertices_) {
+    auto model = vertex->getModel();
 
     model.x *= dx;
 
-    (*pv)->setModel(model);
+    vertex->setModel(model);
   }
 }
 
@@ -1276,12 +1294,12 @@ void
 CGeomObject3D::
 resizeModelY(double dy)
 {
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv) {
-    auto model = (*pv)->getModel();
+  for (auto *vertex : vertices_) {
+    auto model = vertex->getModel();
 
     model.y *= dy;
 
-    (*pv)->setModel(model);
+    vertex->setModel(model);
   }
 }
 
@@ -1289,12 +1307,12 @@ void
 CGeomObject3D::
 resizeModelZ(double dz)
 {
-  for (auto pv = vertices_.begin(); pv != vertices_.end(); ++pv) {
-    auto model = (*pv)->getModel();
+  for (auto *vertex : vertices_) {
+    auto model = vertex->getModel();
 
     model.z *= dz;
 
-    (*pv)->setModel(model);
+    vertex->setModel(model);
   }
 }
 

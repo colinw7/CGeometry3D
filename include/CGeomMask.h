@@ -66,7 +66,7 @@ class CGeomMaskImage {
 
 class CGeomMaskMapping {
  public:
-  typedef std::vector<CPoint2D> PointList;
+  using PointList = std::vector<CPoint2D>;
 
  public:
   CGeomMaskMapping() { }
@@ -134,7 +134,7 @@ class CGeomMask {
 
     image->read(filename);
 
-    if (image.isValid())
+    if (image)
       image_ = new CGeomMaskImage(image);
 
     setMapping(image_, num_points);

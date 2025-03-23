@@ -41,7 +41,7 @@ class CGeomTextureImage {
 
 class CGeomTextureMapping {
  public:
-  typedef std::vector<CPoint2D> PointList;
+  using PointList = std::vector<CPoint2D>;
 
  public:
   CGeomTextureMapping() :
@@ -112,7 +112,7 @@ class CGeomTexture {
 
     CImagePtr image = CImageMgrInst->createImage(src);
 
-    if (image.isValid())
+    if (image)
       image_ = new CGeomTextureImage(image);
 
     setMapping(image_, num_points);

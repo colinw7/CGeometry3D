@@ -6,9 +6,9 @@
 CGeomScene3D::
 CGeomScene3D()
 {
-  camera_ = CGeometryInst->createCamera3D(this, "camera");
+  camera_ = CameraP(CGeometryInst->createCamera3D(this, "camera"));
 
-  axes_ = new CGeomAxes3D(this, "axis");
+  axes_ = std::make_unique<CGeomAxes3D>(this, "axis");
 }
 
 void
@@ -17,7 +17,7 @@ setRenderer(CGeom3DRenderer *renderer)
 {
   if (renderer != renderer_) {
     renderer_ = renderer;
-    zbuffer_  = new CGeomZBuffer(renderer_);
+    zbuffer_  = std::make_unique<CGeomZBuffer>(renderer_);
   }
 }
 
@@ -41,7 +41,7 @@ CGeomObject3D *
 CGeomScene3D::
 getPrimitiveP(const std::string &name) const
 {
-  ObjectMap::const_iterator p = primitive_map_.find(name);
+  auto p = primitive_map_.find(name);
 
   if (p != primitive_map_.end())
     return (*p).second;
@@ -78,7 +78,7 @@ CGeomObject3D *
 CGeomScene3D::
 getObjectP(const std::string &name) const
 {
-  ObjectMap::const_iterator p = object_map_.find(name);
+  auto p = object_map_.find(name);
 
   if (p != object_map_.end())
     return (*p).second;
@@ -90,7 +90,7 @@ uint
 CGeomScene3D::
 getNumSelectedObjects() const
 {
-  ObjectList objects = getSelectedObjects();
+  auto objects = getSelectedObjects();
 
   return uint(objects.size());
 }
@@ -101,12 +101,10 @@ getSelectedObjects() const
 {
   ObjectList objects;
 
-  ObjectList::const_iterator p1 = objects_.begin();
-  ObjectList::const_iterator p2 = objects_.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    if ((*p1)->getSelected())
-      objects.push_back(*p1);
+  for (auto *object : objects) {
+    if (object->getSelected())
+      objects.push_back(object);
+  }
 
   return objects;
 }
@@ -136,17 +134,13 @@ void
 CGeomScene3D::
 getBBox(CBBox3D &bbox) const
 {
-  const ObjectList &objects = getObjects();
+  const auto &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1) {
-    if (! (*p1)->getVisible()) continue;
+  for (auto *object : objects) {
+    if (! object->getVisible()) continue;
 
     CBBox3D bbox1;
-
-    (*p1)->getModelBBox(bbox1);
+    object->getModelBBox(bbox1);
 
     bbox += bbox1;
   }
@@ -299,52 +293,40 @@ void
 CGeomScene3D::
 objectsMove(const CPoint3D &delta)
 {
-  const ObjectList &objects = getObjects();
+  const auto &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->moveBy(delta);
+  for (auto *object : objects)
+    object->moveBy(delta);
 }
 
 void
 CGeomScene3D::
 objectsMoveX(double dx)
 {
-  const ObjectList &objects = getObjects();
+  const auto &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->moveX(dx);
+  for (auto *object : objects)
+    object->moveX(dx);
 }
 
 void
 CGeomScene3D::
 objectsMoveY(double dy)
 {
-  const ObjectList &objects = getObjects();
+  const auto &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->moveY(dy);
+  for (auto *object : objects)
+    object->moveY(dy);
 }
 
 void
 CGeomScene3D::
 objectsMoveZ(double dz)
 {
-  const ObjectList &objects = getObjects();
+  const auto &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->moveZ(dz);
+  for (auto *object : objects)
+    object->moveZ(dz);
 }
 
 void
@@ -442,18 +424,18 @@ void
 CGeomScene3D::
 drawInit()
 {
-  if (use_zbuffer_)
-    zbuffer_->updateSize();
+  if (isUseZBuffer())
+    getZBuffer()->updateSize();
 
   getCamera()->createProjectionMatrix(-1, 1, -1, 1);
 
-  if (use_zbuffer_)
-    getCamera()->createWorldMatrix(int(zbuffer_ ->getWidth()), int(zbuffer_ ->getHeight()));
+  if (isUseZBuffer())
+    getCamera()->createWorldMatrix(int(getZBuffer()->getWidth()), int(getZBuffer()->getHeight()));
   else
     getCamera()->createWorldMatrix(int(renderer_->getWidth()), int(renderer_->getHeight()));
 
-  if (use_zbuffer_)
-    zbuffer_->setForeground(CRGBA(0,0,0));
+  if (isUseZBuffer())
+    getZBuffer()->setForeground(CRGBA(0,0,0));
   else
     renderer_->setForeground(CRGBA(0,0,0));
 
@@ -466,20 +448,20 @@ void
 CGeomScene3D::
 drawExec()
 {
-  if (use_zbuffer_) {
-    zbuffer_->clear();
+  if (isUseZBuffer()) {
+    getZBuffer()->clear();
 
-    if (draw_type_ == WIRE_FRAME)
+    if (getDrawType() == WIRE_FRAME)
       drawWireframeZ();
     else
       drawSolidZ();
 
-    // zbuffer_->setForeground(CRGBA(0,1,0));
+    // getZBuffer()->setForeground(CRGBA(0,1,0));
 
-    // axes_->drawSubLines(zbuffer_);
+    // axes_->drawSubLines(getZBuffer());
   }
   else {
-    if (draw_type_ == WIRE_FRAME)
+    if (getDrawType() == WIRE_FRAME)
       drawWireframe();
     else
       drawSolid();
@@ -490,8 +472,8 @@ void
 CGeomScene3D::
 drawTerm()
 {
-  if (use_zbuffer_)
-    zbuffer_->draw();
+  if (isUseZBuffer())
+    getZBuffer()->draw();
 }
 
 void
@@ -522,10 +504,10 @@ drawWireframeZ()
   for ( ; p1 != p2; ++p1) {
     if (! (*p1)->getVisible()) continue;
 
-    (*p1)->drawWireframe(*getCamera(), zbuffer_);
+    (*p1)->drawWireframe(*getCamera(), getZBuffer());
   }
 
-  //light_mgr_.drawWireframe(*getCamera(), zbuffer_);
+  //light_mgr_.drawWireframe(*getCamera(), getZBuffer());
 }
 
 void
@@ -558,10 +540,10 @@ drawSolidZ()
   for ( ; p1 != p2; ++p1) {
     if (! (*p1)->getVisible()) continue;
 
-    (*p1)->drawSolid(*getCamera(), zbuffer_);
+    (*p1)->drawSolid(*getCamera(), getZBuffer());
   }
 
-  //light_mgr_.drawSolid(*getCamera(), zbuffer_);
+  //light_mgr_.drawSolid(*getCamera(), getZBuffer());
 }
 
 void
@@ -599,7 +581,7 @@ getFaceAt(int x, int y)
 {
   drawExec();
 
-  return zbuffer_->getFace(x, y);
+  return getZBuffer()->getFace(x, y);
 }
 
 double
@@ -608,7 +590,7 @@ getZAt(int x, int y)
 {
   drawExec();
 
-  return zbuffer_->getZ(x, y);
+  return getZBuffer()->getZ(x, y);
 }
 
 bool

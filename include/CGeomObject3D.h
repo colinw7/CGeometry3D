@@ -232,6 +232,9 @@ class CGeomObject3D {
   void setFaceColor(const CRGBA &rgba);
   void setFaceColor(uint face_num, const CRGBA &rgba);
 
+  void setFaceDiffuse(const CRGBA &rgba);
+  void setFaceSpecular(const CRGBA &rgba);
+
   void setFaceMaterial(uint face_num, const CMaterial &material);
 
   void setFaceTexture(uint face_num, CGeomTexture *texture);
@@ -262,7 +265,7 @@ class CGeomObject3D {
 
   void setVertexNormal(uint i, const CVector3D &n);
 
-  void setVertexTextureMap(uint i, const CPoint3D &p);
+  void setVertexTextureMap(uint i, const CPoint2D &p);
 
   //---
 
@@ -428,8 +431,8 @@ class CGeomObject3D {
   FaceList         faces_;
   LineList         lines_;
   VertexList       vertices_;
-  VertexFaceList   vertex_face_list_;
-  VertexFaceNormal vertex_face_normal_;
+  VertexFaceList   vertexFaceList_;
+  VertexFaceNormal vertexFaceNormal_;
   Groups           groups_;
   TexturePoints    texturePoints_;
   Normals          normals_;

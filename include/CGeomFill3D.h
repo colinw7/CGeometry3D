@@ -53,8 +53,8 @@ class CGeomFill3D {
  public:
   class VertexAdapter {
    public:
-    typedef std::vector<uint>            VertexIList;
-    typedef std::vector<CGeomVertex3D *> VertexPList;
+    using VertexIList = std::vector<uint>;
+    using VertexPList = std::vector<CGeomVertex3D *>;
 
     virtual ~VertexAdapter() { }
 

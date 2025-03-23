@@ -6,7 +6,6 @@
 #include <CGeomAxes3D.h>
 #include <CGeomZBuffer.h>
 #include <CGeomCamera3D.h>
-#include <CAutoPtr.h>
 
 class CGeomScene3D {
  public:
@@ -16,7 +15,7 @@ class CGeomScene3D {
   };
 
  public:
-  typedef std::vector<CGeomObject3D *> ObjectList;
+  using ObjectList = std::vector<CGeomObject3D *>;
 
  public:
   CGeomScene3D();
@@ -24,19 +23,15 @@ class CGeomScene3D {
 
   void setRenderer(CGeom3DRenderer *renderer);
 
-  CGeomZBuffer *getZBuffer() const { return zbuffer_; }
+  CGeomZBuffer *getZBuffer() const { return zbuffer_.get(); }
 
-  CGeomCamera3D *getCamera() const { return camera_; }
+  CGeomCamera3D *getCamera() const { return camera_.get(); }
 
-  ACCESSOR(UseZBuffer, bool, use_zbuffer)
+  bool isUseZBuffer() const { return useZBuffer_; }
+  void setUseZBuffer(bool b) { useZBuffer_ = b; }
 
-  DrawType getDrawType() const { return draw_type_; }
-
-  DrawType setDrawType(DrawType draw_type) {
-    std::swap(draw_type_, draw_type);
-
-    return draw_type;
-  }
+  DrawType getDrawType() const { return drawType_; }
+  DrawType setDrawType(DrawType drawType) { std::swap(drawType_, drawType); return drawType; }
 
   void addPrimitive(CGeomObject3D *object);
 
@@ -138,20 +133,23 @@ class CGeomScene3D {
   CGeomScene3D &operator=(const CGeomScene3D &rhs);
 
  private:
-  typedef std::map<std::string, CGeomObject3D *> ObjectMap;
+  using ObjectMap = std::map<std::string, CGeomObject3D *>;
+  using ZBufferP  = std::unique_ptr<CGeomZBuffer>;
+  using CameraP   = std::unique_ptr<CGeomCamera3D>;
+  using AxesP     = std::unique_ptr<CGeomAxes3D>;
 
-  ObjectMap                primitive_map_;
-  ObjectList               primitives_;
-  ObjectMap                object_map_;
-  ObjectList               objects_;
-  CGeom3DRenderer         *renderer_ { nullptr };
-  CAutoPtr<CGeomZBuffer>   zbuffer_;
-  bool                     use_zbuffer_ { true };
-  CAutoPtr<CGeomCamera3D>  camera_;
-  CGeomLight3DMgr          light_mgr_;
-  DrawType                 draw_type_ { WIRE_FRAME };
-  CBBox3D                  bbox_;
-  CAutoPtr<CGeomAxes3D>    axes_;
+  ObjectMap        primitive_map_;
+  ObjectList       primitives_;
+  ObjectMap        object_map_;
+  ObjectList       objects_;
+  CGeom3DRenderer* renderer_ { nullptr };
+  ZBufferP         zbuffer_;
+  bool             useZBuffer_ { true };
+  CameraP          camera_;
+  CGeomLight3DMgr  light_mgr_;
+  DrawType         drawType_ { WIRE_FRAME };
+  CBBox3D          bbox_;
+  AxesP            axes_;
 };
 
 #endif

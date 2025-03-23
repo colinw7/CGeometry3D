@@ -44,8 +44,8 @@ class CGeomVertex3D : public CGeomPoint3D {
   void setNormal(const CVector3D &n) { normal_ = n; }
 
   bool hasTextureMap() const { return bool(tmap_); }
-  CPoint3D getTextureMap(const CPoint3D &p=CPoint3D(0, 0, 0)) const { return tmap_.value_or(p); }
-  void setTextureMap(const CPoint3D &p) { tmap_ = p; }
+  CPoint2D getTextureMap(const CPoint2D &p=CPoint2D(0, 0)) const { return tmap_.value_or(p); }
+  void setTextureMap(const CPoint2D &p) { tmap_ = p; }
 
   const CClipSide &getClipSide() const { return clipSide_; }
   void setClipSide(const CClipSide &v) { clipSide_ = v; }
@@ -74,14 +74,14 @@ class CGeomVertex3D : public CGeomPoint3D {
   using FaceList  = std::vector<CGeomFace3D *>;
   using OptVector = std::optional<CVector3D>;
   using OptColor  = std::optional<CRGBA>;
-  using OptPoint  = std::optional<CPoint3D>;
+  using OptPoint2 = std::optional<CPoint2D>;
 
   CGeomObject3D *pobject_ { nullptr };
 
   uint      ind_ { 0 };
   OptColor  color_;
   OptVector normal_;
-  OptPoint  tmap_;
+  OptPoint2 tmap_;
   CClipSide clipSide_ { CCLIP_SIDE_NONE };
 };
 

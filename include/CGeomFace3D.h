@@ -203,42 +203,62 @@ class CGeomFace3D {
     frontMaterial_.setAmbient(rgba);
   }
 
-  void setBackAmbient (const CRGBA &rgba) {
+  void setBackAmbient(const CRGBA &rgba) {
     backMaterial_.setAmbient(rgba);
   }
 
   //---
 
+  void setDiffuse(const CRGBA &rgba) {
+    setFrontDiffuse(rgba);
+  }
+
   void setFrontDiffuse(const CRGBA &rgba) {
     frontMaterial_.setDiffuse(rgba);
   }
-  void setBackDiffuse (const CRGBA &rgba) {
+
+  void setBackDiffuse(const CRGBA &rgba) {
     backMaterial_.setDiffuse(rgba);
   }
 
   //---
 
+  void setSpecular(const CRGBA &rgba) {
+    setFrontSpecular(rgba);
+  }
+
   void setFrontSpecular(const CRGBA &rgba) {
     frontMaterial_.setSpecular(rgba);
   }
-  void setBackSpecular (const CRGBA &rgba) {
+
+  void setBackSpecular(const CRGBA &rgba) {
     backMaterial_.setSpecular(rgba);
   }
 
   //---
 
+  void setEmission(const CRGBA &rgba) {
+    setFrontEmission(rgba);
+  }
+
   void setFrontEmission(const CRGBA &rgba) {
     frontMaterial_.setEmission(rgba);
   }
-  void setBackEmission (const CRGBA &rgba) {
+
+  void setBackEmission(const CRGBA &rgba) {
     backMaterial_.setEmission(rgba);
   }
 
   //---
 
+  void setShininess(double shininess) {
+    setFrontShininess(shininess);
+  }
+
   void setFrontShininess(double shininess) {
     frontMaterial_.setShininess(shininess);
   }
+
   void setBackShininess (double shininess) {
     backMaterial_.setShininess(shininess);
   }

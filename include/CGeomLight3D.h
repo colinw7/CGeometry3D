@@ -134,7 +134,7 @@ class CGeomLight3D;
 
 class CGeomLight3DMgr {
  public:
-  typedef std::vector<CGeomLight3D *> LightList;
+  using LightList = std::vector<CGeomLight3D *>;
 
  public:
   CGeomLight3DMgr();
