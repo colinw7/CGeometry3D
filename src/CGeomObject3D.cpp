@@ -5,6 +5,7 @@
 #include <CFuncs.h>
 #include <CTransform2D.h>
 #include <CImagePtr.h>
+#include <CQuaternion.h>
 
 CGeomObject3D::
 CGeomObject3D(const CGeomObject3D &object) :
@@ -78,6 +79,17 @@ CGeomObject3D::
 dup() const
 {
   return new CGeomObject3D(*this);
+}
+
+//-----------
+
+void
+CGeomObject3D::
+addChild(CGeomObject3D *child)
+{
+  child->parent_ = this;
+
+  children_.push_back(child);
 }
 
 //-----------
@@ -460,6 +472,13 @@ setFaceNormalTexture(uint face_num, CGeomTexture *texture)
 
 void
 CGeomObject3D::
+setFaceEmissiveTexture(uint face_num, CGeomTexture *texture)
+{
+  faces_[face_num]->setEmissiveTexture(texture);
+}
+
+void
+CGeomObject3D::
 setSubFaceColor(const CRGBA &rgba)
 {
   for (auto *face : faces_)
@@ -544,6 +563,363 @@ setBackMaterial(const CMaterial &material)
 {
   for (auto *face : faces_)
     face->setBackMaterial(material);
+}
+
+bool
+CGeomObject3D::
+hasNode(int i) const
+{
+  auto pn = nodes_.find(i);
+
+  return (pn != nodes_.end());
+}
+
+void
+CGeomObject3D::
+addNode(int i, const NodeData &data)
+{
+  nodes_[i] = data;
+  nodes_[i].ind   = i;
+  nodes_[i].valid = true;
+
+  nodeIds_.push_back(i);
+}
+
+int
+CGeomObject3D::
+mapNodeId(int id) const
+{
+  for (size_t i = 0; i < nodeIds_.size(); ++i)
+    if (nodeIds_[i] == id)
+      return int(i);
+
+  return -1;
+}
+
+const CGeomObject3D::NodeData &
+CGeomObject3D::
+getNode(int i) const
+{
+  static NodeData noData;
+
+  auto pn = nodes_.find(i);
+
+  return (pn != nodes_.end() ? (*pn).second : noData);
+}
+
+int
+CGeomObject3D::
+getMeshNode() const
+{
+  return meshNode_;
+}
+
+void
+CGeomObject3D::
+setMeshNode(int id)
+{
+  meshNode_ = id;
+}
+
+int
+CGeomObject3D::
+getRootNode() const
+{
+  if (rootNode_ < 0)
+    return (! nodeIds_.empty() ? nodeIds_[0] : -1);
+  else
+    return rootNode_;
+}
+
+void
+CGeomObject3D::
+setRootNode(int id)
+{
+  rootNode_ = id;
+}
+
+void
+CGeomObject3D::
+setNodeLocalTransforms(int i, const CMatrix3D &translation, const CMatrix3D &rotation,
+                       const CMatrix3D &scale)
+{
+  auto pn = nodes_.find(i);
+  assert(pn != nodes_.end());
+
+  auto &node = (*pn).second;
+
+  node.localTranslation = translation;
+  node.localRotation    = rotation;
+  node.localScale       = scale;
+
+  node.localTransform = node.localTranslation*node.localRotation*node.localScale;
+}
+
+void
+CGeomObject3D::
+setNodeLocalTransform(int i, const CMatrix3D &m)
+{
+  auto pn = nodes_.find(i);
+  assert(pn != nodes_.end());
+
+  auto &node = (*pn).second;
+
+  node.localTransform = m;
+}
+
+void
+CGeomObject3D::
+setNodeGlobalTransform(int i, const CMatrix3D &m)
+{
+  auto pn = nodes_.find(i);
+  assert(pn != nodes_.end());
+
+  auto &node = (*pn).second;
+
+  node.globalTransform = m;
+}
+
+void
+CGeomObject3D::
+setNodeAnimationData(int i, const std::string &name, const AnimationData &data)
+{
+  auto pn = nodes_.find(i);
+  assert(pn != nodes_.end());
+
+  auto &node = (*pn).second;
+
+  node.animationDatas[name] = data;
+}
+
+void
+CGeomObject3D::
+setNodeAnimationTransformData(int i, const std::string &name, const Transform &transform,
+                              const AnimationData &data)
+{
+  auto pn = nodes_.find(i);
+  assert(pn != nodes_.end());
+
+  auto &node = (*pn).second;
+
+  auto pn1 = node.animationDatas.find(name);
+
+  if (pn1 == node.animationDatas.end())
+    pn1 = node.animationDatas.insert(pn1, AnimationDatas::value_type(name, data));
+
+  AnimationData &nodeData = (*pn1).second;
+
+  if      (transform == Transform::ROTATION)
+    nodeData.rotation = data.rotation;
+  else if (transform == Transform::TRANSLATION)
+    nodeData.translation = data.translation;
+  else if (transform == Transform::SCALE)
+    nodeData.scale = data.scale;
+}
+
+bool
+CGeomObject3D::
+updateNodesAnimationData(const std::string &name, double t)
+{
+  bool rc = false;
+
+  for (const auto &pn : nodes_) {
+    const auto &node = pn.second;
+
+    if (updateNodeAnimationData(node, name, t))
+      rc = true;
+  }
+
+//int rootId = getRootNode();
+
+  for (const auto &pn : nodes_) {
+    const auto &node = pn.second;
+
+    node.hierAnimMatrix = node.animMatrix;
+
+    int parentId = node.parent;
+
+    while (parentId >= 0) {
+      const auto &pnode = getNode(parentId);
+
+      node.hierAnimMatrix = pnode.animMatrix*node.hierAnimMatrix;
+
+      parentId = pnode.parent;
+    }
+  }
+
+  return rc;
+}
+
+bool
+CGeomObject3D::
+updateNodeAnimationData(int i, const std::string &name, double t)
+{
+  auto pn = nodes_.find(i);
+  if (pn == nodes_.end()) return false;
+
+  return updateNodeAnimationData((*pn).second, name, t);
+}
+
+bool
+CGeomObject3D::
+updateNodeAnimationData(const NodeData &node, const std::string &name, double t)
+{
+  auto anim_translation = node.localTranslation;
+  auto anim_rotation    = node.localRotation;
+  auto anim_scale       = node.localScale;
+
+  CMatrix3D anim_matrix;
+
+  auto pn = node.animationDatas.find(name);
+
+  if (pn != node.animationDatas.end()) {
+    const AnimationData &animationData = (*pn).second;
+
+    auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.range);
+
+    if (iv.first < 0) {
+      std::cerr << "Invalid Range for sampler.input data\n";
+      return false;
+    }
+
+    auto ii = iv.first;
+    auto fi = iv.second;
+
+    //if (isDebug())
+    //  std::cerr << "    sampler.output ind: " << ii << " " << fi << "\n";
+
+    //---
+
+    if      (animationData.interpolation == AnimationInterpolation::LINEAR) {
+      if (! animationData.translation.empty()) {
+        auto ov = CMathGen::interpRangeSet<CVector3D>(ii, fi, animationData.translation);
+
+        if (ov.first) {
+          //if (isDebug())
+          //  std::cerr << "    translation: " << ov.second << "\n";
+
+          anim_translation = CMatrix3D::translation(ov.second.x(), ov.second.y(), ov.second.z());
+        }
+      }
+
+      if (! animationData.rotation.empty()) {
+        auto ov = CMathGen::interpRangeSet<CQuaternion>(ii, fi, animationData.rotation);
+
+        if (ov.first) {
+          //if (isDebug())
+          //  std::cerr << "    rotate: " << ov.second << "\n";
+
+          ov.second.toRotationMatrix(anim_rotation);
+        }
+      }
+
+      if (! animationData.scale.empty()) {
+        auto ov = CMathGen::interpRangeSet<CVector3D>(ii, fi, animationData.scale);
+
+        if (ov.first) {
+          //if (isDebug())
+          //  std::cerr << "    scale: " << ov.second << "\n";
+
+          anim_scale = CMatrix3D::scale(ov.second.x(), ov.second.y(), ov.second.z());
+        }
+      }
+    }
+    else if (animationData.interpolation == AnimationInterpolation::STEP) {
+      if (! animationData.translation.empty()) {
+        const auto &translation = animationData.translation[ii];
+
+        anim_translation =
+          CMatrix3D::translation(translation.x(), translation.y(), translation.z());
+      }
+
+      if (! animationData.rotation.empty()) {
+        const auto &rotation = animationData.rotation[ii];
+
+        rotation.toRotationMatrix(anim_rotation);
+      }
+
+      if (! animationData.scale.empty()) {
+        const auto &scale = animationData.scale[ii];
+
+        anim_scale = CMatrix3D::scale(scale.x(), scale.y(), scale.z());
+      }
+    }
+    else
+      return false;
+
+    anim_matrix = anim_translation*anim_rotation*anim_scale;
+
+    animationData.anim_translation = anim_translation;
+    animationData.anim_rotation    = anim_rotation;
+    animationData.anim_scale       = anim_scale;
+    animationData.anim_matrix      = anim_matrix;
+  }
+  else {
+    anim_matrix = anim_translation*anim_rotation*anim_scale;
+  }
+
+  //---
+
+  node.animMatrix = anim_matrix;
+
+  return true;
+}
+
+void
+CGeomObject3D::
+getAnimationNames(std::vector<std::string> &names) const
+{
+  std::set<std::string> nameSet;
+
+  for (const auto &pn : nodes_) {
+    for (const auto &pn1 : pn.second.animationDatas) {
+      auto pn2 = nameSet.find(pn1.first);
+
+      if (pn2 == nameSet.end()) {
+        nameSet.insert(pn1.first);
+
+        names.push_back(pn1.first);
+      }
+    }
+  }
+}
+
+bool
+CGeomObject3D::
+getAnimationRange(const std::string &name, double &min, double &max) const
+{
+  min = 0.0;
+  max = 1.0;
+
+  for (const auto &pn : nodes_) {
+    auto pn1 = pn.second.animationDatas.find(name);
+    if (pn1 == pn.second.animationDatas.end()) continue;
+
+    const auto &animationData = (*pn1).second;
+
+    if (animationData.rangeMin && animationData.rangeMax) {
+      min = animationData.rangeMin.value();
+      max = animationData.rangeMax.value();
+      return true;
+    }
+  }
+
+  return false;
+}
+
+CGeomObject3D::AnimationData &
+CGeomObject3D::
+getNodeAnimationData(int i, const std::string &name)
+{
+  static AnimationData noAnimationData;
+
+  auto pn = nodes_.find(i);
+  if (pn == nodes_.end()) return noAnimationData;
+
+  auto pn1 = (*pn).second.animationDatas.find(name);
+  if (pn1 == (*pn).second.animationDatas.end()) return noAnimationData;
+
+  return (*pn1).second;
 }
 
 void

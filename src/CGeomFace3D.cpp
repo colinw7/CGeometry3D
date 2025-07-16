@@ -8,23 +8,29 @@ CGeomFace3D::
 CGeomFace3D(CGeomObject3D *pobject) :
  pobject_(pobject)
 {
+  init();
 }
 
 CGeomFace3D::
 CGeomFace3D(CGeomObject3D *pobject, const VertexList &vertices) :
  pobject_(pobject), vertices_(vertices)
 {
+  init();
 }
 
 CGeomFace3D::
 CGeomFace3D(const CGeomFace3D &face) :
  pobject_      (face.pobject_),
  vertices_     (face.vertices_),
- frontMaterial_(face.frontMaterial_),
- backMaterial_ (face.backMaterial_),
+ texturePoints_(face.texturePoints_),
  normal_       (face.normal_),
  flags_        (face.flags_)
 {
+  init();
+
+  *frontMaterial_ = *face.frontMaterial_;
+  *backMaterial_  = *face.backMaterial_;
+
   auto pf1 = face.sub_faces_.begin();
   auto pf2 = face.sub_faces_.end  ();
 
@@ -70,6 +76,14 @@ CGeomFace3D(const CGeomFace3D &face) :
     mask_ = face.mask_->dup();
   else
     mask_ = nullptr;
+}
+
+void
+CGeomFace3D::
+init()
+{
+  frontMaterial_ = CGeometryInst->createMaterial();
+  backMaterial_  = CGeometryInst->createMaterial();
 }
 
 CGeomFace3D *
@@ -132,6 +146,25 @@ setTextureMapping(const std::vector<CPoint2D> &points)
 
 void
 CGeomFace3D::
+setTexturePoints(const std::vector<CPoint2D> &points)
+{
+  texturePoints_ = points;
+}
+
+CPoint2D
+CGeomFace3D::
+getTexturePoint(const CGeomVertex3D &v, int iv) const
+{
+  auto nt = texturePoints_.size();
+
+  if (iv < 0 || iv >= int(nt))
+    return v.getTextureMap();
+
+  return texturePoints_[iv];
+}
+
+void
+CGeomFace3D::
 setDiffuseTexture(CImagePtr image)
 {
   setDiffuseTexture(CGeometryInst->createTexture(image));
@@ -163,6 +196,13 @@ CGeomFace3D::
 setNormalTexture(CGeomTexture *texture)
 {
   normalTexture_ = texture;
+}
+
+void
+CGeomFace3D::
+setEmissiveTexture(CGeomTexture *texture)
+{
+  emissiveTexture_ = texture;
 }
 
 //---
@@ -580,7 +620,7 @@ getAdjustedColor(CRGBA &rgba)
 
   if (flags_ & LIGHTED) {
     if (! pobject_ ||
-        ! pobject_->lightPoint(mid_point, normal, frontMaterial_, rgba)) {
+        ! pobject_->lightPoint(mid_point, normal, *frontMaterial_, rgba)) {
       CVector3D dir(mid_point, CPoint3D(0, 0, 1));
 
       double factor1 = normal.dotProduct(dir.normalized());
@@ -589,7 +629,7 @@ getAdjustedColor(CRGBA &rgba)
         factor1 = -factor1;
 //      return false;
 
-      rgba = frontMaterial_.getColor();
+      rgba = frontMaterial_->getColor();
 
       rgba.scaleRGB(factor1);
     }
@@ -604,7 +644,7 @@ getAdjustedColor(CRGBA &rgba)
 //    return false;
     }
 
-    rgba = frontMaterial_.getColor();
+    rgba = frontMaterial_->getColor();
 
     rgba.scaleRGB(factor1);
   }

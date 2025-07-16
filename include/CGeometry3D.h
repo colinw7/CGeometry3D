@@ -34,6 +34,8 @@ class CGeometryFactory {
   virtual CGeomMask *createMask(CImagePtr image) const;
 
   virtual CGeomCamera3D *createCamera3D(CGeomScene3D *, const std::string &) const;
+
+  virtual CMaterial *createMaterial() const;
 };
 
 //---
@@ -66,9 +68,16 @@ class CGeometry3D {
 
   CGeomCamera3D *createCamera3D(CGeomScene3D *pscene, const std::string &name) const;
 
+  CMaterial *createMaterial() const;
+
+  //---
+
+  void setShininess(double r) { defMaterial_.setShininess(r); }
+
  private:
   CGeometryFactory *factory_   { nullptr };
   mutable int       textureId_ { -1 };
+  CMaterial         defMaterial_;
 };
 
 #endif

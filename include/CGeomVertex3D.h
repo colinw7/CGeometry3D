@@ -17,6 +17,16 @@ class CGeomFace3D;
 
 class CGeomVertex3D : public CGeomPoint3D {
  public:
+  struct JointNodeData {
+    int    node   { -1 };
+    double weight { 0.0 };
+  };
+
+  struct JointData {
+    JointNodeData nodeDatas[4];
+  };
+
+ public:
   CGeomVertex3D(CGeomObject3D *pobject, const CPoint3D &point=CPoint3D(0,0,0));
 
   CGeomVertex3D(const CGeomVertex3D &vertex);
@@ -49,6 +59,9 @@ class CGeomVertex3D : public CGeomPoint3D {
 
   const CClipSide &getClipSide() const { return clipSide_; }
   void setClipSide(const CClipSide &v) { clipSide_ = v; }
+
+  const JointData &getJointData() const { return jointData_; }
+  void setJointData(const JointData &data) { jointData_ = data; }
 
   //---
 
@@ -83,6 +96,7 @@ class CGeomVertex3D : public CGeomPoint3D {
   OptVector normal_;
   OptPoint2 tmap_;
   CClipSide clipSide_ { CCLIP_SIDE_NONE };
+  JointData jointData_;
 };
 
 #endif

@@ -66,6 +66,13 @@ createCamera3D(CGeomScene3D *, const std::string &) const
   return new CGeomPerspectiveCamera3D();
 }
 
+CMaterial *
+CGeometryFactory::
+createMaterial() const
+{
+  return new CMaterial();
+}
+
 //---
 
 CGeometry3D *
@@ -169,4 +176,15 @@ CGeometry3D::
 createCamera3D(CGeomScene3D *pscene, const std::string &name) const
 {
   return factory_->createCamera3D(pscene, name);
+}
+
+CMaterial *
+CGeometry3D::
+createMaterial() const
+{
+  auto *material = factory_->createMaterial();
+
+  *material = defMaterial_;
+
+  return material;
 }

@@ -8,7 +8,6 @@
 #include <CMatrix3D.h>
 #include <CPoint2D.h>
 #include <CPolygonOrientation.h>
-#include <COptVal.h>
 
 class CGeomScene3D;
 class CGeomObject3D;
@@ -19,9 +18,10 @@ class CGeom3DRenderer;
 
 class CGeomFace3D {
  public:
-  using VertexList  = std::vector<uint>;
-  using SubFaceList = std::vector<CGeomFace3D *>;
-  using SubLineList = std::vector<CGeomLine3D *>;
+  using VertexList    = std::vector<uint>;
+  using TexturePoints = std::vector<CPoint2D>;
+  using SubFaceList   = std::vector<CGeomFace3D *>;
+  using SubLineList   = std::vector<CGeomLine3D *>;
 
   enum {
     LIGHTED   = (1<<0),
@@ -68,20 +68,23 @@ class CGeomFace3D {
   void setTexture(CImagePtr image);
 
   CGeomTexture *getDiffuseTexture() const { return diffuseTexture_; }
-
   void setDiffuseTexture(CGeomTexture *texture);
   void setDiffuseTexture(CImagePtr image);
 
   CGeomTexture *getSpecularTexture() const { return specularTexture_; }
-
   void setSpecularTexture(CGeomTexture *texture);
   void setSpecularTexture(CImagePtr image);
 
   CGeomTexture *getNormalTexture () const { return normalTexture_; }
-
   void setNormalTexture(CGeomTexture *texture);
 
+  CGeomTexture *getEmissiveTexture () const { return emissiveTexture_; }
+  void setEmissiveTexture(CGeomTexture *texture);
+
   void setTextureMapping(const std::vector<CPoint2D> &points);
+
+  void setTexturePoints(const std::vector<CPoint2D> &points);
+  CPoint2D getTexturePoint(const CGeomVertex3D &v, int iv) const;
 
   //---
 
@@ -95,11 +98,11 @@ class CGeomFace3D {
 
   //---
 
-  void setNormal(const CVector3D &normal) { normal_.setValue(normal); }
+  void setNormal(const CVector3D &normal) { normal_ = normal; }
 
-  bool getNormalSet() const { return normal_.isValid(); }
+  bool getNormalSet() const { return !!normal_; }
 
-  const CVector3D &getNormal() const { return normal_.getValue(); }
+  const CVector3D &getNormal() const { return normal_.value(); }
 
   //---
 
@@ -141,11 +144,11 @@ class CGeomFace3D {
   //---
 
   void setColor(const CRGBA &rgba) {
-    frontMaterial_.setColor(rgba);
+    frontMaterial_->setColor(rgba);
   }
 
   const CRGBA &getColor() const {
-    return frontMaterial_.getColor();
+    return frontMaterial_->getColor();
   }
 
   //---
@@ -157,40 +160,40 @@ class CGeomFace3D {
 
   //---
 
-  const CMaterial &getMaterial() const { return frontMaterial_; }
+  const CMaterial &getMaterial() const { return *frontMaterial_; }
 
   void setMaterial(const CMaterial &material) {
-    frontMaterial_ = material;
+    *frontMaterial_ = material;
   }
 
-  const CMaterial &getFrontMaterial() const { return frontMaterial_; }
+  const CMaterial &getFrontMaterial() const { return *frontMaterial_; }
 
   void setFrontMaterial(const CMaterial &material) {
-    frontMaterial_ = material;
+    *frontMaterial_ = material;
   }
 
-  const CMaterial &getBackMaterial () const { return backMaterial_ ; }
+  const CMaterial &getBackMaterial () const { return *backMaterial_ ; }
 
   void setBackMaterial(const CMaterial &material) {
-    backMaterial_ = material;
+    *backMaterial_ = material;
   }
 
   //---
 
   void setFrontColor(const CRGBA &rgba) {
-    frontMaterial_.setColor(rgba);
+    frontMaterial_->setColor(rgba);
   }
 
   const CRGBA &getFrontColor() const {
-    return frontMaterial_.getColor();
+    return frontMaterial_->getColor();
   }
 
   void setBackColor(const CRGBA &rgba) {
-    backMaterial_.setColor(rgba);
+    backMaterial_->setColor(rgba);
   }
 
   const CRGBA &getBackColor() const {
-    return backMaterial_.getColor();
+    return backMaterial_->getColor();
   }
 
   //---
@@ -200,11 +203,11 @@ class CGeomFace3D {
   }
 
   void setFrontAmbient(const CRGBA &rgba) {
-    frontMaterial_.setAmbient(rgba);
+    frontMaterial_->setAmbient(rgba);
   }
 
   void setBackAmbient(const CRGBA &rgba) {
-    backMaterial_.setAmbient(rgba);
+    backMaterial_->setAmbient(rgba);
   }
 
   //---
@@ -214,11 +217,11 @@ class CGeomFace3D {
   }
 
   void setFrontDiffuse(const CRGBA &rgba) {
-    frontMaterial_.setDiffuse(rgba);
+    frontMaterial_->setDiffuse(rgba);
   }
 
   void setBackDiffuse(const CRGBA &rgba) {
-    backMaterial_.setDiffuse(rgba);
+    backMaterial_->setDiffuse(rgba);
   }
 
   //---
@@ -228,11 +231,11 @@ class CGeomFace3D {
   }
 
   void setFrontSpecular(const CRGBA &rgba) {
-    frontMaterial_.setSpecular(rgba);
+    frontMaterial_->setSpecular(rgba);
   }
 
   void setBackSpecular(const CRGBA &rgba) {
-    backMaterial_.setSpecular(rgba);
+    backMaterial_->setSpecular(rgba);
   }
 
   //---
@@ -242,11 +245,11 @@ class CGeomFace3D {
   }
 
   void setFrontEmission(const CRGBA &rgba) {
-    frontMaterial_.setEmission(rgba);
+    frontMaterial_->setEmission(rgba);
   }
 
   void setBackEmission(const CRGBA &rgba) {
-    backMaterial_.setEmission(rgba);
+    backMaterial_->setEmission(rgba);
   }
 
   //---
@@ -256,11 +259,11 @@ class CGeomFace3D {
   }
 
   void setFrontShininess(double shininess) {
-    frontMaterial_.setShininess(shininess);
+    frontMaterial_->setShininess(shininess);
   }
 
   void setBackShininess (double shininess) {
-    backMaterial_.setShininess(shininess);
+    backMaterial_->setShininess(shininess);
   }
 
   //---
@@ -305,21 +308,27 @@ class CGeomFace3D {
  private:
   CGeomFace3D &operator=(const CGeomFace3D &rhs);
 
+  void init();
+
  protected:
-  CGeomObject3D*      pobject_         { nullptr };
-  uint                ind_             { 0 };
-  VertexList          vertices_;
-  SubFaceList         sub_faces_;
-  SubLineList         sub_lines_;
-  CMaterial           frontMaterial_;
-  CMaterial           backMaterial_;
-  CGeomTexture*       diffuseTexture_  { nullptr };
-  CGeomTexture*       specularTexture_ { nullptr };
-  CGeomTexture*       normalTexture_   { nullptr };
-  CGeomMask*          mask_            { nullptr };
-  COptValT<CVector3D> normal_;
-  uint                flags_           { LIGHTED };
-  uint                groupId_         { 0 };
+  using OptVector = std::optional<CVector3D>;
+
+  CGeomObject3D* pobject_         { nullptr };
+  uint           ind_             { 0 };
+  VertexList     vertices_;
+  TexturePoints  texturePoints_;
+  SubFaceList    sub_faces_;
+  SubLineList    sub_lines_;
+  CMaterial*     frontMaterial_   { nullptr };
+  CMaterial*     backMaterial_    { nullptr };
+  CGeomTexture*  diffuseTexture_  { nullptr };
+  CGeomTexture*  specularTexture_ { nullptr };
+  CGeomTexture*  normalTexture_   { nullptr };
+  CGeomTexture*  emissiveTexture_ { nullptr };
+  CGeomMask*     mask_            { nullptr };
+  OptVector      normal_;
+  uint           flags_           { LIGHTED };
+  uint           groupId_         { 0 };
 };
 
 #endif

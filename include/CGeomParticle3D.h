@@ -5,7 +5,6 @@
 #include <CMatrix3D.h>
 #include <CRGBA.h>
 #include <CClipSide.h>
-#include <COptVal.h>
 #include <CGeomPoint3D.h>
 
 class CGeomObject3D;

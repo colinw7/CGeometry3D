@@ -6,6 +6,8 @@
 #include <CCoordFrame3D.h>
 #include <CBBox3D.h>
 #include <CMatrix3D.h>
+#include <CVector4D.h>
+#include <CQuaternion.h>
 #include <map>
 
 class CGeomScene3D;
@@ -22,6 +24,13 @@ class CGeomObject3D {
   using VertexIList      = std::vector<uint>;
   using VertexFaceList   = std::map<uint,FaceIList>;
   using VertexFaceNormal = std::map<uint,CVector3D>;
+
+  enum Transform {
+    NONE,
+    ROTATION,
+    TRANSLATION,
+    SCALE
+  };
 
   class Group {
    public:
@@ -40,6 +49,52 @@ class CGeomObject3D {
   };
 
   using Groups = std::map<std::string,Group>;
+
+  enum class AnimationInterpolation {
+    NONE,
+    LINEAR,
+    STEP,
+    CUBICSPLINE
+  };
+
+  struct AnimationData {
+    std::vector<double>      range;
+    std::optional<double>    rangeMin;
+    std::optional<double>    rangeMax;
+    std::vector<CQuaternion> rotation;
+    std::vector<CVector3D>   translation;
+    std::vector<CVector3D>   scale;
+    AnimationInterpolation   interpolation { AnimationInterpolation::NONE };
+
+    mutable CMatrix3D anim_rotation    { CMatrix3D::identity() };
+    mutable CMatrix3D anim_translation { CMatrix3D::identity() };
+    mutable CMatrix3D anim_scale       { CMatrix3D::identity() };
+    mutable CMatrix3D anim_matrix      { CMatrix3D::identity() };
+  };
+
+  using AnimationDatas = std::map<std::string, AnimationData>;
+
+  struct NodeData {
+    bool              valid             { false };
+    int               ind               { -1 };
+    int               parent            { -1 };
+    std::string       name;
+    CMatrix3D         inverseBindMatrix { CMatrix3D::identity() };
+    std::vector<int>  children;
+    AnimationDatas    animationDatas;
+
+    mutable CMatrix3D localTranslation { CMatrix3D::identity() };
+    mutable CMatrix3D localRotation    { CMatrix3D::identity() };
+    mutable CMatrix3D localScale       { CMatrix3D::identity() };
+    mutable CMatrix3D localTransform   { CMatrix3D::identity() };
+    mutable CMatrix3D globalTransform  { CMatrix3D::identity() };
+
+    mutable CMatrix3D animMatrix     { CMatrix3D::identity() };
+    mutable CMatrix3D hierAnimMatrix { CMatrix3D::identity() };
+  };
+
+  using NodeDatas = std::map<int, NodeData>;
+  using NodeIds   = std::vector<int>;
 
  public:
   CGeomObject3D(CGeomScene3D *pscene, const std::string &name) :
@@ -63,6 +118,13 @@ class CGeomObject3D {
 
   ACCESSOR(Selected, bool, selected)
   ACCESSOR(Visible , bool, visible )
+
+  //---
+
+  CGeomObject3D *parent() const { return parent_; }
+  const std::vector<CGeomObject3D *> &children() const { return children_; }
+
+  void addChild(CGeomObject3D *child);
 
   //---
 
@@ -227,6 +289,9 @@ class CGeomObject3D {
   CGeomTexture *getNormalTexture() const { return normalTexture_; }
   void setNormalTexture(CGeomTexture *texture) { normalTexture_ = texture; }
 
+  CGeomTexture *getEmissiveTexture() const { return emissiveTexture_; }
+  void setEmissiveTexture(CGeomTexture *texture) { emissiveTexture_ = texture; }
+
   //---
 
   void setFaceColor(const CRGBA &rgba);
@@ -242,6 +307,7 @@ class CGeomObject3D {
   void setFaceDiffuseTexture (uint face_num, CGeomTexture *texture);
   void setFaceSpecularTexture(uint face_num, CGeomTexture *texture);
   void setFaceNormalTexture  (uint face_num, CGeomTexture *texture);
+  void setFaceEmissiveTexture(uint face_num, CGeomTexture *texture);
 
   //---
 
@@ -271,6 +337,45 @@ class CGeomObject3D {
 
   void setFrontMaterial(const CMaterial &material);
   void setBackMaterial (const CMaterial &material);
+
+  //---
+
+  bool hasNode(int i) const;
+  void addNode(int i, const NodeData &data);
+
+  const NodeDatas &getNodes() const { return nodes_; }
+  const NodeIds &getNodeIds() const { return nodeIds_; }
+
+  int mapNodeId(int id) const;
+
+  const NodeData &getNode(int i) const;
+
+  int getMeshNode() const;
+  void setMeshNode(int ind);
+
+  int getRootNode() const;
+  void setRootNode(int ind);
+
+  void setNodeLocalTransforms(int i, const CMatrix3D &translation,
+                              const CMatrix3D &rotation, const CMatrix3D &scale);
+  void setNodeLocalTransform (int i, const CMatrix3D &m);
+  void setNodeGlobalTransform(int i, const CMatrix3D &m);
+
+  void setNodeAnimationData(int i, const std::string &name, const AnimationData &data);
+
+  void setNodeAnimationTransformData(int i, const std::string &name, const Transform &transform,
+                                     const AnimationData &data);
+
+  AnimationData &getNodeAnimationData(int i, const std::string &name);
+
+  bool updateNodesAnimationData(const std::string &name, double t);
+
+  bool updateNodeAnimationData(int i, const std::string &name, double t);
+  bool updateNodeAnimationData(const NodeData &node, const std::string &name, double t);
+
+  void getAnimationNames(std::vector<std::string> &names) const;
+
+  bool getAnimationRange(const std::string &name, double &min, double &max) const;
 
   //---
 
@@ -421,12 +526,13 @@ class CGeomObject3D {
   bool        visible_ { true };
   bool        draw_position_ { true };
 
-  CCoordFrame3D    coord_frame_;
-  CGeomPoint3D     position_ { CPoint3D(0, 0, 0) };
+  CCoordFrame3D coord_frame_;
+  CGeomPoint3D  position_ { CPoint3D(0, 0, 0) };
 
   CGeomTexture* diffuseTexture_  { nullptr };
   CGeomTexture* specularTexture_ { nullptr };
   CGeomTexture* normalTexture_   { nullptr };
+  CGeomTexture* emissiveTexture_ { nullptr };
 
   FaceList         faces_;
   LineList         lines_;
@@ -437,10 +543,18 @@ class CGeomObject3D {
   TexturePoints    texturePoints_;
   Normals          normals_;
 
+  NodeDatas nodes_;
+  NodeIds   nodeIds_;
+  int       meshNode_ { -1 };
+  int       rootNode_ { -1 };
+
   CMatrix3D view_matrix_;
 
   CVector3D dv_ { 0, 0, 0 };
   CVector3D da_ { 0, 0, 0 };
+
+  CGeomObject3D*               parent_ { nullptr };
+  std::vector<CGeomObject3D *> children_;
 };
 
 //------

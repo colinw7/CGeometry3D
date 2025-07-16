@@ -15,6 +15,9 @@ class CGeomTextureImage {
 
  ~CGeomTextureImage() { }
 
+  const std::string &name() const { return name_; }
+  void setName(const std::string &s) { name_ = s; }
+
   const CImagePtr &image() const { return image_; }
 
   void getSize(int *width, int *height) {
@@ -34,7 +37,8 @@ class CGeomTextureImage {
   }
 
  private:
-  CImagePtr image_;
+  std::string name_;
+  CImagePtr   image_;
 };
 
 //------
@@ -135,6 +139,9 @@ class CGeomTexture {
 
   int id() const { return id_; }
   void setId(int i) { id_ = i; }
+
+  const std::string &name() const { return image_->name(); }
+  void setName(const std::string &s) { image_->setName(s); }
 
   CGeomTextureImage *image() const { return image_; }
 
