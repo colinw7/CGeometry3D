@@ -437,6 +437,14 @@ setFaceSpecular(const CRGBA &rgba)
 
 void
 CGeomObject3D::
+setFaceEmission(const CRGBA &rgba)
+{
+  for (auto *face : faces_)
+    face->setEmission(rgba);
+}
+
+void
+CGeomObject3D::
 setFaceMaterial(uint face_num, const CMaterial &material)
 {
   faces_[face_num]->setMaterial(material);
@@ -720,6 +728,7 @@ bool
 CGeomObject3D::
 updateNodesAnimationData(const std::string &name, double t)
 {
+  // update animation data for all nodes (skeletion/bones) of object
   bool rc = false;
 
   for (const auto &pn : nodes_) {
@@ -729,8 +738,11 @@ updateNodesAnimationData(const std::string &name, double t)
       rc = true;
   }
 
+  //---
+
 //int rootId = getRootNode();
 
+  // calc hierarchical animation matrix for all nodes (bones)
   for (const auto &pn : nodes_) {
     const auto &node = pn.second;
 

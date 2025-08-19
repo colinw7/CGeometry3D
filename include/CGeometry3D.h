@@ -70,14 +70,9 @@ class CGeometry3D {
 
   CMaterial *createMaterial() const;
 
-  //---
-
-  void setShininess(double r) { defMaterial_.setShininess(r); }
-
  private:
   CGeometryFactory *factory_   { nullptr };
   mutable int       textureId_ { -1 };
-  CMaterial         defMaterial_;
 };
 
 #endif

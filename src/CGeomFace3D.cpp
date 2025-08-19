@@ -31,11 +31,8 @@ CGeomFace3D(const CGeomFace3D &face) :
   *frontMaterial_ = *face.frontMaterial_;
   *backMaterial_  = *face.backMaterial_;
 
-  auto pf1 = face.sub_faces_.begin();
-  auto pf2 = face.sub_faces_.end  ();
-
-  for ( ; pf1 != pf2; ++pf1) {
-    CGeomFace3D *face1 = (*pf1)->dup();
+  for (auto *sub_face : face.sub_faces_) {
+    auto *face1 = sub_face->dup();
 
     sub_faces_.push_back(face1);
 
@@ -44,11 +41,8 @@ CGeomFace3D(const CGeomFace3D &face) :
     face1->setInd(ind);
   }
 
-  auto pl1 = face.sub_lines_.begin();
-  auto pl2 = face.sub_lines_.end  ();
-
-  for ( ; pl1 != pl2; ++pl1) {
-    CGeomLine3D *line = (*pl1)->dup();
+  for (auto *sub_line : face.sub_lines_) {
+    auto *line = sub_line->dup();
 
     sub_lines_.push_back(line);
 
@@ -59,23 +53,15 @@ CGeomFace3D(const CGeomFace3D &face) :
 
   if (face.diffuseTexture_)
     diffuseTexture_ = face.diffuseTexture_->dup();
-  else
-    diffuseTexture_ = nullptr;
 
   if (face.specularTexture_)
     specularTexture_ = face.specularTexture_->dup();
-  else
-    specularTexture_ = nullptr;
 
   if (face.normalTexture_)
     normalTexture_ = face.normalTexture_->dup();
-  else
-    normalTexture_ = nullptr;
 
   if (face.mask_)
     mask_ = face.mask_->dup();
-  else
-    mask_ = nullptr;
 }
 
 void
@@ -109,17 +95,11 @@ setObject(CGeomObject3D *object)
 {
   pobject_ = object;
 
-  auto pf1 = sub_faces_.begin();
-  auto pf2 = sub_faces_.end  ();
+  for (auto *sub_face : sub_faces_)
+    sub_face->setObject(object);
 
-  for ( ; pf1 != pf2; ++pf1)
-    (*pf1)->setObject(object);
-
-  auto pl1 = sub_lines_.begin();
-  auto pl2 = sub_lines_.end  ();
-
-  for ( ; pl1 != pl2; ++pl1)
-    (*pl1)->setObject(object);
+  for (auto *sub_line : sub_lines_)
+    sub_line->setObject(object);
 }
 
 void
@@ -257,7 +237,7 @@ uint
 CGeomFace3D::
 addSubFace(const std::vector<uint> &vertices)
 {
-  CGeomFace3D *face = CGeometryInst->createFace3D(pobject_, vertices);
+  auto *face = CGeometryInst->createFace3D(pobject_, vertices);
 
   sub_faces_.push_back(face);
 
@@ -272,7 +252,7 @@ uint
 CGeomFace3D::
 addSubLine(uint start, uint end)
 {
-  CGeomLine3D *line = CGeometryInst->createLine3D(pobject_, start, end);
+  auto *line = CGeometryInst->createLine3D(pobject_, start, end);
 
   sub_lines_.push_back(line);
 
@@ -287,11 +267,8 @@ void
 CGeomFace3D::
 setSubFaceColor(const CRGBA &rgba)
 {
-  auto p1 = sub_faces_.begin();
-  auto p2 = sub_faces_.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->setColor(rgba);
+  for (auto *sub_face : sub_faces_)
+    sub_face->setColor(rgba);
 }
 
 void
@@ -370,11 +347,8 @@ drawLines(CGeom3DRenderer *renderer)
 
   auto ppoint1 = pobject_->getVertex(vertices_.back()).getPixel();
 
-  auto p1 = vertices_.begin();
-  auto p2 = vertices_.end  ();
-
-  for ( ; p1 != p2; ++p1) {
-    const auto &ppoint2 = pobject_->getVertex(*p1).getPixel();
+  for (const auto &vertex : vertices_) {
+    const auto &ppoint2 = pobject_->getVertex(vertex).getPixel();
 
     renderer->drawLine(CIPoint2D(int(ppoint1.x), int(ppoint1.y)),
                        CIPoint2D(int(ppoint2.x), int(ppoint2.y)));
@@ -403,11 +377,8 @@ drawLines(CGeomZBuffer *zbuffer)
 
   auto ppoint1 = pobject_->getVertex(vertices_.back()).getPixel();
 
-  auto p1 = vertices_.begin();
-  auto p2 = vertices_.end  ();
-
-  for ( ; p1 != p2; ++p1) {
-    const auto &ppoint2 = pobject_->getVertex(*p1).getPixel();
+  for (const auto &vertex : vertices_) {
+    const auto &ppoint2 = pobject_->getVertex(vertex).getPixel();
 
     zbuffer->drawOverlayZLine(int(ppoint1.x), int(ppoint1.y), int(ppoint2.x), int(ppoint2.y));
 

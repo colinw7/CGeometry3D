@@ -57,15 +57,22 @@ class CGeomObject3D {
     CUBICSPLINE
   };
 
+  // set of transformations and associated range to interplate into
   struct AnimationData {
-    std::vector<double>      range;
-    std::optional<double>    rangeMin;
-    std::optional<double>    rangeMax;
+    // interpolation range
+    std::vector<double>   range;
+    std::optional<double> rangeMin;
+    std::optional<double> rangeMax;
+
+    // transformations
     std::vector<CQuaternion> rotation;
     std::vector<CVector3D>   translation;
     std::vector<CVector3D>   scale;
-    AnimationInterpolation   interpolation { AnimationInterpolation::NONE };
 
+    // interplation type
+    AnimationInterpolation interpolation { AnimationInterpolation::NONE };
+
+    // current (calculated) transformations
     mutable CMatrix3D anim_rotation    { CMatrix3D::identity() };
     mutable CMatrix3D anim_translation { CMatrix3D::identity() };
     mutable CMatrix3D anim_scale       { CMatrix3D::identity() };
@@ -74,15 +81,23 @@ class CGeomObject3D {
 
   using AnimationDatas = std::map<std::string, AnimationData>;
 
+  // node (bone) data
   struct NodeData {
-    bool              valid             { false };
-    int               ind               { -1 };
-    int               parent            { -1 };
-    std::string       name;
-    CMatrix3D         inverseBindMatrix { CMatrix3D::identity() };
-    std::vector<int>  children;
-    AnimationDatas    animationDatas;
+    bool        valid { false };
+    int         ind   { -1 };
+    std::string name;
 
+    // parent and children nodes (bones)
+    int              parent            { -1 };
+    std::vector<int> children;
+
+    // inverse bind matrix (transform to parent coords)
+    CMatrix3D inverseBindMatrix { CMatrix3D::identity() };
+
+    // animation data per animation name
+    AnimationDatas animationDatas;
+
+    // calculated animation transformations
     mutable CMatrix3D localTranslation { CMatrix3D::identity() };
     mutable CMatrix3D localRotation    { CMatrix3D::identity() };
     mutable CMatrix3D localScale       { CMatrix3D::identity() };
@@ -299,6 +314,7 @@ class CGeomObject3D {
 
   void setFaceDiffuse(const CRGBA &rgba);
   void setFaceSpecular(const CRGBA &rgba);
+  void setFaceEmission(const CRGBA &rgba);
 
   void setFaceMaterial(uint face_num, const CMaterial &material);
 

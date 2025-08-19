@@ -184,7 +184,5 @@ createMaterial() const
 {
   auto *material = factory_->createMaterial();
 
-  *material = defMaterial_;
-
   return material;
 }

@@ -143,13 +143,14 @@ class CGeomFace3D {
 
   //---
 
-  void setColor(const CRGBA &rgba) {
-    frontMaterial_->setColor(rgba);
-  }
+  void setColor(const CRGBA &rgba) { frontMaterial_->setColor(rgba); }
+  CRGBA getColor() const { return frontMaterial_->getColor(); }
 
-  const CRGBA &getColor() const {
-    return frontMaterial_->getColor();
-  }
+  const CMaterial::OptColor &color() const { return frontMaterial_->color(); }
+
+  const CMaterial::OptReal &shininess() const { return frontMaterial_->shininess(); }
+
+  const CMaterial::OptColor &emission() const { return frontMaterial_->emission(); }
 
   //---
 
@@ -161,110 +162,54 @@ class CGeomFace3D {
   //---
 
   const CMaterial &getMaterial() const { return *frontMaterial_; }
-
-  void setMaterial(const CMaterial &material) {
-    *frontMaterial_ = material;
-  }
+  void setMaterial(const CMaterial &material) { *frontMaterial_ = material; }
 
   const CMaterial &getFrontMaterial() const { return *frontMaterial_; }
-
-  void setFrontMaterial(const CMaterial &material) {
-    *frontMaterial_ = material;
-  }
+  void setFrontMaterial(const CMaterial &material) { *frontMaterial_ = material; }
 
   const CMaterial &getBackMaterial () const { return *backMaterial_ ; }
-
-  void setBackMaterial(const CMaterial &material) {
-    *backMaterial_ = material;
-  }
+  void setBackMaterial(const CMaterial &material) { *backMaterial_ = material; }
 
   //---
 
-  void setFrontColor(const CRGBA &rgba) {
-    frontMaterial_->setColor(rgba);
-  }
+  CRGBA getFrontColor() const { return frontMaterial_->getColor(); }
+  void setFrontColor(const CRGBA &rgba) { frontMaterial_->setColor(rgba); }
 
-  const CRGBA &getFrontColor() const {
-    return frontMaterial_->getColor();
-  }
-
-  void setBackColor(const CRGBA &rgba) {
-    backMaterial_->setColor(rgba);
-  }
-
-  const CRGBA &getBackColor() const {
-    return backMaterial_->getColor();
-  }
+  CRGBA getBackColor() const { return backMaterial_->getColor(); }
+  void setBackColor(const CRGBA &rgba) { backMaterial_->setColor(rgba); }
 
   //---
 
-  void setAmbient(const CRGBA &rgba) {
-    setFrontAmbient(rgba);
-  }
-
-  void setFrontAmbient(const CRGBA &rgba) {
-    frontMaterial_->setAmbient(rgba);
-  }
-
-  void setBackAmbient(const CRGBA &rgba) {
-    backMaterial_->setAmbient(rgba);
-  }
+  void setAmbient(const CRGBA &rgba) { setFrontAmbient(rgba); }
+  void setFrontAmbient(const CRGBA &rgba) { frontMaterial_->setAmbient(rgba); }
+  void setBackAmbient(const CRGBA &rgba) { backMaterial_->setAmbient(rgba); }
 
   //---
 
-  void setDiffuse(const CRGBA &rgba) {
-    setFrontDiffuse(rgba);
-  }
-
-  void setFrontDiffuse(const CRGBA &rgba) {
-    frontMaterial_->setDiffuse(rgba);
-  }
-
-  void setBackDiffuse(const CRGBA &rgba) {
-    backMaterial_->setDiffuse(rgba);
-  }
+  void setDiffuse(const CRGBA &rgba) { setFrontDiffuse(rgba); }
+  void setFrontDiffuse(const CRGBA &rgba) { frontMaterial_->setDiffuse(rgba); }
+  void setBackDiffuse(const CRGBA &rgba) { backMaterial_->setDiffuse(rgba); }
 
   //---
 
-  void setSpecular(const CRGBA &rgba) {
-    setFrontSpecular(rgba);
-  }
-
-  void setFrontSpecular(const CRGBA &rgba) {
-    frontMaterial_->setSpecular(rgba);
-  }
-
-  void setBackSpecular(const CRGBA &rgba) {
-    backMaterial_->setSpecular(rgba);
-  }
+  void setSpecular(const CRGBA &rgba) { setFrontSpecular(rgba); }
+  void setFrontSpecular(const CRGBA &rgba) { frontMaterial_->setSpecular(rgba); }
+  void setBackSpecular(const CRGBA &rgba) { backMaterial_->setSpecular(rgba); }
 
   //---
 
-  void setEmission(const CRGBA &rgba) {
-    setFrontEmission(rgba);
-  }
+  CRGBA getEmission() const { return getFrontEmission(); }
+  CRGBA getFrontEmission() const { return frontMaterial_->getEmission(); }
 
-  void setFrontEmission(const CRGBA &rgba) {
-    frontMaterial_->setEmission(rgba);
-  }
-
-  void setBackEmission(const CRGBA &rgba) {
-    backMaterial_->setEmission(rgba);
-  }
+  void setEmission(const CRGBA &rgba) { setFrontEmission(rgba); }
+  void setFrontEmission(const CRGBA &rgba) { frontMaterial_->setEmission(rgba); }
+  void setBackEmission(const CRGBA &rgba) { backMaterial_->setEmission(rgba); }
 
   //---
 
-  void setShininess(double shininess) {
-    setFrontShininess(shininess);
-  }
-
-  void setFrontShininess(double shininess) {
-    frontMaterial_->setShininess(shininess);
-  }
-
-  void setBackShininess (double shininess) {
-    backMaterial_->setShininess(shininess);
-  }
+  void setShininess(double shininess) { setFrontShininess(shininess); }
+  void setFrontShininess(double shininess) { frontMaterial_->setShininess(shininess); }
+  void setBackShininess (double shininess) { backMaterial_->setShininess(shininess); }
 
   //---
 

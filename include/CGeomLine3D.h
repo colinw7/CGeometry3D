@@ -27,9 +27,7 @@ class CGeomLine3D {
     material_.setColor(rgba);
   }
 
-  const CRGBA &getColor() const {
-    return material_.getColor();
-  }
+  CRGBA getColor() const { return material_.getColor(); }
 
   CGeomVertex3D &getStartVertex() const;
   CGeomVertex3D &getEndVertex  () const;
