@@ -29,8 +29,7 @@ class CGeomPoint3D {
 
   void view(const CMatrix3D &matrix);
 
-  void modelToPixel(const CCoordFrame3D &coord_frame,
-                    const CGeomCamera3D &camera);
+  void modelToPixel(const CCoordFrame3D &coordFrame, const CGeomCamera3D &camera);
 
   void currentToPixel(const CGeomCamera3D &camera);
 

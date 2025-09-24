@@ -12,7 +12,7 @@ void
 CGeomCamera3D::
 setPosition(const CPoint3D &position)
 {
-  coord_frame_.setOrigin(position);
+  coordFrame_.setOrigin(position);
 }
 
 void
@@ -21,7 +21,7 @@ setDirection(const CVector3D &dir)
 {
   CVector3D right, up, dir1;
 
-  coord_frame_.getBasis(right, up, dir1);
+  coordFrame_.getBasis(right, up, dir1);
 
   dir1 = dir.unit();
 
@@ -29,7 +29,7 @@ setDirection(const CVector3D &dir)
   up    = right.crossProduct(dir1);
 
   if (COrthonormalBasis3D::validate(right, up, dir1)) {
-    coord_frame_.setBasis(right, up, dir1);
+    coordFrame_.setBasis(right, up, dir1);
 
     direction_ = dir;
   }
@@ -49,42 +49,42 @@ void
 CGeomCamera3D::
 moveX(double dx)
 {
-  coord_frame_.moveX(dx);
+  coordFrame_.moveX(dx);
 }
 
 void
 CGeomCamera3D::
 moveY(double dy)
 {
-  coord_frame_.moveY(dy);
+  coordFrame_.moveY(dy);
 }
 
 void
 CGeomCamera3D::
 moveZ(double dz)
 {
-  coord_frame_.moveZ(dz);
+  coordFrame_.moveZ(dz);
 }
 
 void
 CGeomCamera3D::
 rotateX(double dx)
 {
-  coord_frame_.rotateAboutX(dx);
+  coordFrame_.rotateAboutX(dx);
 }
 
 void
 CGeomCamera3D::
 rotateY(double dy)
 {
-  coord_frame_.rotateAboutY(dy);
+  coordFrame_.rotateAboutY(dy);
 }
 
 void
 CGeomCamera3D::
 rotateZ(double dz)
 {
-  coord_frame_.rotateAboutZ(dz);
+  coordFrame_.rotateAboutZ(dz);
 }
 
 //----------------------

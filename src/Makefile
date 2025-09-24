@@ -22,6 +22,7 @@ CGeomCylinder3D.cpp \
 CGeometry3D.cpp \
 CGeomFace3D.cpp \
 CGeomFill3D.cpp \
+CGeomHyperboloid3D.cpp \
 CGeomLight3D.cpp \
 CGeomLine3D.cpp \
 CGeomObject3D.cpp \

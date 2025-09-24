@@ -83,7 +83,9 @@ class CGeomFace3D {
 
   void setTextureMapping(const std::vector<CPoint2D> &points);
 
-  void setTexturePoints(const std::vector<CPoint2D> &points);
+  const std::vector<CPoint2D> &getTexturePoints() const { return texturePoints_; }
+  void setTexturePoints(const TexturePoints &points);
+
   CPoint2D getTexturePoint(const CGeomVertex3D &v, int iv) const;
 
   //---

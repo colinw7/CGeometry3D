@@ -11,10 +11,22 @@ CGeomBox3D(CGeomScene3D *pscene, const std::string &name,
 
 void
 CGeomBox3D::
-addGeometry(CGeomObject3D *object,
-            double xc, double yc, double zc, double xs, double ys, double zs)
+addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
+            double xs, double ys, double zs)
 {
-  uint vertices[8];
+  std::vector<uint> faces, vertices;
+  addGeometry(object, xc, yc, zc, xs, ys, zs, faces, vertices);
+}
+
+void
+CGeomBox3D::
+addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
+            double xs, double ys, double zs, std::vector<uint> &faces, std::vector<uint> &vertices)
+{
+  const int numVertices = 8;
+  const int numFaces    = 6;
+
+  vertices.resize(numVertices);
 
   vertices[0] = object->addVertex(CPoint3D(xc + xs/2, yc - ys/2, zc + zs/2));
   vertices[1] = object->addVertex(CPoint3D(xc + xs/2, yc - ys/2, zc - zs/2));
@@ -25,7 +37,7 @@ addGeometry(CGeomObject3D *object,
   vertices[6] = object->addVertex(CPoint3D(xc - xs/2, yc + ys/2, zc - zs/2));
   vertices[7] = object->addVertex(CPoint3D(xc - xs/2, yc + ys/2, zc + zs/2));
 
-  uint faces[6];
+  faces.resize(numFaces);
 
   faces[0] = object->addFace(CConv::toVector(vertices[0], vertices[1], vertices[2], vertices[3]));
   faces[1] = object->addFace(CConv::toVector(vertices[1], vertices[5], vertices[6], vertices[2]));
@@ -34,16 +46,18 @@ addGeometry(CGeomObject3D *object,
   faces[4] = object->addFace(CConv::toVector(vertices[3], vertices[2], vertices[6], vertices[7]));
   faces[5] = object->addFace(CConv::toVector(vertices[4], vertices[5], vertices[1], vertices[0]));
 
-  auto setFaceTextureMap = [&](int i) {
-    auto &face = object->getFace(faces[i]);
+  auto setFaceTextureMap = [&](uint i) {
+    auto &face = object->getFace(i);
+
     std::vector<CPoint2D> points;
     points.push_back(CPoint2D(0, 0));
     points.push_back(CPoint2D(1, 0));
     points.push_back(CPoint2D(1, 1));
     points.push_back(CPoint2D(0, 1));
+
     face.setTexturePoints(points);
   };
 
-  for (int i = 0; i < 6; ++i)
+  for (int i = 0; i < numFaces; ++i)
     setFaceTextureMap(faces[i]);
 }

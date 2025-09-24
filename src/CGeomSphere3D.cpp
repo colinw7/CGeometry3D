@@ -45,27 +45,69 @@ addGeometry(CGeomObject3D *object, const CPoint3D &center,
 
 void
 CGeomSphere3D::
+addTextureMap(CGeomObject3D *object, CGeomTexture *texture, uint num_xy, uint num_patches)
+{
+  mapTextureI(object, texture, num_xy, num_patches);
+}
+
+void
+CGeomSphere3D::
+addTexturePoints(CGeomObject3D *object, uint num_xy, uint num_patches)
+{
+  addTexturePointsI(object, num_xy, num_patches);
+}
+
+void
+CGeomSphere3D::
+addNormals(CGeomObject3D *object, double radius)
+{
+  addNormalsI(object, radius);
+}
+
+void
+CGeomSphere3D::
+addNormals()
+{
+  addNormalsI(this, getRadius());
+}
+
+void
+CGeomSphere3D::
 mapTexture(CGeomTexture *texture)
 {
-  FaceList &faces = getFaces();
+  mapTextureI(this, texture, num_xy_, num_patches_);
+}
+
+void
+CGeomSphere3D::
+addTexturePoints()
+{
+  addTexturePointsI(this, num_xy_, num_patches_);
+}
+
+void
+CGeomSphere3D::
+mapTextureI(CGeomObject3D *object, CGeomTexture *texture, uint num_xy, uint num_patches)
+{
+  FaceList &faces = object->getFaces();
 
   int twidth, theight;
 
   texture->getImageSize(&twidth, &theight);
 
-  double dx = (twidth  - 1)/double(num_patches_);
-  double dy = (theight - 1)/double(num_xy_ - 1);
+  double dx = (twidth  - 1)/double(num_patches);
+  double dy = (theight - 1)/double(num_xy - 1);
 
   size_t pos = 0;
 
   double y1 = theight - 1;
 
-  for (uint y = 0; y < num_xy_ - 1; ++y) {
+  for (uint y = 0; y < num_xy - 1; ++y) {
     double y2 = y1 - dy;
 
     double x1 = 0;
 
-    for (uint x = 0; x < num_patches_; ++x, ++pos) {
+    for (uint x = 0; x < num_patches; ++x, ++pos) {
       double x2 = x1 + dx;
 
       CGeomTexture *texture1 = texture->dup();
@@ -74,7 +116,7 @@ mapTexture(CGeomTexture *texture)
 
       std::vector<CPoint2D> points;
 
-      if (y > 0 && y < num_xy_ - 2) {
+      if (y > 0 && y < num_xy - 2) {
         points.push_back(CPoint2D(double(int(x2)), double(int(y1))));
         points.push_back(CPoint2D(double(int(x2)), double(int(y2))));
         points.push_back(CPoint2D(double(int(x1)), double(int(y2))));
@@ -94,6 +136,75 @@ mapTexture(CGeomTexture *texture)
     }
 
     y1 = y2;
+  }
+}
+
+void
+CGeomSphere3D::
+addTexturePointsI(CGeomObject3D *object, uint num_xy, uint num_patches)
+{
+  FaceList &faces = object->getFaces();
+
+  double dx = 1.0/double(num_patches);
+  double dy = 1.0/double(num_xy - 1);
+
+  size_t pos = 0;
+
+  double y1 = 1.0;
+
+  for (uint y = 0; y < num_xy - 1; ++y) {
+    double y2 = y1 - dy;
+
+    double x1 = 0.0;
+
+    for (uint x = 0; x < num_patches; ++x, ++pos) {
+      double x2 = x1 + dx;
+
+      auto *face = faces[pos];
+
+      std::vector<CPoint2D> points;
+
+      if (y > 0 && y < num_xy - 2) {
+        points.push_back(CPoint2D(x2, y1));
+        points.push_back(CPoint2D(x2, y2));
+        points.push_back(CPoint2D(x1, y2));
+        points.push_back(CPoint2D(x1, y1));
+      }
+      else {
+        double x3 = (x1 + x2)/2;
+
+        points.push_back(CPoint2D(x2, y1));
+        points.push_back(CPoint2D(x3, y2));
+        points.push_back(CPoint2D(x1, y1));
+      }
+
+      face->setTexturePoints(points);
+
+      x1 = x2;
+    }
+
+    y1 = y2;
+  }
+}
+
+void
+CGeomSphere3D::
+addNormalsI(CGeomObject3D *object, double radius)
+{
+  CSphere3D sphere(radius);
+
+  FaceList &faces = object->getFaces();
+
+  for (auto *face : faces) {
+    for (const auto vind : face->getVertices()) {
+      auto &vertex = object->getVertex(vind);
+
+      auto p = vertex.getModel();
+
+      auto n = sphere.pointNormal(CPoint3D(p.x, p.y, p.z));
+
+      vertex.setNormal(n);
+    }
   }
 }
 

@@ -24,7 +24,7 @@ class CGeomCamera3D {
   ACCESSOR(Near       , double, near)
   ACCESSOR(Far        , double, far )
 
-  CPoint3D getPosition() const { return coord_frame_.getOrigin().point(); }
+  CPoint3D getPosition() const { return coordFrame_.getOrigin().point(); }
 
   const CVector3D &getDirection() const { return direction_; }
 
@@ -35,9 +35,7 @@ class CGeomCamera3D {
 
   const CMatrix3D &getWorldMatrix() const { return world_matrix_; }
 
-  CPoint3D transformTo(const CPoint3D &p) const {
-    return coord_frame_.transformTo(p);
-  }
+  CPoint3D transformTo(const CPoint3D &p) const { return coordFrame_.transformTo(p); }
 
   virtual void createProjectionMatrix(double left, double right, double bottom, double top) = 0;
 
@@ -52,7 +50,7 @@ class CGeomCamera3D {
   void rotateZ(double dz);
 
  protected:
-  CCoordFrame3D coord_frame_;
+  CCoordFrame3D coordFrame_;
   CVector3D     direction_ { 0, 0, 1 };
   double        fov_ { 90 };
   double        near_ { 0.1 }, far_ { 1000 };

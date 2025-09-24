@@ -12,6 +12,12 @@ class CGeomBox3D : public CGeomObject3D {
 
   static void addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
                           double xs, double ys, double zs);
+  static void addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
+                          double xs, double ys, double zs, std::vector<uint> &faces,
+                          std::vector<uint> &vertices);
+
+ private:
+  std::vector<int> faces_;
 };
 
 #endif

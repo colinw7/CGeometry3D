@@ -8,13 +8,20 @@
 #include <CQuaternion.h>
 
 CGeomObject3D::
+CGeomObject3D(CGeomScene3D *pscene, const std::string &name) :
+ pscene_(pscene), name_(name)
+{
+}
+
+CGeomObject3D::
 CGeomObject3D(const CGeomObject3D &object) :
  pscene_          (object.pscene_),
  name_            (object.name_),
+ id_              (object.id_),
  selected_        (object.selected_),
  visible_         (object.visible_),
  draw_position_   (object.draw_position_),
- coord_frame_     (object.coord_frame_),
+ coordFrame_      (object.coordFrame_),
  position_        (object.position_),
  diffuseTexture_  (object.diffuseTexture_),
  specularTexture_ (object.specularTexture_),
@@ -23,7 +30,7 @@ CGeomObject3D(const CGeomObject3D &object) :
  vertexFaceNormal_(object.vertexFaceNormal_),
  texturePoints_   (object.texturePoints_),
  normals_         (object.normals_),
- view_matrix_     (object.view_matrix_),
+ viewMatrix_      (object.viewMatrix_),
  dv_              (object.dv_),
  da_              (object.da_)
 {
@@ -404,6 +411,21 @@ addFaceSubLine(uint face_num, uint start, uint end)
   return faces_[face_num]->addSubLine(start, end);
 }
 
+CGeomObject3D::Group &
+CGeomObject3D::
+getGroup(const std::string &name)
+{
+  auto p = groups_.find(name);
+
+  if (p == groups_.end()) {
+    uint id = uint(groups_.size() + 1);
+
+    p = groups_.insert(p, Groups::value_type(name, Group(name, id)));
+  }
+
+  return (*p).second;
+}
+
 void
 CGeomObject3D::
 setFaceColor(const CRGBA &rgba)
@@ -714,7 +736,7 @@ setNodeAnimationTransformData(int i, const std::string &name, const Transform &t
   if (pn1 == node.animationDatas.end())
     pn1 = node.animationDatas.insert(pn1, AnimationDatas::value_type(name, data));
 
-  AnimationData &nodeData = (*pn1).second;
+  auto &nodeData = (*pn1).second;
 
   if      (transform == Transform::ROTATION)
     nodeData.rotation = data.rotation;
@@ -728,7 +750,7 @@ bool
 CGeomObject3D::
 updateNodesAnimationData(const std::string &name, double t)
 {
-  // update animation data for all nodes (skeletion/bones) of object
+  // update animation data for all nodes (skeletion/joints) of object
   bool rc = false;
 
   for (const auto &pn : nodes_) {
@@ -742,7 +764,7 @@ updateNodesAnimationData(const std::string &name, double t)
 
 //int rootId = getRootNode();
 
-  // calc hierarchical animation matrix for all nodes (bones)
+  // calc hierarchical animation matrix for all nodes (joints)
   for (const auto &pn : nodes_) {
     const auto &node = pn.second;
 
@@ -859,12 +881,13 @@ updateNodeAnimationData(const NodeData &node, const std::string &name, double t)
     else
       return false;
 
-    anim_matrix = anim_translation*anim_rotation*anim_scale;
-
     animationData.anim_translation = anim_translation;
     animationData.anim_rotation    = anim_rotation;
     animationData.anim_scale       = anim_scale;
-    animationData.anim_matrix      = anim_matrix;
+
+    anim_matrix = anim_translation*anim_rotation*anim_scale;
+
+    animationData.anim_matrix = anim_matrix;
   }
   else {
     anim_matrix = anim_translation*anim_rotation*anim_scale;
@@ -1064,7 +1087,7 @@ void
 CGeomObject3D::
 moveTo(const CPoint3D &position)
 {
-  coord_frame_.setOrigin(position);
+  coordFrame_.setOrigin(position);
 
   updatePosition();
 }
@@ -1073,7 +1096,7 @@ void
 CGeomObject3D::
 moveBy(const CPoint3D &offset)
 {
-  coord_frame_.setOrigin(coord_frame_.getOrigin() + CVector3D(offset));
+  coordFrame_.setOrigin(coordFrame_.getOrigin() + CVector3D(offset));
 
   updatePosition();
 }
@@ -1082,14 +1105,19 @@ void
 CGeomObject3D::
 setBasis(const CVector3D &right, const CVector3D &up, const CVector3D &dir)
 {
-  coord_frame_.setBasis(right, up, dir);
+  if (! CCoordFrame3D::validate(right, up, dir)) {
+    std::cerr << "Invalid basis\n";
+    return;
+  }
+
+  coordFrame_.setBasis(right, up, dir);
 }
 
 void
 CGeomObject3D::
 getBasis(CVector3D &right, CVector3D &up, CVector3D &dir)
 {
-  coord_frame_.getBasis(right, up, dir);
+  coordFrame_.getBasis(right, up, dir);
 }
 
 void
@@ -1105,19 +1133,38 @@ transform(const CMatrix3D &matrix)
   }
 }
 
+CMatrix3D
+CGeomObject3D::
+getHierTransform() const
+{
+  auto transform = getTransform();
+
+  if (parent())
+    transform = parent()->getHierTransform()*transform;
+
+  return transform;
+}
+
 void
 CGeomObject3D::
 getModelBBox(CBBox3D &bbox) const
 {
   for (auto *vertex : vertices_)
     bbox += vertex->getModel();
+
+  for (auto *child : children_) {
+    CBBox3D bbox1;
+    child->getModelBBox(bbox1);
+
+    bbox += bbox1;
+  }
 }
 
 void
 CGeomObject3D::
 reset()
 {
-  coord_frame_.reset();
+  coordFrame_.reset();
 
   updatePosition();
 
@@ -1128,7 +1175,7 @@ CPoint3D
 CGeomObject3D::
 verticesMidPoint(const VertexIList &ivertices) const
 {
-  CPoint3D mid_point(0,0,0);
+  CPoint3D mid_point(0, 0, 0);
 
   double n1 = 1.0/double(ivertices.size());
 
@@ -1167,7 +1214,7 @@ getVertexFaceNormal(uint ind) const
 
   assert(! faces.empty());
 
-  CVector3D n(0,0,0);
+  CVector3D n(0, 0, 0);
 
   CVector3D fn;
 
@@ -1188,14 +1235,14 @@ CPoint3D
 CGeomObject3D::
 transformTo(const CPoint3D &p) const
 {
-  return coord_frame_.transformTo(p);
+  return coordFrame_.transformTo(p);
 }
 
 CVector3D
 CGeomObject3D::
 transformTo(const CVector3D &v) const
 {
-  return coord_frame_.transformTo(v);
+  return coordFrame_.transformTo(v);
 }
 
 void
@@ -1277,7 +1324,7 @@ modelToPixel(const CGeomCamera3D &camera)
   position_.currentToPixel(camera);
 
   for (auto *vertex : vertices_)
-    vertex->modelToPixel(coord_frame_, camera);
+    vertex->modelToPixel(coordFrame_, camera);
 }
 
 void
@@ -1285,7 +1332,7 @@ CGeomObject3D::
 toCurrent(const CGeomCamera3D &)
 {
   for (auto *vertex : vertices_)
-    vertex->setCurrent(coord_frame_.transformFrom(vertex->getModel()));
+    vertex->setCurrent(coordFrame_.transformFrom(vertex->getModel()));
 }
 
 void
@@ -1300,16 +1347,17 @@ void
 CGeomObject3D::
 toView(CGeom3DRenderer *renderer)
 {
-  createViewMatrix(renderer, view_matrix_);
+  createViewMatrix(renderer, viewMatrix_);
 
   for (auto *vertex : vertices_)
-    vertex->view(view_matrix_);
+    vertex->view(viewMatrix_);
 }
 
 void
 CGeomObject3D::
 createViewMatrix(CGeom3DRenderer *renderer, CMatrix3D &matrix)
 {
+  // transform model -> to fit renderer position/size
   int s  = int(std::min(renderer->getWidth(), renderer->getHeight())*0.9);
   int w2 = renderer->getWidth ()/2;
   int h2 = renderer->getHeight()/2;
@@ -1390,7 +1438,7 @@ void
 CGeomObject3D::
 drawPosition(CGeomZBuffer *zbuffer)
 {
-  zbuffer->setForeground(CRGBA(1,0,0));
+  zbuffer->setForeground(CRGBA(1, 0, 0));
 
   zbuffer->drawOverlayZLine(int(position_.getPixel().x) - 2,
                             int(position_.getPixel().y),
@@ -1438,9 +1486,9 @@ drawBBox(const CGeomCamera3D &camera, CGeomZBuffer *zbuffer)
   };
 
   for (int i = 0; i < 8; ++i)
-    vertices[i].modelToPixel(coord_frame_, camera);
+    vertices[i].modelToPixel(coordFrame_, camera);
 
-  zbuffer->setForeground(CRGBA(1,0,0));
+  zbuffer->setForeground(CRGBA(1, 0, 0));
 
   for (int i1 = 3, i2 = 0; i2 < 4; i1 = i2, ++i2) {
     const auto &point1 = vertices[i1].getPixel();
@@ -1509,7 +1557,7 @@ void
 CGeomObject3D::
 moveZ(double dz)
 {
-  coord_frame_.moveZ(dz);
+  coordFrame_.moveZ(dz);
 
   updatePosition();
 }
@@ -1518,7 +1566,7 @@ void
 CGeomObject3D::
 moveY(double dy)
 {
-  coord_frame_.moveY(dy);
+  coordFrame_.moveY(dy);
 
   updatePosition();
 }
@@ -1527,7 +1575,7 @@ void
 CGeomObject3D::
 moveX(double dx)
 {
-  coord_frame_.moveX(dx);
+  coordFrame_.moveX(dx);
 
   updatePosition();
 }
@@ -1576,28 +1624,28 @@ void
 CGeomObject3D::
 rotate(const CPoint3D &angle)
 {
-  coord_frame_.rotateAboutXYZ(angle.x, angle.y, angle.z);
+  coordFrame_.rotateAboutXYZ(angle.x, angle.y, angle.z);
 }
 
 void
 CGeomObject3D::
 rotateX(double dx)
 {
-  coord_frame_.rotateAboutX(dx);
+  coordFrame_.rotateAboutX(dx);
 }
 
 void
 CGeomObject3D::
 rotateY(double dy)
 {
-  coord_frame_.rotateAboutY(dy);
+  coordFrame_.rotateAboutY(dy);
 }
 
 void
 CGeomObject3D::
 rotateZ(double dz)
 {
-  coord_frame_.rotateAboutZ(dz);
+  coordFrame_.rotateAboutZ(dz);
 }
 
 void

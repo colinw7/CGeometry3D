@@ -45,9 +45,9 @@ view(const CMatrix3D &matrix)
 
 void
 CGeomPoint3D::
-modelToPixel(const CCoordFrame3D &coord_frame, const CGeomCamera3D &camera)
+modelToPixel(const CCoordFrame3D &coordFrame, const CGeomCamera3D &camera)
 {
-  current_ = coord_frame.transformFrom(model_);
+  current_ = coordFrame.transformFrom(model_);
 
   currentToPixel(camera);
 }

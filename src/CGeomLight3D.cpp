@@ -47,48 +47,36 @@ void
 CGeomLight3DMgr::
 modelToPixel(const CGeomCamera3D &camera) const
 {
-  auto plight1 = lights_.begin();
-  auto plight2 = lights_.end  ();
-
-  for ( ; plight1 != plight2; ++plight1)
-    (*plight1)->getObject()->modelToPixel(camera);
+  for (auto *light : lights_)
+    light->getObject()->modelToPixel(camera);
 }
 
 void
 CGeomLight3DMgr::
 drawWireframe(CGeomCamera3D &, CGeomZBuffer *)
 {
-//auto plight1 = lights_.begin();
-//auto plight2 = lights_.end  ();
-
-//for ( ; plight1 != plight2; ++plight1)
-//  (*plight1)->drawWireframe(camera, zbuffer);
+//for (auto *light : lights_)
+//  light->drawWireframe(camera, zbuffer);
 }
 
 void
 CGeomLight3DMgr::
 drawSolid(CGeomCamera3D &, CGeomZBuffer *)
 {
-//auto plight1 = lights_.begin();
-//auto plight2 = lights_.end  ();
-
-//for ( ; plight1 != plight2; ++plight1)
-//  (*plight1)->drawSolid(camera, zbuffer);
+//for (auto *light : lights_)
+//  light->drawSolid(camera, zbuffer);
 }
 
 CRGBA
 CGeomLight3DMgr::
 lightPoint(const CPoint3D &point, const CVector3D &normal, const CMaterial &material) const
 {
-  CRGBA rgba = material.getEmission();
+  auto rgba = material.getEmission();
 
   rgba += getAmbient()*material.getAmbient();
 
-  auto plight1 = lights_.begin();
-  auto plight2 = lights_.end  ();
-
-  for ( ; plight1 != plight2; ++plight1)
-    (*plight1)->lightPoint(rgba, point, normal, material);
+  for (auto *light : lights_)
+    light->lightPoint(rgba, point, normal, material);
 
   rgba.setAlpha(material.getDiffuse().getAlpha());
 
@@ -119,66 +107,48 @@ void
 CGeomLight3DMgr::
 moveX(double dx)
 {
-  auto plight1 = lights_.begin();
-  auto plight2 = lights_.end  ();
-
-  for ( ; plight1 != plight2; ++plight1)
-    (*plight1)->getObject()->moveX(dx);
+  for (auto *light : lights_)
+    light->getObject()->moveX(dx);
 }
 
 void
 CGeomLight3DMgr::
 moveY(double dy)
 {
-  auto plight1 = lights_.begin();
-  auto plight2 = lights_.end  ();
-
-  for ( ; plight1 != plight2; ++plight1)
-    (*plight1)->getObject()->moveY(dy);
+  for (auto *light : lights_)
+    light->getObject()->moveY(dy);
 }
 
 void
 CGeomLight3DMgr::
 moveZ(double dz)
 {
-  auto plight1 = lights_.begin();
-  auto plight2 = lights_.end  ();
-
-  for ( ; plight1 != plight2; ++plight1)
-    (*plight1)->getObject()->moveZ(dz);
+  for (auto *light : lights_)
+    light->getObject()->moveZ(dz);
 }
 
 void
 CGeomLight3DMgr::
 rotateX(double dx)
 {
-  auto plight1 = lights_.begin();
-  auto plight2 = lights_.end  ();
-
-  for ( ; plight1 != plight2; ++plight1)
-    (*plight1)->getObject()->rotateX(dx);
+  for (auto *light : lights_)
+    light->getObject()->rotateX(dx);
 }
 
 void
 CGeomLight3DMgr::
 rotateY(double dy)
 {
-  auto plight1 = lights_.begin();
-  auto plight2 = lights_.end  ();
-
-  for ( ; plight1 != plight2; ++plight1)
-    (*plight1)->getObject()->rotateY(dy);
+  for (auto *light : lights_)
+    light->getObject()->rotateY(dy);
 }
 
 void
 CGeomLight3DMgr::
 rotateZ(double dz)
 {
-  auto plight1 = lights_.begin();
-  auto plight2 = lights_.end  ();
-
-  for ( ; plight1 != plight2; ++plight1)
-    (*plight1)->getObject()->rotateZ(dz);
+  for (auto *light : lights_)
+    light->getObject()->rotateZ(dz);
 }
 
 //----------
@@ -194,7 +164,7 @@ CGeomLight3D(CGeomScene3D *pscene, const std::string &name)
 
   object_->unsetFaceFlags(CGeomFace3D::LIGHTED);
 
-  object_->setFaceColor(CRGBA(1,1,0));
+  object_->setFaceColor(CRGBA(1, 1, 0));
 }
 
 CGeomLight3D::
@@ -240,11 +210,9 @@ lightPoint(CRGBA &rgba, const CPoint3D &point, const CVector3D &normal,
     return;
 
   // Ambient
-
-  CRGBA ambient = getAmbient()*material.getAmbient();
+  auto ambient = getAmbient()*material.getAmbient();
 
   // Diffuse
-
   CVector3D dlight(point, object_->getPositionPoint().getViewed());
 
   dlight.normalize();
@@ -256,14 +224,13 @@ lightPoint(CRGBA &rgba, const CPoint3D &point, const CVector3D &normal,
   if (dot < 0.0)
     dot = 0.0;
 
-  CRGBA diffuse = dot*getDiffuse()*material.getDiffuse();
+  auto diffuse = dot*getDiffuse()*material.getDiffuse();
 
   // Specular
-
-  CRGBA specular(0,0,0,1);
+  CRGBA specular(0, 0, 0, 1);
 
   if (dot > 0.0) {
-    CVector3D viewpoint(0,0,1);
+    CVector3D viewpoint(0, 0, 1);
 
     CVector3D sum(viewpoint + dlight);
 
@@ -274,7 +241,7 @@ lightPoint(CRGBA &rgba, const CPoint3D &point, const CVector3D &normal,
     if (dot1 < 0.0)
       dot1 = 0.0;
 
-    specular = pow(dot1, material.getShininess())*getSpecular()*material.getSpecular();
+    specular = std::pow(dot1, material.getShininess())*getSpecular()*material.getSpecular();
   }
 
   double dist = CVector3D(point, object_->getPositionPoint().getViewed()).length();

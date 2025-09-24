@@ -44,7 +44,7 @@ class CGeomScene3D {
   CGeomObject3D *getPrimitiveP(const std::string &name) const;
 
   void addObject   (CGeomObject3D *object);
-  void removeObject(CGeomObject3D *object);
+  void removeObject(CGeomObject3D *object, bool force=false);
 
   uint getNumObjects() const { return uint(objects_.size()); }
 

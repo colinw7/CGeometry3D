@@ -64,7 +64,7 @@ class CGeomObject3D {
     std::optional<double> rangeMin;
     std::optional<double> rangeMax;
 
-    // transformations
+    // transformations (only one non-empty array of these)
     std::vector<CQuaternion> rotation;
     std::vector<CVector3D>   translation;
     std::vector<CVector3D>   scale;
@@ -76,19 +76,22 @@ class CGeomObject3D {
     mutable CMatrix3D anim_rotation    { CMatrix3D::identity() };
     mutable CMatrix3D anim_translation { CMatrix3D::identity() };
     mutable CMatrix3D anim_scale       { CMatrix3D::identity() };
+    // product of above (t*r*s)
     mutable CMatrix3D anim_matrix      { CMatrix3D::identity() };
   };
 
   using AnimationDatas = std::map<std::string, AnimationData>;
 
-  // node (bone) data
+  //---
+
+  // node (joint) data
   struct NodeData {
     bool        valid { false };
     int         ind   { -1 };
     std::string name;
 
     // parent and children nodes (bones)
-    int              parent            { -1 };
+    int              parent { -1 };
     std::vector<int> children;
 
     // inverse bind matrix (transform to parent coords)
@@ -97,13 +100,17 @@ class CGeomObject3D {
     // animation data per animation name
     AnimationDatas animationDatas;
 
-    // calculated animation transformations
+    // explicit/default joint transformations
     mutable CMatrix3D localTranslation { CMatrix3D::identity() };
     mutable CMatrix3D localRotation    { CMatrix3D::identity() };
     mutable CMatrix3D localScale       { CMatrix3D::identity() };
+    // product of above (t*r*s)
     mutable CMatrix3D localTransform   { CMatrix3D::identity() };
-    mutable CMatrix3D globalTransform  { CMatrix3D::identity() };
 
+    // explicit/default joint hier transformations
+    mutable CMatrix3D globalTransform { CMatrix3D::identity() };
+
+    // current animation matrix (local, hierarchical)
     mutable CMatrix3D animMatrix     { CMatrix3D::identity() };
     mutable CMatrix3D hierAnimMatrix { CMatrix3D::identity() };
   };
@@ -112,9 +119,7 @@ class CGeomObject3D {
   using NodeIds   = std::vector<int>;
 
  public:
-  CGeomObject3D(CGeomScene3D *pscene, const std::string &name) :
-   pscene_(pscene), name_(name) {
-  }
+  CGeomObject3D(CGeomScene3D *pscene, const std::string &name);
 
   CGeomObject3D(const CGeomObject3D &object);
 
@@ -125,11 +130,13 @@ class CGeomObject3D {
   //------
 
   void setScene(CGeomScene3D *scene) { pscene_ = scene; }
-
   CGeomScene3D *getScene() const { return pscene_; }
 
   const std::string &getName() const { return name_; }
   void setName(const std::string &name) { name_ = name; }
+
+  const std::string &getId() const { return id_; }
+  void setId(const std::string &id) { id_ = id; }
 
   ACCESSOR(Selected, bool, selected)
   ACCESSOR(Visible , bool, visible )
@@ -143,7 +150,7 @@ class CGeomObject3D {
 
   //---
 
-  CPoint3D getPosition() const { return coord_frame_.getOriginPoint(); }
+  CPoint3D getPosition() const { return coordFrame_.getOriginPoint(); }
 
   const CGeomPoint3D &getPositionPoint() const { return position_; }
 
@@ -156,7 +163,7 @@ class CGeomObject3D {
   }
 
   void setPosition(const CPoint3D &point) {
-    coord_frame_.setOrigin(point);
+    coordFrame_.setOrigin(point);
 
     updatePosition();
   }
@@ -168,8 +175,8 @@ class CGeomObject3D {
   }
 
   void updatePosition() {
-    position_.setModel  (coord_frame_.getOriginPoint());
-    position_.setCurrent(coord_frame_.getOriginPoint());
+    position_.setModel  (coordFrame_.getOriginPoint());
+    position_.setCurrent(coordFrame_.getOriginPoint());
   }
 
   //---
@@ -223,6 +230,11 @@ class CGeomObject3D {
 
   uint addNormal(const CVector3D &point);
   const CVector3D &normal(uint i) const;
+
+  //---
+
+  const CMatrix3D &viewMatrix() const { return viewMatrix_; }
+  void setViewMatrix(const CMatrix3D &v) { viewMatrix_ = v; }
 
   //---
 
@@ -281,20 +293,11 @@ class CGeomObject3D {
 
   //---
 
-  Group &getGroup(const std::string &name) {
-    auto p = groups_.find(name);
-
-    if (p == groups_.end()) {
-      uint id = uint(groups_.size() + 1);
-
-      p = groups_.insert(p, Groups::value_type(name, Group(name, id)));
-    }
-
-    return (*p).second;
-  }
+  Group &getGroup(const std::string &name);
 
   //---
 
+  // textures
   CGeomTexture *getDiffuseTexture() const { return diffuseTexture_; }
   void setDiffuseTexture(CGeomTexture *texture) { diffuseTexture_ = texture; }
 
@@ -309,6 +312,7 @@ class CGeomObject3D {
 
   //---
 
+  // individual face appearance
   void setFaceColor(const CRGBA &rgba);
   void setFaceColor(uint face_num, const CRGBA &rgba);
 
@@ -327,12 +331,14 @@ class CGeomObject3D {
 
   //---
 
+  // individual sub->face appearance
   void setSubFaceColor(const CRGBA &rgba);
   void setSubFaceColor(uint face_num, const CRGBA &rgba);
   void setSubFaceColor(uint face_num, uint sub_face_num, const CRGBA &rgba);
 
   //---
 
+  // individual line appearance
   void setLineColor(const CRGBA &rgba);
   void setLineColor(uint line_num, const CRGBA &rgba);
 
@@ -342,6 +348,7 @@ class CGeomObject3D {
 
   //---
 
+  // individual vertex appearance
   void setVertexColor(uint i, const CRGBA &rgba);
   void setVertexPixel(uint i, const CPoint3D &pixel);
 
@@ -351,11 +358,13 @@ class CGeomObject3D {
 
   //---
 
+  // material
   void setFrontMaterial(const CMaterial &material);
   void setBackMaterial (const CMaterial &material);
 
   //---
 
+  // skeletion
   bool hasNode(int i) const;
   void addNode(int i, const NodeData &data);
 
@@ -405,12 +414,16 @@ class CGeomObject3D {
   //---
 
   void setBasis(const CVector3D &right, const CVector3D &up, const CVector3D &dir);
-
   void getBasis(CVector3D &right, CVector3D &up, CVector3D &dir);
 
   //---
 
   void transform(const CMatrix3D &matrix);
+
+  const CMatrix3D &getTransform() const { return transform_; }
+  void setTransform(const CMatrix3D &v) { transform_ = v; }
+
+  CMatrix3D getHierTransform() const;
 
   //---
 
@@ -447,6 +460,7 @@ class CGeomObject3D {
 
   //---
 
+  // model->view->pixel transformations
   virtual void modelToPixel(const CGeomCamera3D &camera);
 
   void toCurrent(const CGeomCamera3D &camera);
@@ -462,6 +476,7 @@ class CGeomObject3D {
 
   //---
 
+  // draw (TODO: use standalone render code)
   void drawSolidFaces(CGeom3DRenderer *renderer);
   void drawSolidFaces(CGeomZBuffer *zbuffer);
 
@@ -481,6 +496,7 @@ class CGeomObject3D {
 
   //---
 
+  // transform
   virtual void moveX(double dx);
   virtual void moveY(double dy);
   virtual void moveZ(double dz);
@@ -506,6 +522,7 @@ class CGeomObject3D {
 
   //---
 
+  // spin animation
   void resetSpin() { da_ = CVector3D(0, 0, 0); }
 
   void spinX(double da) { da_.setX(da_.getX() + da); }
@@ -538,18 +555,22 @@ class CGeomObject3D {
   CGeomScene3D* pscene_ { nullptr };
 
   std::string name_;
+  std::string id_;
   bool        selected_ { false };
   bool        visible_ { true };
   bool        draw_position_ { true };
 
-  CCoordFrame3D coord_frame_;
+  // position
+  CCoordFrame3D coordFrame_;
   CGeomPoint3D  position_ { CPoint3D(0, 0, 0) };
 
+  // textures
   CGeomTexture* diffuseTexture_  { nullptr };
   CGeomTexture* specularTexture_ { nullptr };
   CGeomTexture* normalTexture_   { nullptr };
   CGeomTexture* emissiveTexture_ { nullptr };
 
+  // geometry
   FaceList         faces_;
   LineList         lines_;
   VertexList       vertices_;
@@ -559,16 +580,20 @@ class CGeomObject3D {
   TexturePoints    texturePoints_;
   Normals          normals_;
 
+  // skeleton
   NodeDatas nodes_;
   NodeIds   nodeIds_;
   int       meshNode_ { -1 };
   int       rootNode_ { -1 };
 
-  CMatrix3D view_matrix_;
+  CMatrix3D viewMatrix_;
+  CMatrix3D transform_ { CMatrix3D::identity() };
 
+  // motion
   CVector3D dv_ { 0, 0, 0 };
   CVector3D da_ { 0, 0, 0 };
 
+  // hierarchy (parent, children)
   CGeomObject3D*               parent_ { nullptr };
   std::vector<CGeomObject3D *> children_;
 };
@@ -578,14 +603,14 @@ class CGeomObject3D {
 class CGeomObjectInst3D {
  public:
   CGeomObjectInst3D(CGeomObject3D &object) :
-   object_(object), coord_frame_() {
+   object_(object) {
   }
 
   const CGeomObject3D &object() const { return object_; }
 
  private:
-  CGeomObject3D &object_;
-  CCoordFrame3D  coord_frame_;
+  CGeomObject3D& object_;
+  CCoordFrame3D  coordFrame_;
 };
 
 #endif

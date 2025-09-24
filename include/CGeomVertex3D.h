@@ -60,6 +60,9 @@ class CGeomVertex3D : public CGeomPoint3D {
   const CClipSide &getClipSide() const { return clipSide_; }
   void setClipSide(const CClipSide &v) { clipSide_ = v; }
 
+  //---
+
+  // associated skeleton bone
   const JointData &getJointData() const { return jointData_; }
   void setJointData(const JointData &data) { jointData_ = data; }
 

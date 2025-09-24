@@ -1,6 +1,7 @@
 #include <CGeomCylinder3D.h>
 #include <CGeomTexture.h>
 #include <CGeomMask.h>
+#include <CCylinder3D.h>
 
 CGeomCylinder3D::
 CGeomCylinder3D(CGeomScene3D *pscene, const std::string &name,
@@ -10,19 +11,49 @@ CGeomCylinder3D(CGeomScene3D *pscene, const std::string &name,
   addGeometry(this, xc, yc, zc, w, h, num_patches_);
 }
 
+CGeomCylinder3D::
+CGeomCylinder3D(CGeomScene3D *pscene, const std::string &name,
+                const CPoint3D &center, double w, double h) :
+ CGeomObject3D(pscene, name)
+{
+  addGeometry(this, center, w, h, num_patches_);
+}
+
+void
+CGeomCylinder3D::
+addGeometry(CGeomObject3D *object, const CPoint3D &center,
+            double w, double h, uint num_patches)
+{
+  addGeometry(object, center.x, center.y, center.z, w, h, num_patches);
+}
+
 void
 CGeomCylinder3D::
 addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
             double w, double h, uint num_patches)
 {
-  double x[4], y[4];
+  int np = 8;
 
-  x[0] =    0; y[0] = -h/2;
-  x[1] = +w/2; y[1] = -h/2;
-  x[2] = +w/2; y[2] = +h/2;
-  x[3] =    0; y[3] = +h/2;
+  std::vector<double> x, y;
 
-  object->addBodyRev(x, y, 4, num_patches);
+  x.resize(np + 2);
+  y.resize(np + 2);
+
+  auto dy = h/(np - 1);
+
+  double y1 = -h/2.0;
+
+  x[0] = 0.0; y[0] = y1;
+
+  for (int i = 0; i < np; ++i) {
+    x[i + 1] = w/2; y[i + 1] = y1;
+
+    y1 += dy;
+  }
+
+  x[np + 1] = 0.0; y[np + 1] = h/2.0;
+
+  object->addBodyRev(&x[0], &y[0], np + 2, num_patches);
 
   object->moveBy(CPoint3D(xc, yc, zc));
 }
@@ -111,4 +142,25 @@ CGeomCylinder3D::
 mapMask(CImagePtr image)
 {
   CGeomObject3D::mapMask(image);
+}
+
+void
+CGeomCylinder3D::
+addNormals(CGeomObject3D *object, double w, double h)
+{
+  CCylinder3D cylinder(w/2.0, h);
+
+  FaceList &faces = object->getFaces();
+
+  for (auto *face : faces) {
+    for (const auto vind : face->getVertices()) {
+      auto &vertex = object->getVertex(vind);
+
+      auto p = vertex.getModel();
+
+      auto n = cylinder.pointNormal(CPoint3D(p.x, p.z, p.y));
+
+      vertex.setNormal(n);
+    }
+  }
 }

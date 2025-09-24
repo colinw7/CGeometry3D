@@ -60,11 +60,18 @@ addObject(CGeomObject3D *object)
 
 void
 CGeomScene3D::
-removeObject(CGeomObject3D *object)
+removeObject(CGeomObject3D *object, bool force)
 {
   object_map_[object->getName()] = nullptr;
 
-  //objects_.erase(object);
+  if (force) {
+    auto objects = objects_;
+    objects_.clear();
+
+    for (auto *object1 : objects)
+      if (object1 != object)
+        objects_.push_back(object1);
+  }
 }
 
 CGeomObject3D &
