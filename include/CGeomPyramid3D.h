@@ -11,6 +11,8 @@ class CGeomPyramid3D : public CGeomObject3D {
  ~CGeomPyramid3D() { }
 
   static void addGeometry(CGeomObject3D *object,
+                          const CPoint3D &c, double w, double h);
+  static void addGeometry(CGeomObject3D *object,
                           double xc, double yc, double zc, double w, double h);
 
  private:

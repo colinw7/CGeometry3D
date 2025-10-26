@@ -99,6 +99,22 @@ addChild(CGeomObject3D *child)
   children_.push_back(child);
 }
 
+void
+CGeomObject3D::
+resetHier()
+{
+  parent_ = nullptr;
+
+  resetChildren();
+}
+
+void
+CGeomObject3D::
+resetChildren()
+{
+  children_.clear();
+}
+
 //-----------
 
 CPoint3D
@@ -278,6 +294,15 @@ addVertexFace(uint vertex_ind, uint face_ind)
   FaceIList &face_list = vertexFaceList_[vertex_ind];
 
   face_list.push_back(face_ind);
+}
+
+uint
+CGeomObject3D::
+dupVertex(uint i)
+{
+  const auto &v = getVertex(i);
+
+  return addVertex(v.getModel());
 }
 
 //---
@@ -606,31 +631,36 @@ hasNode(int i) const
 
 void
 CGeomObject3D::
-addNode(int i, const NodeData &data)
+addNode(int i, const CGeomNodeData &data)
 {
   nodes_[i] = data;
+
   nodes_[i].ind   = i;
   nodes_[i].valid = true;
+
+  nodes_[i].object = this;
 
   nodeIds_.push_back(i);
 }
 
+// map bone id into position in globalBoneTransform array
 int
 CGeomObject3D::
 mapNodeId(int id) const
 {
-  for (size_t i = 0; i < nodeIds_.size(); ++i)
+  for (size_t i = 0; i < nodeIds_.size(); ++i) {
     if (nodeIds_[i] == id)
       return int(i);
+  }
 
   return -1;
 }
 
-const CGeomObject3D::NodeData &
+const CGeomNodeData &
 CGeomObject3D::
 getNode(int i) const
 {
-  static NodeData noData;
+  static CGeomNodeData noData;
 
   auto pn = nodes_.find(i);
 
@@ -649,6 +679,50 @@ CGeomObject3D::
 setMeshNode(int id)
 {
   meshNode_ = id;
+}
+
+CGeomObject3D *
+CGeomObject3D::
+getRootObject() const
+{
+  auto *rootObject = this;
+
+  while (rootObject && rootObject->parent())
+    rootObject = rootObject->parent();
+
+  return const_cast<CGeomObject3D *>(rootObject);
+}
+
+CMatrix3D
+CGeomObject3D::
+getMeshGlobalTransform() const
+{
+  auto *rootObject = getRootObject();
+
+  int meshNodeId = getMeshNode();
+
+  if (meshNodeId < 0)
+    meshNodeId = rootObject->getMeshNode();
+
+  const auto &meshNodeData = rootObject->getNode(meshNodeId);
+
+  return meshNodeData.globalTransform;
+}
+
+CMatrix3D
+CGeomObject3D::
+getMeshLocalTransform() const
+{
+  auto *rootObject = getRootObject();
+
+  int meshNodeId = getMeshNode();
+
+  if (meshNodeId < 0)
+    meshNodeId = rootObject->getMeshNode();
+
+  const auto &meshNodeData = rootObject->getNode(meshNodeId);
+
+  return meshNodeData.localTransform;
 }
 
 int
@@ -711,7 +785,7 @@ setNodeGlobalTransform(int i, const CMatrix3D &m)
 
 void
 CGeomObject3D::
-setNodeAnimationData(int i, const std::string &name, const AnimationData &data)
+setNodeAnimationData(int i, const std::string &name, const CGeomAnimationData &data)
 {
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
@@ -724,7 +798,7 @@ setNodeAnimationData(int i, const std::string &name, const AnimationData &data)
 void
 CGeomObject3D::
 setNodeAnimationTransformData(int i, const std::string &name, const Transform &transform,
-                              const AnimationData &data)
+                              const CGeomAnimationData &data)
 {
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
@@ -734,7 +808,7 @@ setNodeAnimationTransformData(int i, const std::string &name, const Transform &t
   auto pn1 = node.animationDatas.find(name);
 
   if (pn1 == node.animationDatas.end())
-    pn1 = node.animationDatas.insert(pn1, AnimationDatas::value_type(name, data));
+    pn1 = node.animationDatas.insert(pn1, CGeomNodeData::AnimationDatas::value_type(name, data));
 
   auto &nodeData = (*pn1).second;
 
@@ -750,7 +824,7 @@ bool
 CGeomObject3D::
 updateNodesAnimationData(const std::string &name, double t)
 {
-  // update animation data for all nodes (skeletion/joints) of object
+  // update animation data for all nodes (skeleton/joints) of object
   bool rc = false;
 
   for (const auto &pn : nodes_) {
@@ -796,7 +870,7 @@ updateNodeAnimationData(int i, const std::string &name, double t)
 
 bool
 CGeomObject3D::
-updateNodeAnimationData(const NodeData &node, const std::string &name, double t)
+updateNodeAnimationData(const CGeomNodeData &node, const std::string &name, double t)
 {
   auto anim_translation = node.localTranslation;
   auto anim_rotation    = node.localRotation;
@@ -807,7 +881,7 @@ updateNodeAnimationData(const NodeData &node, const std::string &name, double t)
   auto pn = node.animationDatas.find(name);
 
   if (pn != node.animationDatas.end()) {
-    const AnimationData &animationData = (*pn).second;
+    const CGeomAnimationData &animationData = (*pn).second;
 
     auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.range);
 
@@ -824,7 +898,7 @@ updateNodeAnimationData(const NodeData &node, const std::string &name, double t)
 
     //---
 
-    if      (animationData.interpolation == AnimationInterpolation::LINEAR) {
+    if      (animationData.interpolation == CGeomAnimationData::Interpolation::LINEAR) {
       if (! animationData.translation.empty()) {
         auto ov = CMathGen::interpRangeSet<CVector3D>(ii, fi, animationData.translation);
 
@@ -858,7 +932,7 @@ updateNodeAnimationData(const NodeData &node, const std::string &name, double t)
         }
       }
     }
-    else if (animationData.interpolation == AnimationInterpolation::STEP) {
+    else if (animationData.interpolation == CGeomAnimationData::Interpolation::STEP) {
       if (! animationData.translation.empty()) {
         const auto &translation = animationData.translation[ii];
 
@@ -942,11 +1016,11 @@ getAnimationRange(const std::string &name, double &min, double &max) const
   return false;
 }
 
-CGeomObject3D::AnimationData &
+CGeomAnimationData &
 CGeomObject3D::
 getNodeAnimationData(int i, const std::string &name)
 {
-  static AnimationData noAnimationData;
+  static CGeomAnimationData noAnimationData;
 
   auto pn = nodes_.find(i);
   if (pn == nodes_.end()) return noAnimationData;
@@ -959,24 +1033,25 @@ getNodeAnimationData(int i, const std::string &name)
 
 void
 CGeomObject3D::
-addBodyRev(double *x, double *y, uint num_xy, uint num_patches)
+addBodyRev(double *x, double *y, uint num_xy, uint num_patches, const BodyRevData &data)
 {
   std::vector<double> c, s;
 
   c.resize(num_patches);
   s.resize(num_patches);
 
-  double theta           = 0.0;
-  double theta_increment = 2.0*M_PI/num_patches;
+  // rotate from angle (angleStart -> angleStart + angleDelta)
+  double theta           = data.angleStart;
+  double theta_increment = data.angleDelta/num_patches;
 
   for (uint i = 0; i < num_patches; ++i) {
-    c[i] = cos(theta);
-    s[i] = sin(theta);
+    c[i] = std::cos(theta);
+    s[i] = std::sin(theta);
 
     theta += theta_increment;
   }
 
-  uint num_vertices = 0;
+  //---
 
   std::vector<uint> index1, index2;
 
@@ -986,99 +1061,211 @@ addBodyRev(double *x, double *y, uint num_xy, uint num_patches)
   uint *pindex1 = &index1[0];
   uint *pindex2 = &index2[0];
 
+  //---
+
+//std::vector<uint> addedVertices;
+  std::vector<uint> addedFaces;
+
+  auto tagVertex = [&](uint ind, uint i) {
+    auto &v = getVertex(ind);
+    v.setTag(i + 1);
+//  addedVertices.push_back(ind);
+  };
+
+  auto uniquifyVertex = [&](uint ind, uint i) {
+    if (! data.uniquify) return ind;
+    auto ind1 = dupVertex(ind);
+    tagVertex(ind1, i);
+    return ind1;
+  };
+
+  //---
+
+  // add bottom circle points
   if (fabs(x[0]) < CMathGen::EPSILON_E6) {
     CPoint3D p(0.0, y[0], 0.0);
 
-    addVertex(p);
+    auto ind = addVertex(p);
+    tagVertex(ind, 0);
 
     for (uint i = 0; i <= num_patches; ++i)
-      pindex1[i] = num_vertices;
-
-    ++num_vertices;
+      pindex1[i] = ind;
   }
   else {
     for (uint i = 0; i < num_patches; ++i) {
       CPoint3D p(x[0]*c[i], y[0], -x[0]*s[i]);
 
-      addVertex(p);
+      auto ind = addVertex(p);
+      tagVertex(ind, 0);
 
-      pindex1[i] = num_vertices;
-
-      ++num_vertices;
+      pindex1[i] = ind;
     }
 
     pindex1[num_patches] = pindex1[0];
   }
 
+  // next circle (top of face)
   for (uint j = 1; j < num_xy; ++j) {
+    // add top circle points
     if (fabs(x[j]) < CMathGen::EPSILON_E6) {
-      CPoint3D p(0.0,  y[j], 0.0);
+      CPoint3D p(0.0, y[j], 0.0);
 
-      addVertex(p);
+      auto ind = addVertex(p);
+      tagVertex(ind, j);
 
       for (uint i = 0; i <= num_patches; ++i)
-        pindex2[i] = num_vertices;
-
-      ++num_vertices;
+        pindex2[i] = ind;
     }
     else {
       for (uint i = 0; i < num_patches; ++i) {
         CPoint3D p(x[j]*c[i], y[j], -x[j]*s[i]);
 
-        addVertex(p);
+        auto ind = addVertex(p);
+        tagVertex(ind, j);
 
-        pindex2[i] = num_vertices;
-
-        ++num_vertices;
+        pindex2[i] = ind;
       }
 
       pindex2[num_patches] = pindex2[0];
     }
 
+    //---
+
+#if 0
+    auto getVertexTag = [&](uint iv) {
+      const auto &v = getVertex(iv);
+      return v.getTag();
+    };
+#endif
+
+    auto addFace3 = [&](uint v1, uint v2, uint v3) {
+      VertexIList vertices;
+
+      vertices.push_back(v1);
+      vertices.push_back(v2);
+      vertices.push_back(v3);
+
+      auto faceNum = addFace(vertices);
+
+      addedFaces.push_back(faceNum);
+
+//    assert(getVertexTag(v1) == getVertexTag(v2));
+//    assert(getVertexTag(v1) == getVertexTag(v3));
+
+      return faceNum;
+    };
+
+    auto addFace4 = [&](uint v1, uint v2, uint v3, uint v4) {
+      VertexIList vertices;
+
+      vertices.push_back(v1);
+      vertices.push_back(v2);
+      vertices.push_back(v3);
+      vertices.push_back(v4);
+
+      auto faceNum = addFace(vertices);
+
+      addedFaces.push_back(faceNum);
+
+//    assert(getVertexTag(v1) == getVertexTag(v2));
+//    assert(getVertexTag(v1) == getVertexTag(v3));
+//    assert(getVertexTag(v1) == getVertexTag(v4));
+
+      return faceNum;
+    };
+
+    //---
+
+    // add faces
     if (pindex1[0] != pindex1[1]) {
+      // triangle if bottom different and top same
       if (pindex2[0] == pindex2[1]) {
         for (uint i = 0; i < num_patches; ++i) {
-          VertexIList vertices;
+          auto v1 = pindex1[i    ];
+          auto v2 = pindex1[i + 1];
+          auto v3 = pindex2[i    ];
 
-          vertices.push_back(pindex1[i + 1]);
-          vertices.push_back(pindex2[i    ]);
-          vertices.push_back(pindex1[i    ]);
-
-          addFace(vertices);
+          addFace3(v2, v3, v1);
         }
       }
+      // quad if bottom different and top different
       else {
         for (uint i = 0; i < num_patches; ++i) {
-          VertexIList vertices;
+          auto v1 = uniquifyVertex(pindex1[i    ], j);
+          auto v2 = uniquifyVertex(pindex1[i + 1], j);
+          auto v3 = pindex2[i    ];
+          auto v4 = pindex2[i + 1];
 
-          vertices.push_back(pindex1[i + 1]);
-          vertices.push_back(pindex2[i + 1]);
-          vertices.push_back(pindex2[i    ]);
-          vertices.push_back(pindex1[i    ]);
-
-          addFace(vertices);
+          addFace4(v2, v4, v3, v1);
         }
       }
     }
     else {
+      // triangle if top different and bottom same
       if (pindex2[0] != pindex2[1]) {
         for (uint i = 0; i < num_patches; ++i) {
-          VertexIList vertices;
+          auto v1 = uniquifyVertex(pindex1[i    ], j);
+          auto v3 = pindex2[i    ];
+          auto v4 = pindex2[i + 1];
 
-          vertices.push_back(pindex2[i + 1]);
-          vertices.push_back(pindex2[i    ]);
-          vertices.push_back(pindex1[i    ]);
-
-          addFace(vertices);
+          addFace3(v4, v3, v1);
         }
       }
     }
 
-    uint *pindex = pindex2;
-
-    pindex2 = pindex1;
-    pindex1 = pindex;
+    // swap bottom indices
+    std::swap(pindex1, pindex2);
   }
+
+  //---
+
+#if 0
+  for (const auto &ind : addedVertices) {
+    auto &v = getVertex(ind);
+
+    auto ind1 = v.getTag();
+
+    if (ind1 != 0) {
+      auto pt = data.tagInds.find(ind1 - 1);
+
+      if (pt != data.tagInds.end())
+        v.setTag((*pt).second);
+      else
+        v.setTag(0);
+    }
+    else
+      v.setTag(0);
+  }
+#else
+  std::set<uint> processedVertices;
+
+  for (const auto &ind : addedFaces) {
+    const auto &face = getFace(ind);
+
+    for (const auto &iv : face.getVertices()) {
+      auto pp = processedVertices.find(iv);
+      if (pp != processedVertices.end())
+        continue;
+
+      auto &v = getVertex(iv);
+
+      auto ind1 = v.getTag();
+
+      if (ind1 != 0) {
+        auto pt = data.tagInds.find(ind1 - 1);
+
+        if (pt != data.tagInds.end())
+          v.setTag((*pt).second);
+        else
+          v.setTag(0);
+      }
+      else
+        v.setTag(0);
+
+      processedVertices.insert(iv);
+    }
+  }
+#endif
 }
 
 //--------
@@ -1147,16 +1334,18 @@ getHierTransform() const
 
 void
 CGeomObject3D::
-getModelBBox(CBBox3D &bbox) const
+getModelBBox(CBBox3D &bbox, bool hier) const
 {
   for (auto *vertex : vertices_)
     bbox += vertex->getModel();
 
-  for (auto *child : children_) {
-    CBBox3D bbox1;
-    child->getModelBBox(bbox1);
+  if (hier) {
+    for (auto *child : children_) {
+      CBBox3D bbox1;
+      child->getModelBBox(bbox1);
 
-    bbox += bbox1;
+      bbox += bbox1;
+    }
   }
 }
 

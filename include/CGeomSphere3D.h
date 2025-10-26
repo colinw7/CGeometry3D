@@ -10,21 +10,28 @@ class CGeomSphere3D : public CGeomObject3D, public CSphere3D {
   enum { NUM_PATCHES = 40 };
 
  public:
+  struct ConfigData {
+    ConfigData() { }
+
+    uint   num_xy      { NUM_XY };
+    uint   num_patches { NUM_PATCHES };
+    double angleStart  { 0.0 };
+    double angleDelta  { 2.0*M_PI };
+  };
+
   static void addGeometry(CGeomObject3D *object, const CPoint3D &center,
-                          double radius, uint num_xy=NUM_XY,
-                          uint num_patches=NUM_PATCHES);
+                          double radius, const ConfigData &data=ConfigData());
 
   static void addTextureMap(CGeomObject3D *object, CGeomTexture *texture,
-                            uint num_xy=NUM_XY, uint num_patches=NUM_PATCHES);
+                            const ConfigData &data=ConfigData());
 
-  static void addTexturePoints(CGeomObject3D *object,
-                               uint num_xy=NUM_XY, uint num_patches=NUM_PATCHES);
+  static void addTexturePoints(CGeomObject3D *object, const ConfigData &data=ConfigData());
 
   static void addNormals(CGeomObject3D *object, double radius);
 
  public:
   CGeomSphere3D(CGeomScene3D *pscene, const std::string &name,
-                const CPoint3D &center, double radius);
+                const CPoint3D &center, double radius, const ConfigData &data=ConfigData());
 
  ~CGeomSphere3D() { }
 
@@ -44,16 +51,15 @@ class CGeomSphere3D : public CGeomObject3D, public CSphere3D {
 
  private:
   static void mapTextureI(CGeomObject3D *object, CGeomTexture *texture,
-                          uint num_xy, uint num_patches);
+                          const ConfigData &data);
 
-  static void addTexturePointsI(CGeomObject3D *object, uint num_xy, uint num_patches);
+  static void addTexturePointsI(CGeomObject3D *object, const ConfigData &data);
 
   static void addNormalsI(CGeomObject3D *object, double radius);
 
  private:
-  CPoint3D center_;
-  uint     num_xy_      { NUM_XY };
-  uint     num_patches_ { NUM_PATCHES };
+  CPoint3D   center_;
+  ConfigData configData_;
 };
 
 #endif

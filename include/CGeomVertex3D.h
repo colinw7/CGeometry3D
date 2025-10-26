@@ -27,7 +27,7 @@ class CGeomVertex3D : public CGeomPoint3D {
   };
 
  public:
-  CGeomVertex3D(CGeomObject3D *pobject, const CPoint3D &point=CPoint3D(0,0,0));
+  CGeomVertex3D(CGeomObject3D *pobject, const CPoint3D &point=CPoint3D::makeZero());
 
   CGeomVertex3D(const CGeomVertex3D &vertex);
 
@@ -44,6 +44,9 @@ class CGeomVertex3D : public CGeomPoint3D {
 
   const uint &getInd() const { return ind_; }
   void setInd(const uint &i) { ind_ = i; }
+
+  const uint &getTag() const { return tag_; }
+  void setTag(const uint &i) { tag_ = i; }
 
   bool hasColor() const { return bool(color_); }
   CRGBA getColor(const CRGBA &c=CRGBA(1, 1, 1)) const { return color_.value_or(c); }
@@ -95,6 +98,7 @@ class CGeomVertex3D : public CGeomPoint3D {
   CGeomObject3D *pobject_ { nullptr };
 
   uint      ind_ { 0 };
+  uint      tag_ { 0 };
   OptColor  color_;
   OptVector normal_;
   OptPoint2 tmap_;

@@ -40,7 +40,7 @@ class CGeometryFactory {
 
 //---
 
-// factor class for all geometry objects so we can derive classes
+// factory class for all geometry objects so we can derive classes
 // from the base geometry classes and use a custom factory to
 // create the correct objects
 class CGeometry3D {

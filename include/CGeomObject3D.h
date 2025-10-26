@@ -14,6 +14,8 @@ class CGeomScene3D;
 class CGeomCamera;
 class CGeomZBuffer;
 class CGeom3DRenderer;
+class CGeomAnimationData;
+class CGeomNodeData;
 
 class CGeomObject3D {
  public:
@@ -50,72 +52,9 @@ class CGeomObject3D {
 
   using Groups = std::map<std::string,Group>;
 
-  enum class AnimationInterpolation {
-    NONE,
-    LINEAR,
-    STEP,
-    CUBICSPLINE
-  };
-
-  // set of transformations and associated range to interplate into
-  struct AnimationData {
-    // interpolation range
-    std::vector<double>   range;
-    std::optional<double> rangeMin;
-    std::optional<double> rangeMax;
-
-    // transformations (only one non-empty array of these)
-    std::vector<CQuaternion> rotation;
-    std::vector<CVector3D>   translation;
-    std::vector<CVector3D>   scale;
-
-    // interplation type
-    AnimationInterpolation interpolation { AnimationInterpolation::NONE };
-
-    // current (calculated) transformations
-    mutable CMatrix3D anim_rotation    { CMatrix3D::identity() };
-    mutable CMatrix3D anim_translation { CMatrix3D::identity() };
-    mutable CMatrix3D anim_scale       { CMatrix3D::identity() };
-    // product of above (t*r*s)
-    mutable CMatrix3D anim_matrix      { CMatrix3D::identity() };
-  };
-
-  using AnimationDatas = std::map<std::string, AnimationData>;
-
   //---
 
-  // node (joint) data
-  struct NodeData {
-    bool        valid { false };
-    int         ind   { -1 };
-    std::string name;
-
-    // parent and children nodes (bones)
-    int              parent { -1 };
-    std::vector<int> children;
-
-    // inverse bind matrix (transform to parent coords)
-    CMatrix3D inverseBindMatrix { CMatrix3D::identity() };
-
-    // animation data per animation name
-    AnimationDatas animationDatas;
-
-    // explicit/default joint transformations
-    mutable CMatrix3D localTranslation { CMatrix3D::identity() };
-    mutable CMatrix3D localRotation    { CMatrix3D::identity() };
-    mutable CMatrix3D localScale       { CMatrix3D::identity() };
-    // product of above (t*r*s)
-    mutable CMatrix3D localTransform   { CMatrix3D::identity() };
-
-    // explicit/default joint hier transformations
-    mutable CMatrix3D globalTransform { CMatrix3D::identity() };
-
-    // current animation matrix (local, hierarchical)
-    mutable CMatrix3D animMatrix     { CMatrix3D::identity() };
-    mutable CMatrix3D hierAnimMatrix { CMatrix3D::identity() };
-  };
-
-  using NodeDatas = std::map<int, NodeData>;
+  using NodeDatas = std::map<int, CGeomNodeData>;
   using NodeIds   = std::vector<int>;
 
  public:
@@ -147,6 +86,9 @@ class CGeomObject3D {
   const std::vector<CGeomObject3D *> &children() const { return children_; }
 
   void addChild(CGeomObject3D *child);
+
+  void resetHier();
+  void resetChildren();
 
   //---
 
@@ -216,6 +158,8 @@ class CGeomObject3D {
   uint addVertex(const CPoint3D &point);
 
   void addVertexFace(uint vertex_ind, uint face_num);
+
+  uint dupVertex(uint vind);
 
   //---
 
@@ -288,6 +232,7 @@ class CGeomObject3D {
   uint getNumFaces() const { return uint(faces_.size()); }
 
   const CGeomFace3D &getFace(uint i) const { return *faces_[i]; }
+  CGeomFace3D *getFaceP(uint i) const { return faces_[i]; }
 
   CGeomFace3D &getFace(uint i) { return *faces_[i]; }
 
@@ -364,16 +309,23 @@ class CGeomObject3D {
 
   //---
 
+  CGeomObject3D *getRootObject() const;
+
+  CMatrix3D getMeshGlobalTransform() const;
+  CMatrix3D getMeshLocalTransform() const;
+
+  //---
+
   // skeletion
   bool hasNode(int i) const;
-  void addNode(int i, const NodeData &data);
+  void addNode(int i, const CGeomNodeData &data);
 
   const NodeDatas &getNodes() const { return nodes_; }
   const NodeIds &getNodeIds() const { return nodeIds_; }
 
   int mapNodeId(int id) const;
 
-  const NodeData &getNode(int i) const;
+  const CGeomNodeData &getNode(int i) const;
 
   int getMeshNode() const;
   void setMeshNode(int ind);
@@ -386,17 +338,17 @@ class CGeomObject3D {
   void setNodeLocalTransform (int i, const CMatrix3D &m);
   void setNodeGlobalTransform(int i, const CMatrix3D &m);
 
-  void setNodeAnimationData(int i, const std::string &name, const AnimationData &data);
+  void setNodeAnimationData(int i, const std::string &name, const CGeomAnimationData &data);
 
   void setNodeAnimationTransformData(int i, const std::string &name, const Transform &transform,
-                                     const AnimationData &data);
+                                     const CGeomAnimationData &data);
 
-  AnimationData &getNodeAnimationData(int i, const std::string &name);
+  CGeomAnimationData &getNodeAnimationData(int i, const std::string &name);
 
   bool updateNodesAnimationData(const std::string &name, double t);
 
   bool updateNodeAnimationData(int i, const std::string &name, double t);
-  bool updateNodeAnimationData(const NodeData &node, const std::string &name, double t);
+  bool updateNodeAnimationData(const CGeomNodeData &node, const std::string &name, double t);
 
   void getAnimationNames(std::vector<std::string> &names) const;
 
@@ -404,7 +356,17 @@ class CGeomObject3D {
 
   //---
 
-  void addBodyRev(double *x, double *y, uint num_xy, uint num_patches);
+  struct BodyRevData {
+    BodyRevData() { }
+
+    double               angleStart { 0.0 };
+    double               angleDelta { 2.0*M_PI };
+    bool                 uniquify   { false };
+    std::map<uint, uint> tagInds;
+  };
+
+  void addBodyRev(double *x, double *y, uint num_xy, uint num_patches,
+                  const BodyRevData &data=BodyRevData());
 
   //---
 
@@ -427,7 +389,7 @@ class CGeomObject3D {
 
   //---
 
-  void getModelBBox(CBBox3D &bbox) const;
+  void getModelBBox(CBBox3D &bbox, bool hier=true) const;
 
   //---
 
@@ -611,6 +573,80 @@ class CGeomObjectInst3D {
  private:
   CGeomObject3D& object_;
   CCoordFrame3D  coordFrame_;
+};
+
+//---
+
+// set of transformations and associated range to interplate into
+struct CGeomAnimationData {
+  enum class Interpolation {
+    NONE,
+    LINEAR,
+    STEP,
+    CUBICSPLINE
+  };
+
+  // interpolation range
+  std::vector<double>   range;
+  std::optional<double> rangeMin;
+  std::optional<double> rangeMax;
+
+  // transformations (only one non-empty array of these)
+  std::vector<CQuaternion> rotation;
+  std::vector<CVector3D>   translation;
+  std::vector<CVector3D>   scale;
+
+  // interplation type
+  Interpolation interpolation { Interpolation::NONE };
+
+  // current (calculated) transformations
+  mutable CMatrix3D anim_rotation    { CMatrix3D::identity() };
+  mutable CMatrix3D anim_translation { CMatrix3D::identity() };
+  mutable CMatrix3D anim_scale       { CMatrix3D::identity() };
+  // product of above (t*r*s)
+  mutable CMatrix3D anim_matrix      { CMatrix3D::identity() };
+};
+
+//---
+
+// node (joint) data
+struct CGeomNodeData {
+  using AnimationDatas = std::map<std::string, CGeomAnimationData>;
+
+  //---
+
+  bool valid    { false };
+  bool selected { false };
+
+  int         ind     { -1 };
+  std::string name;
+  bool        isJoint { false };
+
+  // parent and children nodes (bones)
+  int              parent { -1 };
+  std::vector<int> children;
+
+  CGeomObject3D *object { nullptr };
+
+  // inverse bind matrix (transform to parent coords)
+  CMatrix3D inverseBindMatrix { CMatrix3D::identity() };
+
+  // animation data per animation name
+  AnimationDatas animationDatas;
+
+  // explicit/default joint transformations
+  mutable CMatrix3D localTranslation { CMatrix3D::identity() };
+  mutable CMatrix3D localRotation    { CMatrix3D::identity() };
+  mutable CMatrix3D localScale       { CMatrix3D::identity() };
+  // product of above (t*r*s)
+  mutable CMatrix3D localTransform   { CMatrix3D::identity() };
+
+  // explicit/default joint hier transformations
+  mutable CMatrix3D globalTransform { CMatrix3D::identity() };
+
+  // current animation matrix (local, hierarchical)
+  mutable CMatrix3D animMatrix     { CMatrix3D::identity() };
+  mutable CMatrix3D hierAnimMatrix { CMatrix3D::identity() };
 };
 
 #endif

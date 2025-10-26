@@ -24,7 +24,7 @@ class CGeomCone3D : public CGeomObject3D {
  ~CGeomCone3D() { }
 
  private:
-  int num_patches_ { NUM_PATCHES };
+  uint num_patches_ { NUM_PATCHES };
 };
 
 #endif

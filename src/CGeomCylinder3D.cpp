@@ -32,6 +32,7 @@ CGeomCylinder3D::
 addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
             double w, double h, uint num_patches)
 {
+  // create C shape (0, -h/2, -w/2, h/2)
   int np = 8;
 
   std::vector<double> x, y;
@@ -53,7 +54,19 @@ addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
 
   x[np + 1] = 0.0; y[np + 1] = h/2.0;
 
-  object->addBodyRev(&x[0], &y[0], np + 2, num_patches);
+  //---
+
+  // rotate around y to add z (-w/2, w/2)
+  BodyRevData bodyRevData;
+
+  bodyRevData.uniquify = true;
+
+  bodyRevData.tagInds[0     ] = 1;
+  bodyRevData.tagInds[1     ] = 1;
+//bodyRevData.tagInds[np    ] = 2;
+  bodyRevData.tagInds[np + 1] = 2;
+
+  object->addBodyRev(&x[0], &y[0], np + 2, num_patches, bodyRevData);
 
   object->moveBy(CPoint3D(xc, yc, zc));
 }
@@ -62,7 +75,7 @@ void
 CGeomCylinder3D::
 mapTexture(CGeomTexture *texture)
 {
-  FaceList &faces = getFaces();
+  auto &faces = getFaces();
 
   int twidth, theight;
 
@@ -105,7 +118,7 @@ void
 CGeomCylinder3D::
 mapMask(CGeomMask *mask)
 {
-  FaceList &faces = getFaces();
+  auto &faces = getFaces();
 
   uint twidth, theight;
 
@@ -148,19 +161,29 @@ void
 CGeomCylinder3D::
 addNormals(CGeomObject3D *object, double w, double h)
 {
+  // cylinder (-w/2 -> w/2, -w/2 -> w/2, 0 -> h)
   CCylinder3D cylinder(w/2.0, h);
 
-  FaceList &faces = object->getFaces();
+  // object has y/z flipped
+  auto &faces = object->getFaces();
 
   for (auto *face : faces) {
-    for (const auto vind : face->getVertices()) {
+    for (const auto &vind : face->getVertices()) {
       auto &vertex = object->getVertex(vind);
 
-      auto p = vertex.getModel();
+      auto t = vertex.getTag();
 
-      auto n = cylinder.pointNormal(CPoint3D(p.x, p.z, p.y));
+      if      (t == 1)
+        vertex.setNormal(CVector3D(0, -1, 0));
+      else if (t == 2)
+        vertex.setNormal(CVector3D(0,  1, 0));
+      else {
+        auto p = vertex.getModel();
 
-      vertex.setNormal(n);
+        auto n = cylinder.pointNormal(CPoint3D(p.x, p.z, p.y));
+
+        vertex.setNormal(CVector3D(n.getX(), n.getZ(), n.getY()));
+      }
     }
   }
 }

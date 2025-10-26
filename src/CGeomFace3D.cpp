@@ -580,11 +580,9 @@ CGeomFace3D::
 getAdjustedColor(CRGBA &rgba)
 {
   CPoint3D mid_point;
-
   getMidPoint(mid_point);
 
   CVector3D normal;
-
   calcNormal(normal);
 
   //------
@@ -628,11 +626,9 @@ CGeomFace3D::
 getColorFactor(double *factor)
 {
   CPoint3D mid_point;
-
   getMidPoint(mid_point);
 
   CVector3D normal;
-
   calcNormal(normal);
 
   CVector3D dir(mid_point, CPoint3D(0, 0, 1));
