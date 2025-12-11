@@ -10,6 +10,14 @@ CGeomPyramid3D(CGeomScene3D *pscene, const std::string &name,
   addGeometry(xc, yc, zc, w, h);
 }
 
+CGeomPyramid3D::
+CGeomPyramid3D(CGeomScene3D *pscene, const std::string &name,
+               const CPoint3D &c, double w, double h) :
+ CGeomObject3D(pscene, name)
+{
+  addGeometry(c.x, c.y, c.z, w, h);
+}
+
 void
 CGeomPyramid3D::
 addGeometry(double xc, double yc, double zc, double w, double h)

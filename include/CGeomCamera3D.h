@@ -5,6 +5,7 @@
 #include <CCoordFrame3D.h>
 #include <CGeomObject3D.h>
 #include <CGeomVertex3D.h>
+#include <accessor.h>
 
 class CGeomCamera3D {
  public:

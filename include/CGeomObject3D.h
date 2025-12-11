@@ -17,6 +17,8 @@ class CGeom3DRenderer;
 class CGeomAnimationData;
 class CGeomNodeData;
 
+// If override need to implement constructor, copy constructor, destructor, dup
+
 class CGeomObject3D {
  public:
   using FaceList         = std::vector<CGeomFace3D *>;
@@ -24,8 +26,8 @@ class CGeomObject3D {
   using LineList         = std::vector<CGeomLine3D *>;
   using VertexList       = std::vector<CGeomVertex3D *>;
   using VertexIList      = std::vector<uint>;
-  using VertexFaceList   = std::map<uint,FaceIList>;
-  using VertexFaceNormal = std::map<uint,CVector3D>;
+  using VertexFaceList   = std::map<uint, FaceIList>;
+  using VertexFaceNormal = std::map<uint, CVector3D>;
 
   enum Transform {
     NONE,
@@ -62,14 +64,21 @@ class CGeomObject3D {
 
   CGeomObject3D(const CGeomObject3D &object);
 
+  CGeomObject3D &operator=(const CGeomObject3D &rhs) = delete;
+
   virtual ~CGeomObject3D();
 
   virtual CGeomObject3D *dup() const;
 
-  //------
+  //---
 
   void setScene(CGeomScene3D *scene) { pscene_ = scene; }
   CGeomScene3D *getScene() const { return pscene_; }
+
+  //---
+
+  const uint &getInd() const { return ind_; }
+  void setInd(const uint &i) { ind_ = i; }
 
   const std::string &getName() const { return name_; }
   void setName(const std::string &name) { name_ = name; }
@@ -77,8 +86,15 @@ class CGeomObject3D {
   const std::string &getId() const { return id_; }
   void setId(const std::string &id) { id_ = id; }
 
-  ACCESSOR(Selected, bool, selected)
-  ACCESSOR(Visible , bool, visible )
+  //---
+
+  bool getSelected() const { return selected_; }
+  void setSelected(bool b) { selected_ = b; }
+
+  bool getHierSelected() const;
+
+  bool getVisible() const { return visible_; }
+  void setVisible(bool b) { visible_ = b; }
 
   //---
 
@@ -258,7 +274,10 @@ class CGeomObject3D {
   //---
 
   // individual face appearance
+  CRGBA getFaceColor() const;
   void setFaceColor(const CRGBA &rgba);
+
+  CRGBA getFaceColor(uint face_num) const;
   void setFaceColor(uint face_num, const CRGBA &rgba);
 
   void setFaceDiffuse(const CRGBA &rgba);
@@ -507,15 +526,13 @@ class CGeomObject3D {
  private:
   void validatePObject();
 
- private:
-  CGeomObject3D &operator=(const CGeomObject3D &rhs);
-
  protected:
   using TexturePoints = std::vector<CPoint3D>;
   using Normals       = std::vector<CVector3D>;
 
   CGeomScene3D* pscene_ { nullptr };
 
+  uint        ind_ { 0 };
   std::string name_;
   std::string id_;
   bool        selected_ { false };

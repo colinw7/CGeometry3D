@@ -6,7 +6,6 @@
 #include <CRGBA.h>
 #include <CClipSide.h>
 #include <CGeomPoint3D.h>
-#include <accessor.h>
 #include <vector>
 #include <optional>
 

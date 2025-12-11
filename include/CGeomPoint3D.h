@@ -1,7 +1,6 @@
 #ifndef CGEOM_POINT_3D_H
 #define CGEOM_POINT_3D_H
 
-#include <accessor.h>
 #include <CPoint3D.h>
 #include <CCoordFrame3D.h>
 
@@ -19,11 +18,20 @@ class CGeomPoint3D {
 
   CGeomPoint3D &operator=(const CGeomPoint3D &vertex);
 
-  ACCESSOR(Model    , CPoint3D , model    )
-  ACCESSOR(Current  , CPoint3D , current  )
-  ACCESSOR(Viewed   , CPoint3D , viewed   )
-  ACCESSOR(Projected, CPoint3D , projected)
-  ACCESSOR(Pixel    , CPoint3D , pixel    )
+  const CPoint3D &getModel() const { return model_; }
+  void setModel(const CPoint3D &v) { model_ = v; }
+
+  const CPoint3D &getCurrent() const { return current_; }
+  void setCurrent(const CPoint3D &v) { current_ = v; }
+
+  const CPoint3D &getViewed() const { return viewed_; }
+  void setViewed(const CPoint3D &v) { viewed_ = v; }
+
+  const CPoint3D &getProjected() const { return projected_; }
+  void setProjected(const CPoint3D &v) { projected_ = v; }
+
+  const CPoint3D &getPixel() const { return pixel_; }
+  void setPixel(const CPoint3D &v) { pixel_ = v; }
 
   void place(const CMatrix3D &matrix);
 

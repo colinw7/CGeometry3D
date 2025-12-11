@@ -70,6 +70,8 @@ init()
 {
   frontMaterial_ = CGeometryInst->createMaterial();
   backMaterial_  = CGeometryInst->createMaterial();
+
+  setVisible(true);
 }
 
 CGeomFace3D *
@@ -206,9 +208,9 @@ setMaskMapping(const std::vector<CPoint2D> &points)
 
 void
 CGeomFace3D::
-setLighted(bool lighted)
+setLighted(bool b)
 {
-  if (lighted)
+  if (b)
     flags_ |= LIGHTED;
   else
     flags_ &= uint(~LIGHTED);
@@ -216,12 +218,32 @@ setLighted(bool lighted)
 
 void
 CGeomFace3D::
-setTwoSided(bool two_sided)
+setTwoSided(bool b)
 {
-  if (two_sided)
+  if (b)
     flags_ |= TWO_SIDED;
   else
     flags_ &= uint(~TWO_SIDED);
+}
+
+void
+CGeomFace3D::
+setSelected(bool b)
+{
+  if (b)
+    flags_ |= SELECTED;
+  else
+    flags_ &= uint(~SELECTED);
+}
+
+void
+CGeomFace3D::
+setVisible(bool b)
+{
+  if (b)
+    flags_ |= VISIBLE;
+  else
+    flags_ &= uint(~VISIBLE);
 }
 
 void

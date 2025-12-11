@@ -7,6 +7,8 @@ class CGeomPyramid3D : public CGeomObject3D {
  public:
   CGeomPyramid3D(CGeomScene3D *pscene, const std::string &name,
                  double xc, double yc, double zc, double w, double h);
+  CGeomPyramid3D(CGeomScene3D *pscene, const std::string &name,
+                 const CPoint3D &c, double w, double h);
 
  ~CGeomPyramid3D() { }
 

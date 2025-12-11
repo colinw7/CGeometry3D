@@ -2,11 +2,25 @@
 #include <CConv.h>
 
 CGeomCube3D::
+CGeomCube3D(CGeomScene3D *pscene, const std::string &name, const CPoint3D &c, double r) :
+ CGeomObject3D(pscene, name)
+{
+  addGeometry(this, c.x, c.y, c.z, r);
+}
+
+CGeomCube3D::
 CGeomCube3D(CGeomScene3D *pscene, const std::string &name,
             double xc, double yc, double zc, double r) :
  CGeomObject3D(pscene, name)
 {
   addGeometry(this, xc, yc, zc, r);
+}
+
+void
+CGeomCube3D::
+addGeometry(CGeomObject3D *object, const CPoint3D &c, double r)
+{
+  addGeometry(object, c.x, c.y, c.z, r);
 }
 
 void

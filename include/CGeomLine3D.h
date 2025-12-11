@@ -21,7 +21,8 @@ class CGeomLine3D {
 
   void setObject(CGeomObject3D *object) { pobject_ = object; }
 
-  ACCESSOR(Ind, uint, ind)
+  const uint &getInd() const { return ind_; }
+  void setInd(const uint &i) { ind_ = i; }
 
   void setColor(const CRGBA &rgba) {
     material_.setColor(rgba);

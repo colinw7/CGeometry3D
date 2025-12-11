@@ -24,8 +24,10 @@ class CGeomFace3D {
   using SubLineList   = std::vector<CGeomLine3D *>;
 
   enum {
-    LIGHTED   = (1<<0),
-    TWO_SIDED = (1<<1)
+    LIGHTED   = (1L<<0),
+    TWO_SIDED = (1L<<1),
+    SELECTED  = (1L<<2),
+    VISIBLE   = (1L<<3)
   };
 
  public:
@@ -34,6 +36,8 @@ class CGeomFace3D {
 
   CGeomFace3D(const CGeomFace3D &face);
 
+  CGeomFace3D &operator=(const CGeomFace3D &rhs) = delete;
+
   virtual ~CGeomFace3D() { }
 
   virtual CGeomFace3D *dup() const;
@@ -41,20 +45,26 @@ class CGeomFace3D {
   //---
 
   CGeomObject3D *getObject() const { return pobject_; }
-
   void setObject(CGeomObject3D *object);
 
   //---
 
-  ACCESSOR(Ind, uint, ind)
+  const uint &getInd() const { return ind_; }
+  void setInd(const uint &i) { ind_ = i; }
 
   //---
 
-  bool getLighted () const { return (flags_ & LIGHTED  ); }
-  bool getTwoSided() const { return (flags_ & TWO_SIDED); }
+  bool getLighted () const { return (flags_ & LIGHTED); }
+  void setLighted(bool b);
 
-  void setLighted(bool lighted);
-  void setTwoSided(bool twoSided);
+  bool getTwoSided() const { return (flags_ & TWO_SIDED); }
+  void setTwoSided(bool b);
+
+  bool getSelected() const { return (flags_ & SELECTED); }
+  void setSelected(bool b);
+
+  bool getVisible() const { return (flags_ & VISIBLE); }
+  void setVisible(bool b);
 
   //---
 
@@ -253,8 +263,6 @@ class CGeomFace3D {
   CPolygonOrientation orientation() const;
 
  private:
-  CGeomFace3D &operator=(const CGeomFace3D &rhs);
-
   void init();
 
  protected:

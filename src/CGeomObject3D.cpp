@@ -90,6 +90,21 @@ dup() const
 
 //-----------
 
+bool
+CGeomObject3D::
+getHierSelected() const
+{
+  if (getSelected())
+    return true;
+
+  if (parent_)
+    return parent_->getHierSelected();
+
+  return false;
+}
+
+//-----------
+
 void
 CGeomObject3D::
 addChild(CGeomObject3D *child)
@@ -451,12 +466,29 @@ getGroup(const std::string &name)
   return (*p).second;
 }
 
+CRGBA
+CGeomObject3D::
+getFaceColor() const
+{
+  if (faces_.empty())
+    return CRGBA::white();
+
+  return getFaceColor(0);
+}
+
 void
 CGeomObject3D::
 setFaceColor(const CRGBA &rgba)
 {
   for (auto *face : faces_)
     face->setColor(rgba);
+}
+
+CRGBA
+CGeomObject3D::
+getFaceColor(uint face_num) const
+{
+  return faces_[face_num]->getColor();
 }
 
 void
