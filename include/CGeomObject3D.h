@@ -98,6 +98,11 @@ class CGeomObject3D {
 
   //---
 
+  bool isDrawPosition() const { return drawPosition_; }
+  void setDrawPosition(bool b) { drawPosition_ = b; }
+
+  //---
+
   CGeomObject3D *parent() const { return parent_; }
   const std::vector<CGeomObject3D *> &children() const { return children_; }
 
@@ -335,7 +340,7 @@ class CGeomObject3D {
 
   //---
 
-  // skeletion
+  // skeleton
   bool hasNode(int i) const;
   void addNode(int i, const CGeomNodeData &data);
 
@@ -401,8 +406,17 @@ class CGeomObject3D {
 
   void transform(const CMatrix3D &matrix);
 
-  const CMatrix3D &getTransform() const { return transform_; }
-  void setTransform(const CMatrix3D &v) { transform_ = v; }
+  CMatrix3D getTransform() const;
+  void setTransform(const CMatrix3D &m);
+
+  CMatrix3D getTranslate() const;
+  void setTranslate(const CMatrix3D &m);
+
+  CMatrix3D getRotate() const;
+  void setRotate(const CMatrix3D &m);
+
+  CMatrix3D getScale() const;
+  void setScale(const CMatrix3D &m);
 
   CMatrix3D getHierTransform() const;
 
@@ -503,6 +517,14 @@ class CGeomObject3D {
 
   //---
 
+  void swapYZ();
+
+  void invertX();
+  void invertY();
+  void invertZ();
+
+  //---
+
   // spin animation
   void resetSpin() { da_ = CVector3D(0, 0, 0); }
 
@@ -530,14 +552,16 @@ class CGeomObject3D {
   using TexturePoints = std::vector<CPoint3D>;
   using Normals       = std::vector<CVector3D>;
 
+  // scene
   CGeomScene3D* pscene_ { nullptr };
 
+  // state
   uint        ind_ { 0 };
   std::string name_;
   std::string id_;
   bool        selected_ { false };
   bool        visible_ { true };
-  bool        draw_position_ { true };
+  bool        drawPosition_ { true };
 
   // position
   CCoordFrame3D coordFrame_;
@@ -566,7 +590,17 @@ class CGeomObject3D {
   int       rootNode_ { -1 };
 
   CMatrix3D viewMatrix_;
-  CMatrix3D transform_ { CMatrix3D::identity() };
+
+  struct TransformData {
+    bool global { true };
+    CMatrix3D transform { CMatrix3D::identity() };
+
+    CMatrix3D translate { CMatrix3D::identity() };
+    CMatrix3D rotate    { CMatrix3D::identity() };
+    CMatrix3D scale     { CMatrix3D::identity() };
+  };
+
+  TransformData transformData_;
 
   // motion
   CVector3D dv_ { 0, 0, 0 };

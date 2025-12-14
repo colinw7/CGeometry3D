@@ -70,7 +70,17 @@ class CGeomVertex3D : public CGeomPoint3D {
 
   //---
 
+  void swapYZ();
+
+  void invertX();
+  void invertY();
+  void invertZ();
+
+  //---
+
   void draw(CGeomZBuffer *zbuffer);
+
+  //---
 
   void print(std::ostream &os) const {
     CGeomPoint3D::print(os);

@@ -20,7 +20,7 @@ CGeomObject3D(const CGeomObject3D &object) :
  id_              (object.id_),
  selected_        (object.selected_),
  visible_         (object.visible_),
- draw_position_   (object.draw_position_),
+ drawPosition_    (object.drawPosition_),
  coordFrame_      (object.coordFrame_),
  position_        (object.position_),
  diffuseTexture_  (object.diffuseTexture_),
@@ -89,6 +89,79 @@ dup() const
 }
 
 //-----------
+
+CMatrix3D
+CGeomObject3D::
+getTransform() const
+{
+  if (transformData_.global)
+    return transformData_.transform;
+  else
+    return transformData_.translate*transformData_.rotate*transformData_.scale;
+}
+
+void
+CGeomObject3D::
+setTransform(const CMatrix3D &m)
+{
+  transformData_.global = true;
+
+  transformData_.transform = m;
+}
+
+CMatrix3D
+CGeomObject3D::
+getTranslate() const
+{
+  if (transformData_.global)
+    return CMatrix3D::identity();
+  else
+    return transformData_.translate;
+}
+
+void
+CGeomObject3D::
+setTranslate(const CMatrix3D &m)
+{
+  transformData_.global    = false;
+  transformData_.translate = m;
+}
+
+CMatrix3D
+CGeomObject3D::
+getRotate() const
+{
+  if (transformData_.global)
+    return CMatrix3D::identity();
+  else
+    return transformData_.rotate;
+}
+
+void
+CGeomObject3D::
+setRotate(const CMatrix3D &m)
+{
+  transformData_.global = false;
+  transformData_.rotate = m;
+}
+
+CMatrix3D
+CGeomObject3D::
+getScale() const
+{
+  if (transformData_.global)
+    return CMatrix3D::identity();
+  else
+    return transformData_.scale;
+}
+
+void
+CGeomObject3D::
+setScale(const CMatrix3D &m)
+{
+  transformData_.global = false;
+  transformData_.scale  = m;
+}
 
 bool
 CGeomObject3D::
@@ -1477,7 +1550,7 @@ drawSolid(const CGeomCamera3D &camera, CGeom3DRenderer *renderer)
 
   // drawSubLines(renderer);
 
-  // if (draw_position_)
+  // if (isDrawPosition())
   //   drawPosition(renderer);
 
   if (getSelected())
@@ -1495,7 +1568,7 @@ drawSolid(const CGeomCamera3D &camera, CGeomZBuffer *zbuffer)
 
   drawSubLines(zbuffer);
 
-  if (draw_position_)
+  if (isDrawPosition())
     drawPosition(zbuffer);
 
   if (getSelected())
@@ -1513,7 +1586,7 @@ drawWireframe(const CGeomCamera3D &camera, CGeom3DRenderer *renderer)
 
   //drawSubLines(zbuffer);
 
-  //if (draw_position_)
+  //if (isDrawPosition())
   //  drawPosition(zbuffer);
 
   if (getSelected())
@@ -1531,7 +1604,7 @@ drawWireframe(const CGeomCamera3D &camera, CGeomZBuffer *zbuffer)
 
   drawSubLines(zbuffer);
 
-  if (draw_position_)
+  if (isDrawPosition())
     drawPosition(zbuffer);
 
   if (getSelected())
@@ -1972,6 +2045,86 @@ resizeModelZ(double dz)
     vertex->setModel(model);
   }
 }
+
+//---
+
+void
+CGeomObject3D::
+swapYZ()
+{
+#if 0
+  for (auto *face : faces_)
+    face->swapYZ();
+
+  for (auto *line : lines_)
+    line->swapYZ();
+#endif
+
+  for (auto *vertex : vertices_)
+    vertex->swapYZ();
+
+  for (auto *child : children_)
+    child->swapYZ();
+}
+
+void
+CGeomObject3D::
+invertX()
+{
+#if 0
+  for (auto *face : faces_)
+    face->invertX();
+
+  for (auto *line : lines_)
+    line->invertX();
+#endif
+
+  for (auto *vertex : vertices_)
+    vertex->invertX();
+
+  for (auto *child : children_)
+    child->invertX();
+}
+
+void
+CGeomObject3D::
+invertY()
+{
+#if 0
+  for (auto *face : faces_)
+    face->invertY();
+
+  for (auto *line : lines_)
+    line->invertY();
+#endif
+
+  for (auto *vertex : vertices_)
+    vertex->invertY();
+
+  for (auto *child : children_)
+    child->invertY();
+}
+
+void
+CGeomObject3D::
+invertZ()
+{
+#if 0
+  for (auto *face : faces_)
+    face->invertZ();
+
+  for (auto *line : lines_)
+    line->invertZ();
+#endif
+
+  for (auto *vertex : vertices_)
+    vertex->invertZ();
+
+  for (auto *child : children_)
+    child->invertZ();
+}
+
+//---
 
 bool
 CGeomObject3D::

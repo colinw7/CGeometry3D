@@ -2,31 +2,14 @@
 #include <CGeomCamera3D.h>
 
 CGeomPoint3D::
-CGeomPoint3D(const CGeomPoint3D &vertex) :
- model_    (vertex.model_),
- current_  (vertex.current_),
- viewed_   (vertex.viewed_),
- projected_(vertex.projected_),
- pixel_    (vertex.pixel_)
+CGeomPoint3D(const CPoint3D &point) :
+ model_(point), current_(point), viewed_(point), projected_(point), pixel_(point)
 {
 }
 
 CGeomPoint3D::
 ~CGeomPoint3D()
 {
-}
-
-CGeomPoint3D &
-CGeomPoint3D::
-operator=(const CGeomPoint3D &vertex)
-{
-  model_     = vertex.model_;
-  current_   = vertex.current_;
-  viewed_    = vertex.viewed_;
-  projected_ = vertex.projected_;
-  pixel_     = vertex.pixel_;
-
-  return *this;
 }
 
 void
@@ -108,4 +91,32 @@ CGeomPoint3D::
 toPixel(const CGeomCamera3D &camera)
 {
   camera.getWorldMatrix().multiplyPoint(projected_, pixel_);
+}
+
+void
+CGeomPoint3D::
+swapYZ()
+{
+  std::swap(model_.y, model_.z);
+}
+
+void
+CGeomPoint3D::
+invertX()
+{
+  model_.x = -model_.x;
+}
+
+void
+CGeomPoint3D::
+invertY()
+{
+  model_.y = -model_.y;
+}
+
+void
+CGeomPoint3D::
+invertZ()
+{
+  model_.z = -model_.z;
 }

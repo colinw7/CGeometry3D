@@ -47,3 +47,43 @@ draw(CGeomZBuffer *zbuffer)
 {
   zbuffer->getRenderer()->drawPoint(CIPoint2D(int(pixel_.x), int(pixel_.y)));
 }
+
+void
+CGeomVertex3D::
+swapYZ()
+{
+  if (normal_)
+    normal_ = CVector3D(normal_->x(), normal_->z(), normal_->y());
+
+  CGeomPoint3D::swapYZ();
+}
+
+void
+CGeomVertex3D::
+invertX()
+{
+  if (normal_)
+    normal_ = CVector3D(-normal_->x(), normal_->y(), normal_->z());
+
+  CGeomPoint3D::invertX();
+}
+
+void
+CGeomVertex3D::
+invertY()
+{
+  if (normal_)
+    normal_ = CVector3D(normal_->x(), -normal_->y(), normal_->z());
+
+  CGeomPoint3D::invertY();
+}
+
+void
+CGeomVertex3D::
+invertZ()
+{
+  if (normal_)
+    normal_ = CVector3D(normal_->x(), normal_->y(), -normal_->z());
+
+  CGeomPoint3D::invertZ();
+}
