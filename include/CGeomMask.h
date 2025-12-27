@@ -130,7 +130,7 @@ class CGeomMask {
 
     CImageFileSrc src(file);
 
-    CImagePtr image = CImageMgrInst->createImage(src);
+    auto image = CImageMgrInst->createImage(src);
 
     image->read(filename);
 

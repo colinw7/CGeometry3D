@@ -27,7 +27,7 @@ addPrimitive(CGeomObject3D *object)
 {
   primitives_.push_back(object);
 
-  primitive_map_[object->getName()] = object;
+  primitiveMap_[object->getName()] = object;
 }
 
 CGeomObject3D &
@@ -41,9 +41,9 @@ CGeomObject3D *
 CGeomScene3D::
 getPrimitiveP(const std::string &name) const
 {
-  auto p = primitive_map_.find(name);
+  auto p = primitiveMap_.find(name);
 
-  if (p != primitive_map_.end())
+  if (p != primitiveMap_.end())
     return (*p).second;
 
   return nullptr;
@@ -55,14 +55,14 @@ addObject(CGeomObject3D *object)
 {
   objects_.push_back(object);
 
-  object_map_[object->getName()] = object;
+  objectMap_[object->getName()] = object;
 }
 
 void
 CGeomScene3D::
 removeObject(CGeomObject3D *object, bool force)
 {
-  object_map_[object->getName()] = nullptr;
+  objectMap_[object->getName()] = nullptr;
 
   if (force) {
     auto objects = objects_;
@@ -85,10 +85,22 @@ CGeomObject3D *
 CGeomScene3D::
 getObjectP(const std::string &name) const
 {
-  auto p = object_map_.find(name);
+  auto p = objectMap_.find(name);
 
-  if (p != object_map_.end())
+  if (p != objectMap_.end())
     return (*p).second;
+
+  return nullptr;
+}
+
+CGeomObject3D *
+CGeomScene3D::
+getObjectByInd(uint ind) const
+{
+  for (auto *object : objects_) {
+    if (object->getInd() == ind)
+      return object;
+  }
 
   return nullptr;
 }
@@ -120,21 +132,21 @@ void
 CGeomScene3D::
 addLight(CGeomLight3D *light)
 {
-  light_mgr_.addLight(light);
+  lightMgr_.addLight(light);
 }
 
 uint
 CGeomScene3D::
 getNumLights() const
 {
-  return light_mgr_.getNumLights();
+  return lightMgr_.getNumLights();
 }
 
 CGeomLight3D *
 CGeomScene3D::
 getLight(uint i)
 {
-  return light_mgr_.getLight(i);
+  return lightMgr_.getLight(i);
 }
 
 void
@@ -258,42 +270,42 @@ void
 CGeomScene3D::
 lightsMoveZ(double dz)
 {
-  light_mgr_.moveZ(dz);
+  lightMgr_.moveZ(dz);
 }
 
 void
 CGeomScene3D::
 lightsMoveY(double dy)
 {
-  light_mgr_.moveY(dy);
+  lightMgr_.moveY(dy);
 }
 
 void
 CGeomScene3D::
 lightsMoveX(double dx)
 {
-  light_mgr_.moveX(dx);
+  lightMgr_.moveX(dx);
 }
 
 void
 CGeomScene3D::
 lightsRotateZ(double dz)
 {
-  light_mgr_.rotateZ(dz);
+  lightMgr_.rotateZ(dz);
 }
 
 void
 CGeomScene3D::
 lightsRotateY(double dy)
 {
-  light_mgr_.rotateY(dy);
+  lightMgr_.rotateY(dy);
 }
 
 void
 CGeomScene3D::
 lightsRotateX(double dx)
 {
-  light_mgr_.rotateX(dx);
+  lightMgr_.rotateX(dx);
 }
 
 void
@@ -342,11 +354,8 @@ objectsRotate(const CPoint3D &angle)
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->rotate(angle);
+  for (auto *object : objects)
+    object->rotate(angle);
 }
 
 void
@@ -355,11 +364,8 @@ objectsRotateX(double dx)
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->rotateX(dx);
+  for (auto *object : objects)
+    object->rotateX(dx);
 }
 
 void
@@ -368,11 +374,8 @@ objectsRotateY(double dy)
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->rotateY(dy);
+  for (auto *object : objects)
+    object->rotateY(dy);
 }
 
 void
@@ -381,11 +384,8 @@ objectsRotateZ(double dz)
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->rotateZ(dz);
+  for (auto *object : objects)
+    object->rotateZ(dz);
 }
 
 void
@@ -394,11 +394,8 @@ objectsResizeZ(double dz)
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->resizeModelZ(dz);
+  for (auto *object : objects)
+    object->resizeModelZ(dz);
 }
 
 void
@@ -407,11 +404,8 @@ objectsResizeY(double dy)
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->resizeModelY(dy);
+  for (auto *object : objects)
+    object->resizeModelY(dy);
 }
 
 void
@@ -420,12 +414,19 @@ objectsResizeX(double dx)
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->resizeModelX(dx);
+  for (auto *object : objects)
+    object->resizeModelX(dx);
 }
+
+void
+CGeomScene3D::
+objectsScale(double factor)
+{
+  for (auto *object : objects_)
+    object->resizeModel(factor);
+}
+
+//---
 
 void
 CGeomScene3D::
@@ -489,13 +490,10 @@ drawWireframe()
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
+  for (auto *object : objects) {
+    if (! object->getVisible()) continue;
 
-  for ( ; p1 != p2; ++p1) {
-    if (! (*p1)->getVisible()) continue;
-
-    (*p1)->drawWireframe(*getCamera(), renderer_);
+    object->drawWireframe(*getCamera(), renderer_);
   }
 }
 
@@ -505,16 +503,13 @@ drawWireframeZ()
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
+  for (auto *object : objects) {
+    if (! object->getVisible()) continue;
 
-  for ( ; p1 != p2; ++p1) {
-    if (! (*p1)->getVisible()) continue;
-
-    (*p1)->drawWireframe(*getCamera(), getZBuffer());
+    object->drawWireframe(*getCamera(), getZBuffer());
   }
 
-  //light_mgr_.drawWireframe(*getCamera(), getZBuffer());
+  //lightMgr_.drawWireframe(*getCamera(), getZBuffer());
 }
 
 void
@@ -523,16 +518,13 @@ drawSolid()
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
+  for (auto *object : objects) {
+    if (! object->getVisible()) continue;
 
-  for ( ; p1 != p2; ++p1) {
-    if (! (*p1)->getVisible()) continue;
-
-    (*p1)->drawSolid(*getCamera(), renderer_);
+    object->drawSolid(*getCamera(), renderer_);
   }
 
-  //light_mgr_.drawSolid(*getCamera(), renderer_);
+  //lightMgr_.drawSolid(*getCamera(), renderer_);
 }
 
 void
@@ -541,17 +533,16 @@ drawSolidZ()
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
+  for (auto *object : objects) {
+    if (! object->getVisible()) continue;
 
-  for ( ; p1 != p2; ++p1) {
-    if (! (*p1)->getVisible()) continue;
-
-    (*p1)->drawSolid(*getCamera(), getZBuffer());
+    object->drawSolid(*getCamera(), getZBuffer());
   }
 
-  //light_mgr_.drawSolid(*getCamera(), getZBuffer());
+  //lightMgr_.drawSolid(*getCamera(), getZBuffer());
 }
+
+//---
 
 void
 CGeomScene3D::
@@ -559,27 +550,12 @@ modelToPixel()
 {
   const ObjectList &objects = getObjects();
 
-  ObjectList::const_iterator p1 = objects.begin();
-  ObjectList::const_iterator p2 = objects.end  ();
+  for (auto *object : objects)
+    object->modelToPixel(*getCamera());
 
-  for ( ; p1 != p2; ++p1) {
-    (*p1)->modelToPixel(*getCamera());
-  }
-
-  light_mgr_.modelToPixel(*getCamera());
+  lightMgr_.modelToPixel(*getCamera());
 
   axes_->modelToPixel(*getCamera());
-}
-
-void
-CGeomScene3D::
-objectsScale(double factor)
-{
-  ObjectList::iterator p1 = objects_.begin();
-  ObjectList::iterator p2 = objects_.end  ();
-
-  for ( ; p1 != p2; ++p1)
-    (*p1)->resizeModel(factor);
 }
 
 CGeomFace3D *
@@ -603,12 +579,12 @@ getZAt(int x, int y)
 bool
 CGeomScene3D::
 lightPoint(const CPoint3D &point, const CVector3D &normal,
-           const CMaterial &material, CRGBA &rgba) const
+           const CGeomMaterial &material, CRGBA &rgba) const
 {
   if (getNumLights() == 0)
     return false;
 
-  rgba = light_mgr_.lightPoint(point, normal, material);
+  rgba = lightMgr_.lightPoint(point, normal, material);
 
   rgba.clamp();
 

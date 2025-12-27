@@ -1,10 +1,11 @@
 #ifndef CGEOM_FILL_3D
 #define CGEOM_FILL_3D
 
+#include <CGeomMaterial.h>
+
 #include <CRGBA.h>
 #include <CPoint2D.h>
 #include <CVector3D.h>
-#include <CMaterial.h>
 #include <CImagePtr.h>
 #include <vector>
 
@@ -219,7 +220,7 @@ class CGeomFill3D {
 
   void setStippled(bool flag);
 
-  void light(const CMaterial &material, const CRGBA &ambient,
+  void light(const CGeomMaterial &material, const CRGBA &ambient,
              const std::vector<CGeomLight3D *> &lights);
 
   void fogExp(double density);

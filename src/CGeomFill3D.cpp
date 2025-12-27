@@ -372,7 +372,7 @@ setStippled(bool stippled)
 
 void
 CGeomFill3D::
-light(const CMaterial &material, const CRGBA &ambient,
+light(const CGeomMaterial &material, const CRGBA &ambient,
       const std::vector<CGeomLight3D *> &lights)
 {
   CPoint3D gpoint;
@@ -392,7 +392,7 @@ light(const CMaterial &material, const CRGBA &ambient,
       gpoint.x = x;
       gpoint.z = point->z;
 
-      CRGBA rgba = material.getEmission();
+      CRGBA rgba = material.getEmission(CRGBA(0.0, 0.0, 0.0, 1.0));
 
       rgba += ambient*point->rgba;
 

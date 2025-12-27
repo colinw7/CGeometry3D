@@ -49,7 +49,9 @@ class CGeomPoint3D {
 
   //---
 
+  void swapXY();
   void swapYZ();
+  void swapZX();
 
   void invertX();
   void invertY();

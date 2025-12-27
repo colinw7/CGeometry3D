@@ -5,9 +5,10 @@
 #include <CGeomPoint3D.h>
 #include <CCoordFrame3D.h>
 #include <CBBox3D.h>
-#include <CMatrix3D.h>
 #include <CVector4D.h>
-#include <CQuaternion.h>
+#include <CTranslate3D.h>
+#include <CScale3D.h>
+#include <CRotate3D.h>
 #include <map>
 
 class CGeomScene3D;
@@ -289,7 +290,7 @@ class CGeomObject3D {
   void setFaceSpecular(const CRGBA &rgba);
   void setFaceEmission(const CRGBA &rgba);
 
-  void setFaceMaterial(uint face_num, const CMaterial &material);
+  void setFaceMaterial(uint face_num, const CGeomMaterial &material);
 
   void setFaceTexture(uint face_num, CGeomTexture *texture);
 
@@ -328,8 +329,13 @@ class CGeomObject3D {
   //---
 
   // material
-  void setFrontMaterial(const CMaterial &material);
-  void setBackMaterial (const CMaterial &material);
+
+  // set material for all faces
+  void setFrontMaterial(const CGeomMaterial &material);
+  void setBackMaterial (const CGeomMaterial &material);
+
+  CGeomMaterial *getMaterialP() { return materialP_; }
+  void setMaterialP(CGeomMaterial *material) { materialP_ = material; }
 
   //---
 
@@ -351,16 +357,23 @@ class CGeomObject3D {
 
   const CGeomNodeData &getNode(int i) const;
 
+  CGeomNodeData *getNodeByInd(int ind) const;
+
   int getMeshNode() const;
   void setMeshNode(int ind);
 
   int getRootNode() const;
   void setRootNode(int ind);
 
-  void setNodeLocalTransforms(int i, const CMatrix3D &translation,
-                              const CMatrix3D &rotation, const CMatrix3D &scale);
+  void setNodeLocalTransforms(int i, const CTranslate3D &translation,
+                              const CRotate3D &rotation, const CScale3D &scale);
   void setNodeLocalTransform (int i, const CMatrix3D &m);
   void setNodeGlobalTransform(int i, const CMatrix3D &m);
+
+  CMatrix3D getNodeHierTransform(const CGeomNodeData &node) const;
+
+  CMatrix3D getNodeAnimHierTransform(CGeomNodeData &node, const std::string &animName,
+                                     double t) const;
 
   void setNodeAnimationData(int i, const std::string &name, const CGeomAnimationData &data);
 
@@ -372,7 +385,9 @@ class CGeomObject3D {
   bool updateNodesAnimationData(const std::string &name, double t);
 
   bool updateNodeAnimationData(int i, const std::string &name, double t);
-  bool updateNodeAnimationData(const CGeomNodeData &node, const std::string &name, double t);
+  bool updateNodeAnimationData(CGeomNodeData &node, const std::string &name, double t);
+
+  bool updateAnimationData(CGeomAnimationData &animationData, double t) const;
 
   void getAnimationNames(std::vector<std::string> &names) const;
 
@@ -517,7 +532,9 @@ class CGeomObject3D {
 
   //---
 
+  void swapXY();
   void swapYZ();
+  void swapZX();
 
   void invertX();
   void invertY();
@@ -543,7 +560,11 @@ class CGeomObject3D {
   //---
 
   bool lightPoint(const CPoint3D &point, const CVector3D &normal,
-                  const CMaterial &material, CRGBA &rgba) const;
+                  const CGeomMaterial &material, CRGBA &rgba) const;
+
+  //---
+
+  FaceList getMaterialFaces(CGeomMaterial *material) const;
 
  private:
   void validatePObject();
@@ -572,6 +593,9 @@ class CGeomObject3D {
   CGeomTexture* specularTexture_ { nullptr };
   CGeomTexture* normalTexture_   { nullptr };
   CGeomTexture* emissiveTexture_ { nullptr };
+
+  // material
+  CGeomMaterial* materialP_ { nullptr };
 
   // geometry
   FaceList         faces_;
@@ -624,80 +648,6 @@ class CGeomObjectInst3D {
  private:
   CGeomObject3D& object_;
   CCoordFrame3D  coordFrame_;
-};
-
-//---
-
-// set of transformations and associated range to interplate into
-struct CGeomAnimationData {
-  enum class Interpolation {
-    NONE,
-    LINEAR,
-    STEP,
-    CUBICSPLINE
-  };
-
-  // interpolation range
-  std::vector<double>   range;
-  std::optional<double> rangeMin;
-  std::optional<double> rangeMax;
-
-  // transformations (only one non-empty array of these)
-  std::vector<CQuaternion> rotation;
-  std::vector<CVector3D>   translation;
-  std::vector<CVector3D>   scale;
-
-  // interplation type
-  Interpolation interpolation { Interpolation::NONE };
-
-  // current (calculated) transformations
-  mutable CMatrix3D anim_rotation    { CMatrix3D::identity() };
-  mutable CMatrix3D anim_translation { CMatrix3D::identity() };
-  mutable CMatrix3D anim_scale       { CMatrix3D::identity() };
-  // product of above (t*r*s)
-  mutable CMatrix3D anim_matrix      { CMatrix3D::identity() };
-};
-
-//---
-
-// node (joint) data
-struct CGeomNodeData {
-  using AnimationDatas = std::map<std::string, CGeomAnimationData>;
-
-  //---
-
-  bool valid    { false };
-  bool selected { false };
-
-  int         ind     { -1 };
-  std::string name;
-  bool        isJoint { false };
-
-  // parent and children nodes (bones)
-  int              parent { -1 };
-  std::vector<int> children;
-
-  CGeomObject3D *object { nullptr };
-
-  // inverse bind matrix (transform to parent coords)
-  CMatrix3D inverseBindMatrix { CMatrix3D::identity() };
-
-  // animation data per animation name
-  AnimationDatas animationDatas;
-
-  // explicit/default joint transformations
-  mutable CMatrix3D localTranslation { CMatrix3D::identity() };
-  mutable CMatrix3D localRotation    { CMatrix3D::identity() };
-  mutable CMatrix3D localScale       { CMatrix3D::identity() };
-  // product of above (t*r*s)
-  mutable CMatrix3D localTransform   { CMatrix3D::identity() };
-
-  // explicit/default joint hier transformations
-  mutable CMatrix3D globalTransform { CMatrix3D::identity() };
-
-  // current animation matrix (local, hierarchical)
-  mutable CMatrix3D animMatrix     { CMatrix3D::identity() };
-  mutable CMatrix3D hierAnimMatrix { CMatrix3D::identity() };
 };
 
 #endif

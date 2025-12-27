@@ -21,16 +21,14 @@ CGeomFace3D(CGeomObject3D *pobject, const VertexList &vertices) :
 CGeomFace3D::
 CGeomFace3D(const CGeomFace3D &face) :
  pobject_      (face.pobject_),
+ flags_        (face.flags_),
  vertices_     (face.vertices_),
  texturePoints_(face.texturePoints_),
- normal_       (face.normal_),
- flags_        (face.flags_)
+ normal_       (face.normal_)
 {
   init();
 
-  *frontMaterial_ = *face.frontMaterial_;
-  *backMaterial_  = *face.backMaterial_;
-
+  // copy sub faces and sub lines
   for (auto *sub_face : face.sub_faces_) {
     auto *face1 = sub_face->dup();
 
@@ -51,6 +49,12 @@ CGeomFace3D(const CGeomFace3D &face) :
     line->setInd(ind);
   }
 
+  // copy materials
+  *frontMaterial_ = *face.frontMaterial_;
+  *backMaterial_  = *face.backMaterial_;
+  materialP_      = face.materialP_;
+
+  // copy textures (TODO: share)
   if (face.diffuseTexture_)
     diffuseTexture_ = face.diffuseTexture_->dup();
 
@@ -60,6 +64,7 @@ CGeomFace3D(const CGeomFace3D &face) :
   if (face.normalTexture_)
     normalTexture_ = face.normalTexture_->dup();
 
+  // copy mask
   if (face.mask_)
     mask_ = face.mask_->dup();
 }
@@ -620,7 +625,7 @@ getAdjustedColor(CRGBA &rgba)
         factor1 = -factor1;
 //      return false;
 
-      rgba = frontMaterial_->getColor();
+      rgba = getFrontColor();
 
       rgba.scaleRGB(factor1);
     }
@@ -635,7 +640,7 @@ getAdjustedColor(CRGBA &rgba)
 //    return false;
     }
 
-    rgba = frontMaterial_->getColor();
+    rgba = getFrontColor();
 
     rgba.scaleRGB(factor1);
   }

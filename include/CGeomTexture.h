@@ -114,12 +114,9 @@ class CGeomTexture {
 
     CImageFileSrc src(file);
 
-    CImagePtr image = CImageMgrInst->createImage(src);
+    auto image = CImageMgrInst->createImage(src);
 
-    if (image)
-      image_ = new CGeomTextureImage(image);
-
-    setMapping(image_, num_points);
+    setImage(image);
   }
 
   CGeomTexture(const CGeomTexture &texture) :
@@ -144,6 +141,10 @@ class CGeomTexture {
   void setName(const std::string &s) { image_->setName(s); }
 
   CGeomTextureImage *image() const { return image_; }
+
+  void setImage(const CImagePtr &image) {
+    setImage(new CGeomTextureImage(image));
+  }
 
   void setImage(CGeomTextureImage *image) {
     delete image_;
@@ -202,6 +203,30 @@ class CGeomTexture {
   CGeomTextureImage   *image_      { nullptr };
   CGeomTextureMapping *mapping_    { nullptr };
   uint                 num_points_ { 0 };
+};
+
+//---
+
+class CGeomTextureMgr {
+ public:
+  CGeomTextureMgr() { }
+
+  void addTexture(CGeomTexture *texture) {
+    textureMap_[texture->name()] = texture;
+  }
+
+  CGeomTexture *getTexture(const std::string &name) const {
+    auto pm = textureMap_.find(name);
+    if (pm == textureMap_.end())
+      return nullptr;
+
+    return (*pm).second;
+  }
+
+ private:
+  using TextureMap = std::map<std::string, CGeomTexture *>;
+
+  TextureMap textureMap_;
 };
 
 #endif

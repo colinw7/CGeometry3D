@@ -25,6 +25,8 @@ CGeomFill3D.cpp \
 CGeomHyperboloid3D.cpp \
 CGeomLight3D.cpp \
 CGeomLine3D.cpp \
+CGeomMaterial.cpp \
+CGeomNodeData.cpp \
 CGeomObject3D.cpp \
 CGeomParticle3D.cpp \
 CGeomPoint3D.cpp \

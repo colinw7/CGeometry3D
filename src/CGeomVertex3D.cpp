@@ -50,12 +50,32 @@ draw(CGeomZBuffer *zbuffer)
 
 void
 CGeomVertex3D::
+swapXY()
+{
+  if (normal_)
+    normal_ = CVector3D(normal_->y(), normal_->x(), normal_->z());
+
+  CGeomPoint3D::swapXY();
+}
+
+void
+CGeomVertex3D::
 swapYZ()
 {
   if (normal_)
     normal_ = CVector3D(normal_->x(), normal_->z(), normal_->y());
 
   CGeomPoint3D::swapYZ();
+}
+
+void
+CGeomVertex3D::
+swapZX()
+{
+  if (normal_)
+    normal_ = CVector3D(normal_->z(), normal_->y(), normal_->x());
+
+  CGeomPoint3D::swapZX();
 }
 
 void

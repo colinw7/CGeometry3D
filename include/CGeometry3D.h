@@ -35,7 +35,9 @@ class CGeometryFactory {
 
   virtual CGeomCamera3D *createCamera3D(CGeomScene3D *, const std::string &) const;
 
-  virtual CMaterial *createMaterial() const;
+  virtual CGeomLight3D *createLight3D(CGeomScene3D *, const std::string &) const;
+
+  virtual CGeomMaterial *createMaterial() const;
 };
 
 //---
@@ -51,6 +53,7 @@ class CGeometry3D {
 
   void setFactory(CGeometryFactory *factory);
 
+  // factory APIS
   CGeomVertex3D *createVertex3D(CGeomObject3D *pobject, const CPoint3D &point) const;
 
   CGeomLine3D *createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const;
@@ -68,7 +71,11 @@ class CGeometry3D {
 
   CGeomCamera3D *createCamera3D(CGeomScene3D *pscene, const std::string &name) const;
 
-  CMaterial *createMaterial() const;
+  CGeomLight3D *createLight3D(CGeomScene3D *, const std::string &) const;
+
+  CGeomMaterial *createMaterial() const;
+
+  //---
 
  private:
   CGeometryFactory *factory_   { nullptr };

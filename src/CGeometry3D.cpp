@@ -66,11 +66,18 @@ createCamera3D(CGeomScene3D *, const std::string &) const
   return new CGeomPerspectiveCamera3D();
 }
 
-CMaterial *
+CGeomLight3D *
+CGeometryFactory::
+createLight3D(CGeomScene3D *scene, const std::string &name) const
+{
+  return new CGeomLight3D(scene, name);
+}
+
+CGeomMaterial *
 CGeometryFactory::
 createMaterial() const
 {
-  return new CMaterial();
+  return new CGeomMaterial();
 }
 
 //---
@@ -178,7 +185,14 @@ createCamera3D(CGeomScene3D *pscene, const std::string &name) const
   return factory_->createCamera3D(pscene, name);
 }
 
-CMaterial *
+CGeomLight3D *
+CGeometry3D::
+createLight3D(CGeomScene3D *pscene, const std::string &name) const
+{
+  return factory_->createLight3D(pscene, name);
+}
+
+CGeomMaterial *
 CGeometry3D::
 createMaterial() const
 {

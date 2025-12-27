@@ -25,52 +25,40 @@ class CMaterial {
    shininess_(shininess), mirror_(mirror) {
   }
 
-  CMaterial(const CMaterial &m) :
-   ambient_(m.ambient_), diffuse_(m.diffuse_), specular_(m.specular_), emission_(m.emission_),
-   shininess_(m.shininess_), mirror_(m.mirror_) {
+  //---
+
+  void setColor(const CRGBA &c) {
+    setAmbient(c);
+    setDiffuse(c);
   }
 
-  CMaterial &operator=(const CMaterial &material) {
-    if (this != &material) {
-      ambient_   = material.ambient_;
-      diffuse_   = material.diffuse_;
-      specular_  = material.specular_;
-      emission_  = material.emission_;
-      shininess_ = material.shininess_;
-      mirror_    = material.mirror_;
-    }
-
-    return *this;
-  }
-
-  void setColor(const CRGBA &color) {
-    setAmbient(color);
-    setDiffuse(color);
-  }
-
-  void setColor(const CRGBA &color, const CRGBA &specular, const CRGBA &emission) {
-    setAmbient(color);
-    setDiffuse(color);
+  void setColor(const CRGBA &c, const CRGBA &specular, const CRGBA &emission) {
+    setAmbient(c);
+    setDiffuse(c);
 
     setSpecular(specular);
     setEmission(emission);
   }
 
   const OptColor &ambient() const { return ambient_; }
-  void setAmbient(const CRGBA &ambient) { ambient_ = ambient; }
-  CRGBA getAmbient(const CRGBA &c=CRGBA(1.0, 1.0, 1.0, 1.0)) const { return ambient().value_or(c); }
+  void setAmbient(const CRGBA &c) { ambient_ = c; }
+  CRGBA getAmbient(const CRGBA &c=CRGBA(1.0, 1.0, 1.0, 1.0)) const {
+    return ambient().value_or(c); }
 
   const OptColor &diffuse() const { return diffuse_; }
-  void setDiffuse(const CRGBA &diffuse) { diffuse_ = diffuse; }
-  CRGBA getDiffuse(const CRGBA &c=CRGBA(1.0, 1.0, 1.0, 1.0)) const { return diffuse().value_or(c); }
+  void setDiffuse(const CRGBA &c) { diffuse_ = c; }
+  CRGBA getDiffuse(const CRGBA &c=CRGBA(1.0, 1.0, 1.0, 1.0)) const {
+    return diffuse().value_or(c); }
 
   const OptColor &specular() const { return specular_; }
-  void setSpecular(const CRGBA &specular) { specular_ = specular; }
-  CRGBA getSpecular(const CRGBA &c=CRGBA(0.0, 0.0, 0.0, 1.0)) const { return specular().value_or(c); }
+  void setSpecular(const CRGBA &c) { specular_ = c; }
+  CRGBA getSpecular(const CRGBA &c=CRGBA(0.0, 0.0, 0.0, 1.0)) const {
+    return specular().value_or(c); }
 
   const OptColor &emission() const { return emission_; }
-  void setEmission(const CRGBA &emission) { emission_ = emission; }
-  CRGBA getEmission(const CRGBA &c=CRGBA(0.0, 0.0, 0.0, 1.0)) const { return emission().value_or(c); }
+  void setEmission(const CRGBA &c) { emission_ = c; }
+  CRGBA getEmission(const CRGBA &c=CRGBA(0.0, 0.0, 0.0, 1.0)) const {
+    return emission().value_or(c); }
 
   const OptReal &shininess() const { return shininess_; }
   void setShininess(double shininess) { shininess_ = shininess; }
@@ -86,13 +74,13 @@ class CMaterial {
 
   bool equal(const CRGBA &ambient, const CRGBA &diffuse=CRGBA(1, 1, 1),
              const CRGBA &specular=CRGBA(0, 0, 0), const CRGBA &emission=CRGBA(0, 0, 0),
-             double shininess=1.0, bool mirror=false) {
+             double shininess=1.0, bool mirror=false) const {
    return (ambient_   == ambient   && diffuse_  == diffuse &&
            specular_  == specular  && emission_ == emission &&
            shininess_ == shininess && mirror_   == mirror);
   }
 
-  bool equal(const CMaterial &material) {
+  bool equal(const CMaterial &material) const {
     return (ambient_   == material.ambient_   &&
             diffuse_   == material.diffuse_   &&
             specular_  == material.specular_  &&

@@ -6,6 +6,7 @@
 #include <CGeomAxes3D.h>
 #include <CGeomZBuffer.h>
 #include <CGeomCamera3D.h>
+#include <CGeomTexture.h>
 
 class CGeomScene3D {
  public:
@@ -33,6 +34,10 @@ class CGeomScene3D {
   DrawType getDrawType() const { return drawType_; }
   DrawType setDrawType(DrawType drawType) { std::swap(drawType_, drawType); return drawType; }
 
+  //----
+
+  // primitives
+
   void addPrimitive(CGeomObject3D *object);
 
   uint getNumPrimitives() const { return uint(primitives_.size()); }
@@ -43,6 +48,10 @@ class CGeomScene3D {
   CGeomObject3D &getPrimitive (const std::string &name) const;
   CGeomObject3D *getPrimitiveP(const std::string &name) const;
 
+  //----
+
+  // objects
+
   void addObject   (CGeomObject3D *object);
   void removeObject(CGeomObject3D *object, bool force=false);
 
@@ -50,15 +59,21 @@ class CGeomScene3D {
 
   const ObjectList &getObjects() const { return objects_; }
 
-  uint getNumSelectedObjects() const;
-
-  ObjectList getSelectedObjects() const;
-
   CGeomObject3D &getObject (uint i) const { return *objects_[i]; }
   CGeomObject3D *getObjectP(uint i) const { return  objects_[i]; }
 
   CGeomObject3D &getObject (const std::string &name) const;
   CGeomObject3D *getObjectP(const std::string &name) const;
+
+  CGeomObject3D *getObjectByInd(uint ind) const;
+
+  uint getNumSelectedObjects() const;
+
+  ObjectList getSelectedObjects() const;
+
+  //----
+
+  // lights
 
   void addLight(CGeomLight3D *light);
 
@@ -66,6 +81,17 @@ class CGeomScene3D {
 
   CGeomLight3D *getLight(uint i);
 
+  void lightsMoveX(double dx);
+  void lightsMoveY(double dy);
+  void lightsMoveZ(double dz);
+
+  void lightsRotateX(double dx);
+  void lightsRotateY(double dy);
+  void lightsRotateZ(double dz);
+
+  //----
+
+  // bbox
   void getBBox(CBBox3D &bbox) const;
 
   CPoint3D getCenter() const;
@@ -74,6 +100,9 @@ class CGeomScene3D {
 
   CVector3D getSize() const;
 
+  //---
+
+  // camera
   void initCamera();
 
   void cameraMoveX(double dx);
@@ -84,13 +113,7 @@ class CGeomScene3D {
   void cameraRotateY(double dy);
   void cameraRotateZ(double dz);
 
-  void lightsMoveX(double dx);
-  void lightsMoveY(double dy);
-  void lightsMoveZ(double dz);
-
-  void lightsRotateX(double dx);
-  void lightsRotateY(double dy);
-  void lightsRotateZ(double dz);
+  //---
 
   void objectsMove(const CPoint3D &delta);
 
@@ -108,6 +131,12 @@ class CGeomScene3D {
   void objectsResizeY(double dy);
   void objectsResizeZ(double dz);
 
+  void objectsScale(double factor);
+
+  //---
+
+  // draw
+
   void drawInit();
   void drawExec();
   void drawTerm();
@@ -117,16 +146,47 @@ class CGeomScene3D {
   void drawSolid();
   void drawSolidZ();
 
-  void modelToPixel();
+  //---
 
-  void objectsScale(double factor);
+  void modelToPixel();
 
   CGeomFace3D *getFaceAt(int x, int y);
 
   double getZAt(int x, int y);
 
   bool lightPoint(const CPoint3D &point, const CVector3D &normal,
-                  const CMaterial &material, CRGBA &rgba) const;
+                  const CGeomMaterial &material, CRGBA &rgba) const;
+
+  //---
+
+  // materials
+
+  void addMaterial(CGeomMaterial *material) {
+    materialMgr_.addMaterial(material);
+  }
+
+  CGeomMaterial *getMaterial(const std::string &name) const {
+    return materialMgr_.getMaterial(name);
+  }
+
+  std::vector<CGeomMaterial *> getMaterials() const {
+    return materialMgr_.getMaterials();
+  }
+
+  CGeomMaterial *getMaterialById(uint id) const {
+    return materialMgr_.getMaterialById(id);
+  }
+  //---
+
+  // textures
+
+  void addTexture(CGeomTexture *texture) {
+    textureMgr_.addTexture(texture);
+  }
+
+  CGeomTexture *getTexture(const std::string &name) const {
+    return textureMgr_.getTexture(name);
+  }
 
  private:
   CGeomScene3D(const CGeomScene3D &rhs);
@@ -137,16 +197,19 @@ class CGeomScene3D {
   using ZBufferP  = std::unique_ptr<CGeomZBuffer>;
   using CameraP   = std::unique_ptr<CGeomCamera3D>;
   using AxesP     = std::unique_ptr<CGeomAxes3D>;
+  using MaterialP = std::unique_ptr<CGeomMaterial>;
 
-  ObjectMap        primitive_map_;
+  ObjectMap        primitiveMap_;
   ObjectList       primitives_;
-  ObjectMap        object_map_;
+  ObjectMap        objectMap_;
   ObjectList       objects_;
   CGeom3DRenderer* renderer_ { nullptr };
   ZBufferP         zbuffer_;
   bool             useZBuffer_ { true };
   CameraP          camera_;
-  CGeomLight3DMgr  light_mgr_;
+  CGeomLight3DMgr  lightMgr_;
+  CGeomMaterialMgr materialMgr_;
+  CGeomTextureMgr  textureMgr_;
   DrawType         drawType_ { WIRE_FRAME };
   CBBox3D          bbox_;
   AxesP            axes_;

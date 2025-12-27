@@ -30,9 +30,9 @@ class CGeomVertex3D : public CGeomPoint3D {
 
   CGeomVertex3D(const CGeomVertex3D &vertex);
 
-  virtual ~CGeomVertex3D() { }
-
   CGeomVertex3D &operator=(const CGeomVertex3D &rhs);
+
+  virtual ~CGeomVertex3D() { }
 
   virtual CGeomVertex3D *dup() const;
 
@@ -70,7 +70,9 @@ class CGeomVertex3D : public CGeomPoint3D {
 
   //---
 
+  void swapXY();
   void swapYZ();
+  void swapZX();
 
   void invertX();
   void invertY();

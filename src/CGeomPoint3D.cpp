@@ -95,9 +95,23 @@ toPixel(const CGeomCamera3D &camera)
 
 void
 CGeomPoint3D::
+swapXY()
+{
+  std::swap(model_.x, model_.y);
+}
+
+void
+CGeomPoint3D::
 swapYZ()
 {
   std::swap(model_.y, model_.z);
+}
+
+void
+CGeomPoint3D::
+swapZX()
+{
+  std::swap(model_.z, model_.x);
 }
 
 void
