@@ -387,11 +387,11 @@ class CGeomObject3D {
   bool updateNodeAnimationData(int i, const std::string &name, double t);
   bool updateNodeAnimationData(CGeomNodeData &node, const std::string &name, double t);
 
-  bool updateAnimationData(CGeomAnimationData &animationData, double t) const;
+  bool updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, double t) const;
 
   void getAnimationNames(std::vector<std::string> &names) const;
 
-  bool getAnimationRange(const std::string &name, double &min, double &max) const;
+  bool getAnimationTranslationRange(const std::string &name, double &min, double &max) const;
 
   //---
 

@@ -988,12 +988,27 @@ setNodeAnimationTransformData(int i, const std::string &name, const Transform &t
 
   auto &animData = node.getAnimationData(name, data);
 
-  if      (transform == Transform::ROTATION)
-    animData.setRotations(data.rotations());
-  else if (transform == Transform::TRANSLATION)
-    animData.setTranslations(data.translations());
-  else if (transform == Transform::SCALE)
-    animData.setScales(data.scales());
+  if      (transform == Transform::TRANSLATION) {
+    animData.setTranslationRange        (data.translationRange());
+    animData.setTranslationRangeMin     (data.translationRangeMin());
+    animData.setTranslationRangeMax     (data.translationRangeMax());
+    animData.setTranslationInterpolation(data.translationInterpolation());
+    animData.setTranslations            (data.translations());
+  }
+  else if (transform == Transform::ROTATION) {
+    animData.setRotationRange        (data.rotationRange());
+    animData.setRotationRangeMin     (data.rotationRangeMin());
+    animData.setRotationRangeMax     (data.rotationRangeMax());
+    animData.setRotationInterpolation(data.rotationInterpolation());
+    animData.setRotations            (data.rotations());
+  }
+  else if (transform == Transform::SCALE) {
+    animData.setScaleRange        (data.scaleRange());
+    animData.setScaleRangeMin     (data.scaleRangeMin());
+    animData.setScaleRangeMax     (data.scaleRangeMax());
+    animData.setScaleInterpolation(data.scaleInterpolation());
+    animData.setScales            (data.scales());
+  }
 }
 
 bool
@@ -1057,7 +1072,7 @@ updateNodeAnimationData(CGeomNodeData &node, const std::string &name, double t)
   if (node.hasAnimationData(name)) {
     auto &animationData = node.getAnimationData(name);
 
-    if (! updateAnimationData(animationData, t))
+    if (! updateAnimationData(node, animationData, t))
       return false;
 
     anim_matrix = animationData.animMatrix();
@@ -1077,85 +1092,158 @@ updateNodeAnimationData(CGeomNodeData &node, const std::string &name, double t)
 
 bool
 CGeomObject3D::
-updateAnimationData(CGeomAnimationData &animationData, double t) const
+updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, double t) const
 {
-  if (animationData.range().empty())
-    return false;
-
   CTranslate3D anim_translation;
   CRotate3D    anim_rotation;
   CScale3D     anim_scale;
 
-  auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.range());
+  if (! animationData.translations().empty()) {
+    if (animationData.translationRange().empty()) {
+      std::cerr << "Invalid Range for sampler.input data\n";
+      return false;
+    }
 
-  if (iv.first < 0) {
-    std::cerr << "Invalid Range for sampler.input data\n";
-    return false;
-  }
+    auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.translationRange());
 
-  auto ii = iv.first;
-  auto fi = iv.second;
+    if (iv.first < 0) {
+      std::cerr << "Invalid Range for sampler.input data\n";
+      return false;
+    }
 
-  //if (isDebug())
-  //  std::cerr << "    sampler.output ind: " << ii << " " << fi << "\n";
+    auto ii = iv.first;
+    auto fi = iv.second;
 
-  //---
+    //if (isDebug())
+    //  std::cerr << "    sampler.output ind: " << ii << " " << fi << "\n";
 
-  if      (animationData.interpolation() == CGeomAnimationData::Interpolation::LINEAR) {
-    if (! animationData.translations().empty()) {
+    //---
+
+    auto translationInterpolation = animationData.translationInterpolation();
+
+    if      (translationInterpolation == CGeomAnimationData::Interpolation::LINEAR) {
       auto ov = CMathGen::interpRangeSet<CVector3D>(ii, fi, animationData.translations());
 
-      if (ov.first) {
-        //if (isDebug())
-        //  std::cerr << "    translation: " << ov.second << "\n";
-
-        anim_translation = CTranslate3D(ov.second.x(), ov.second.y(), ov.second.z());
+      if (! ov.first) {
+        std::cerr << "Invalid Range for sampler.input data\n";
+        return false;
       }
+
+      //if (isDebug())
+      //  std::cerr << "    translation: " << ov.second << "\n";
+
+      anim_translation = CTranslate3D(ov.second.x(), ov.second.y(), ov.second.z());
     }
-
-    if (! animationData.rotations().empty()) {
-      auto ov = CMathGen::interpRangeSet<CQuaternion>(ii, fi, animationData.rotations());
-
-      if (ov.first) {
-        //if (isDebug())
-        //  std::cerr << "    rotate: " << ov.second << "\n";
-
-        anim_rotation = CRotate3D(ov.second);
-      }
-    }
-
-    if (! animationData.scales().empty()) {
-      auto ov = CMathGen::interpRangeSet<CVector3D>(ii, fi, animationData.scales());
-
-      if (ov.first) {
-        //if (isDebug())
-        //  std::cerr << "    scale: " << ov.second << "\n";
-
-        anim_scale = CScale3D(ov.second.x(), ov.second.y(), ov.second.z());
-      }
-    }
-  }
-  else if (animationData.interpolation() == CGeomAnimationData::Interpolation::STEP) {
-    if (! animationData.translations().empty()) {
+    else if (translationInterpolation == CGeomAnimationData::Interpolation::STEP) {
       const auto &translation = animationData.translations()[ii];
 
       anim_translation = CTranslate3D(translation.x(), translation.y(), translation.z());
     }
+    else {
+      std::cerr << "Invalid Interpolation for sampler.input data\n";
+      return false;
+    }
+  }
+  else
+    anim_translation = node.localTranslation();
 
-    if (! animationData.rotations().empty()) {
+  if (! animationData.rotations().empty()) {
+    if (animationData.rotationRange().empty()) {
+      std::cerr << "Invalid Range for sampler.input data\n";
+      return false;
+    }
+
+    auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.rotationRange());
+
+    if (iv.first < 0) {
+      std::cerr << "Invalid Range for sampler.input data\n";
+      return false;
+    }
+
+    auto ii = iv.first;
+    auto fi = iv.second;
+
+    //if (isDebug())
+    //  std::cerr << "    sampler.output ind: " << ii << " " << fi << "\n";
+
+    //---
+
+    auto rotationInterpolation = animationData.rotationInterpolation();
+
+    if      (rotationInterpolation == CGeomAnimationData::Interpolation::LINEAR) {
+      auto ov = CMathGen::interpRangeSet<CQuaternion>(ii, fi, animationData.rotations());
+
+      if (! ov.first) {
+        std::cerr << "Invalid Range for sampler.input data\n";
+        return false;
+      }
+
+      //if (isDebug())
+      //  std::cerr << "    rotate: " << ov.second << "\n";
+
+      anim_rotation = CRotate3D(ov.second);
+    }
+    else if (rotationInterpolation == CGeomAnimationData::Interpolation::STEP) {
       const auto &rotation = animationData.rotations()[ii];
 
       anim_rotation = CRotate3D(rotation);
     }
+    else {
+      std::cerr << "Invalid Interpolation for sampler.input data\n";
+      return false;
+    }
+  }
+  else
+    anim_rotation = node.localRotation();
 
-    if (! animationData.scales().empty()) {
+  if (! animationData.scales().empty()) {
+    if (animationData.scaleRange().empty()) {
+      std::cerr << "Invalid Range for sampler.input data\n";
+      return false;
+    }
+
+    auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.scaleRange());
+
+    if (iv.first < 0) {
+      std::cerr << "Invalid Range for sampler.input data\n";
+      return false;
+    }
+
+    auto ii = iv.first;
+    auto fi = iv.second;
+
+    //if (isDebug())
+    //  std::cerr << "    sampler.output ind: " << ii << " " << fi << "\n";
+
+    //---
+
+    auto scaleInterpolation = animationData.scaleInterpolation();
+
+    if      (scaleInterpolation == CGeomAnimationData::Interpolation::LINEAR) {
+      auto ov = CMathGen::interpRangeSet<CVector3D>(ii, fi, animationData.scales());
+
+      if (! ov.first) {
+        std::cerr << "Invalid Range for sampler.input data\n";
+        return false;
+      }
+
+      //if (isDebug())
+      //  std::cerr << "    scale: " << ov.second << "\n";
+
+      anim_scale = CScale3D(ov.second.x(), ov.second.y(), ov.second.z());
+    }
+    else if (scaleInterpolation == CGeomAnimationData::Interpolation::STEP) {
       const auto &scale = animationData.scales()[ii];
 
       anim_scale = CScale3D(scale.x(), scale.y(), scale.z());
     }
+    else {
+      std::cerr << "Invalid Interpolation for sampler.input data\n";
+      return false;
+    }
   }
   else
-    return false;
+    anim_scale = node.localScale();
 
   animationData.setAnimTranslation(anim_translation);
   animationData.setAnimRotation   (anim_rotation);
@@ -1187,7 +1275,7 @@ getAnimationNames(std::vector<std::string> &names) const
 
 bool
 CGeomObject3D::
-getAnimationRange(const std::string &name, double &min, double &max) const
+getAnimationTranslationRange(const std::string &name, double &min, double &max) const
 {
   min = 0.0;
   max = 1.0;
@@ -1200,9 +1288,9 @@ getAnimationRange(const std::string &name, double &min, double &max) const
 
     auto &animationData = const_cast<CGeomNodeData &>(nodeData).getAnimationData(name);
 
-    if (animationData.rangeMin() && animationData.rangeMax()) {
-      min = animationData.rangeMin().value();
-      max = animationData.rangeMax().value();
+    if (animationData.translationRangeMin() && animationData.translationRangeMax()) {
+      min = animationData.translationRangeMin().value();
+      max = animationData.translationRangeMax().value();
       return true;
     }
   }
