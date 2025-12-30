@@ -753,11 +753,13 @@ addNode(int i, const CGeomNodeData &data)
 {
   nodes_[i] = data;
 
-  nodes_[i].setInd  (i);
-  nodes_[i].setIndex(int(nodeIds_.size()));
-  nodes_[i].setValid(true);
+  auto &data1 = nodes_[i];
 
-  nodes_[i].setObject(this);
+  data1.setInd  (i);
+  data1.setIndex(int(nodeIds_.size()));
+  data1.setValid(true);
+
+  data1.setObject(this);
 
   nodeIds_.push_back(i);
 }
@@ -775,6 +777,24 @@ mapNodeId(int id) const
   return -1;
 }
 
+int
+CGeomObject3D::
+mapNodeIndex(int index) const
+{
+  int i = 0;
+
+  for (auto &pn : nodes_) {
+    auto &node = pn.second;
+
+    if (node.index() == index)
+      return i;
+
+    ++i;
+  }
+
+  return -1;
+}
+
 const CGeomNodeData &
 CGeomObject3D::
 getNode(int i) const
@@ -784,6 +804,13 @@ getNode(int i) const
   auto pn = nodes_.find(i);
 
   return (pn != nodes_.end() ? (*pn).second : noData);
+}
+
+CGeomNodeData &
+CGeomObject3D::
+editNode(int i)
+{
+  return const_cast<CGeomNodeData &>(getNode(i));
 }
 
 CGeomNodeData *
@@ -1100,14 +1127,14 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
 
   if (! animationData.translations().empty()) {
     if (animationData.translationRange().empty()) {
-      std::cerr << "Invalid Range for sampler.input data\n";
+      std::cerr << "Invalid range for animation translation\n";
       return false;
     }
 
     auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.translationRange());
 
     if (iv.first < 0) {
-      std::cerr << "Invalid Range for sampler.input data\n";
+      std::cerr << "Invalid range for animation translation\n";
       return false;
     }
 
@@ -1125,7 +1152,7 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
       auto ov = CMathGen::interpRangeSet<CVector3D>(ii, fi, animationData.translations());
 
       if (! ov.first) {
-        std::cerr << "Invalid Range for sampler.input data\n";
+        std::cerr << "Invalid values for animation translation\n";
         return false;
       }
 
@@ -1140,7 +1167,7 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
       anim_translation = CTranslate3D(translation.x(), translation.y(), translation.z());
     }
     else {
-      std::cerr << "Invalid Interpolation for sampler.input data\n";
+      std::cerr << "Invalid interpolation for animation translation\n";
       return false;
     }
   }
@@ -1149,14 +1176,14 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
 
   if (! animationData.rotations().empty()) {
     if (animationData.rotationRange().empty()) {
-      std::cerr << "Invalid Range for sampler.input data\n";
+      std::cerr << "Invalid Range for animation rotation\n";
       return false;
     }
 
     auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.rotationRange());
 
     if (iv.first < 0) {
-      std::cerr << "Invalid Range for sampler.input data\n";
+      std::cerr << "Invalid Range for animation rotation\n";
       return false;
     }
 
@@ -1174,7 +1201,7 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
       auto ov = CMathGen::interpRangeSet<CQuaternion>(ii, fi, animationData.rotations());
 
       if (! ov.first) {
-        std::cerr << "Invalid Range for sampler.input data\n";
+        std::cerr << "Invalid values for animation rotation\n";
         return false;
       }
 
@@ -1189,7 +1216,7 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
       anim_rotation = CRotate3D(rotation);
     }
     else {
-      std::cerr << "Invalid Interpolation for sampler.input data\n";
+      std::cerr << "Invalid interpolation for animation rotation\n";
       return false;
     }
   }
@@ -1198,14 +1225,14 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
 
   if (! animationData.scales().empty()) {
     if (animationData.scaleRange().empty()) {
-      std::cerr << "Invalid Range for sampler.input data\n";
+      std::cerr << "Invalid Range for animation scale\n";
       return false;
     }
 
     auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.scaleRange());
 
     if (iv.first < 0) {
-      std::cerr << "Invalid Range for sampler.input data\n";
+      std::cerr << "Invalid Range for animation scale\n";
       return false;
     }
 
@@ -1223,7 +1250,7 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
       auto ov = CMathGen::interpRangeSet<CVector3D>(ii, fi, animationData.scales());
 
       if (! ov.first) {
-        std::cerr << "Invalid Range for sampler.input data\n";
+        std::cerr << "Invalid values for animation scale\n";
         return false;
       }
 
@@ -1238,7 +1265,7 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
       anim_scale = CScale3D(scale.x(), scale.y(), scale.z());
     }
     else {
-      std::cerr << "Invalid Interpolation for sampler.input data\n";
+      std::cerr << "Invalid interpolation for animation scale\n";
       return false;
     }
   }

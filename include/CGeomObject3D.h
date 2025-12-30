@@ -354,8 +354,10 @@ class CGeomObject3D {
   const NodeIds &getNodeIds() const { return nodeIds_; }
 
   int mapNodeId(int id) const;
+  int mapNodeIndex(int id) const;
 
   const CGeomNodeData &getNode(int i) const;
+  CGeomNodeData &editNode(int i);
 
   CGeomNodeData *getNodeByInd(int ind) const;
 

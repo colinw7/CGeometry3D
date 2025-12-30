@@ -16,6 +16,11 @@ class CGeomFace3D;
 
 class CGeomVertex3D : public CGeomPoint3D {
  public:
+  enum {
+    SELECTED = (1L<<0),
+    VISIBLE  = (1L<<1)
+  };
+
   struct JointNodeData {
     int    node   { -1 };
     double weight { 0.0 };
@@ -44,8 +49,30 @@ class CGeomVertex3D : public CGeomPoint3D {
   const uint &getInd() const { return ind_; }
   void setInd(const uint &i) { ind_ = i; }
 
+  //---
+
+  bool isSelected() const { return (tag_ & SELECTED); }
+
+  void setSelected(bool b) {
+    if (b)
+      tag_ |= SELECTED;
+    else
+      tag_ &= uint(~SELECTED);
+  }
+
+  bool isVisible() const { return (tag_ & VISIBLE); }
+
+  void setVisible(bool b) {
+    if (b)
+      tag_ |= VISIBLE;
+    else
+      tag_ &= uint(~VISIBLE);
+  }
+
   const uint &getTag() const { return tag_; }
   void setTag(const uint &i) { tag_ = i; }
+
+  //---
 
   bool hasColor() const { return bool(color_); }
   CRGBA getColor(const CRGBA &c=CRGBA(1, 1, 1)) const { return color_.value_or(c); }
