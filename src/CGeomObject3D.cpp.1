@@ -768,9 +768,9 @@ addNode(int i, const CGeomNodeData &data)
   auto &data1 = nodes_[i];
 #endif
 
-  data1.setInd    (i);
-  data1.resetIndex();
-  data1.setValid  (true);
+  data1.setInd  (i);
+  data1.setIndex(int(nodeIds_.size()));
+  data1.setValid(true);
 
   data1.setObject(this);
 
@@ -840,25 +840,6 @@ getNodeByInd(int ind) const
   return nullptr;
 }
 
-CGeomObject3D *
-CGeomObject3D::
-getMeshObject() const
-{
-  int meshNodeId = getMeshNode();
-
-  if (meshNodeId >= 0)
-    return const_cast<CGeomObject3D *>(this);
-
-  for (auto *child : children_) {
-    auto *object = child->getMeshObject();
-
-    if (object)
-      return object;
-  }
-
-  return const_cast<CGeomObject3D *>(this);
-}
-
 int
 CGeomObject3D::
 getMeshNode() const
@@ -889,7 +870,6 @@ CMatrix3D
 CGeomObject3D::
 getMeshGlobalTransform() const
 {
-#if 0
   auto *rootObject = getRootObject();
 
   int meshNodeId = getMeshNode();
@@ -900,26 +880,6 @@ getMeshGlobalTransform() const
   const auto &meshNodeData = rootObject->getNode(meshNodeId);
 
   return meshNodeData.globalTransform();
-#else
-  auto *meshObject = this;
-  int   meshNodeId = meshObject->getMeshNode();
-
-  while (meshObject && meshNodeId < 0) {
-    meshObject = meshObject->parent();
-
-    if (meshObject)
-      meshNodeId = meshObject->getMeshNode();
-  }
-
-  if (meshNodeId < 0)
-    return CMatrix3D::identity();
-
-  auto *rootObject = getRootObject();
-
-  const auto &meshNodeData = rootObject->getNode(meshNodeId);
-
-  return meshNodeData.globalTransform();
-#endif
 }
 
 CMatrix3D
@@ -1020,7 +980,6 @@ CGeomObject3D::
 getNodeAnimHierTransform(CGeomNodeData &node, const std::string &animName, double t) const
 {
   CMatrix3D m;
-  bool      mSet { false };
 
   if (const_cast<CGeomObject3D *>(this)->updateNodeAnimationData(node, animName, t)) {
     auto &animationData = node.getAnimationData(animName);
@@ -1028,11 +987,8 @@ getNodeAnimHierTransform(CGeomNodeData &node, const std::string &animName, doubl
     m = animationData.animTranslation().matrix()*
         animationData.animRotation   ().matrix()*
         animationData.animScale      ().matrix();
-
-    mSet = true;
   }
-
-  if (! mSet)
+  else
     m = node.localTranslation().matrix()*
         node.localRotation().matrix()*
         node.localScale().matrix();
@@ -1149,48 +1105,19 @@ updateNodeAnimationData(int i, const std::string &name, double t)
 
 bool
 CGeomObject3D::
-updateHierNodeAnimationData(CGeomNodeData &node, const std::string &name, double t)
-{
-  bool rc = true;
-
-  if (! updateNodeAnimationData(node, name, t)) {
-    if (node.parent()) {
-      const auto &parentNode = getNode(node.parent());
-
-      node.setAnimMatrix(parentNode.animMatrix()*node.animMatrix());
-    }
-    else
-      rc = false;
-  }
-
-  for (const auto &childId : node.children()) {
-    auto &childNode = const_cast<CGeomNodeData &>(getNode(childId));
-
-    if (! updateHierNodeAnimationData(childNode, name, t))
-      rc = false;
-  }
-
-  return rc;
-}
-
-bool
-CGeomObject3D::
 updateNodeAnimationData(CGeomNodeData &node, const std::string &name, double t)
 {
   CMatrix3D anim_matrix;
-  bool      animSet { false };
 
   if (node.hasAnimationData(name)) {
     auto &animationData = node.getAnimationData(name);
 
-    if (updateAnimationData(node, animationData, t)) {
-      anim_matrix = animationData.animMatrix();
+    if (! updateAnimationData(node, animationData, t))
+      return false;
 
-      animSet = true;
-    }
+    anim_matrix = animationData.animMatrix();
   }
-
-  if (! animSet) {
+  else {
     const auto &anim_translation = node.localTranslation();
     const auto &anim_rotation    = node.localRotation();
     const auto &anim_scale       = node.localScale();
@@ -1200,18 +1127,13 @@ updateNodeAnimationData(CGeomNodeData &node, const std::string &name, double t)
 
   node.setAnimMatrix(anim_matrix);
 
-  return animSet;
+  return true;
 }
 
 bool
 CGeomObject3D::
 updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, double t) const
 {
-  if (animationData.translations().empty() &&
-      animationData.rotations   ().empty() &&
-      animationData.scales      ().empty())
-    return false;
-
   CTranslate3D anim_translation;
   CRotate3D    anim_rotation;
   CScale3D     anim_scale;

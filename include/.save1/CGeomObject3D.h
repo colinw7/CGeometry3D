@@ -87,9 +87,6 @@ class CGeomObject3D {
   const std::string &getId() const { return id_; }
   void setId(const std::string &id) { id_ = id; }
 
-  const std::string &getMeshName() const { return meshName_; }
-  void setMeshName(const std::string &name) { meshName_ = name; }
-
   //---
 
   bool getSelected() const { return selected_; }
@@ -364,8 +361,6 @@ class CGeomObject3D {
 
   CGeomNodeData *getNodeByInd(int ind) const;
 
-  CGeomObject3D *getMeshObject() const;
-
   int getMeshNode() const;
   void setMeshNode(int ind);
 
@@ -392,9 +387,6 @@ class CGeomObject3D {
   bool updateNodesAnimationData(const std::string &name, double t);
 
   bool updateNodeAnimationData(int i, const std::string &name, double t);
-
-  bool updateHierNodeAnimationData(CGeomNodeData &node, const std::string &name, double t);
-
   bool updateNodeAnimationData(CGeomNodeData &node, const std::string &name, double t);
 
   bool updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, double t) const;
@@ -590,7 +582,6 @@ class CGeomObject3D {
   uint        ind_ { 0 };
   std::string name_;
   std::string id_;
-  std::string meshName_;
   bool        selected_ { false };
   bool        visible_ { true };
   bool        drawPosition_ { true };

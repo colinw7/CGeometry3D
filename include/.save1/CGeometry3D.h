@@ -77,11 +77,8 @@ class CGeometry3D {
 
   //---
 
-  int nextObjectId() { return ++objectId_; }
-
  private:
   CGeometryFactory *factory_   { nullptr };
-  mutable int       objectId_  { -1 };
   mutable int       textureId_ { -1 };
 };
 

@@ -134,11 +134,7 @@ CGeomObject3D *
 CGeometry3D::
 createObject3D(CGeomScene3D *pscene, const std::string &name) const
 {
-  auto *obj = factory_->createObject3D(pscene, name);
-
-  obj->setInd(CGeometryInst->nextObjectId());
-
-  return obj;
+  return factory_->createObject3D(pscene, name);
 }
 
 CGeomScene3D *

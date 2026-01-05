@@ -34,7 +34,6 @@ class CGeomNodeData {
 
   int index() const { return index_; }
   void setIndex(int i) { index_ = i; }
-  void resetIndex() { index_ = -1; }
 
   const std::string &name() const { return name_; }
   void setName(const std::string &s) { name_ = s; }
@@ -44,8 +43,6 @@ class CGeomNodeData {
 
   int parent() const { return parent_; }
   void setParent(int i) { parent_ = i; }
-
-  const std::vector<int> &children() const { return children_; }
 
   void resizeChildren(uint n) { children_.resize(n); }
   void setChild(uint i, int child) { assert(i < children_.size()); children_[i] = child; }
@@ -68,11 +65,8 @@ class CGeomNodeData {
                                   const AnimationData &data=AnimationData()) {
     auto pn = animationDatas_.find(name);
 
-    if (pn == animationDatas_.end()) {
-      assert(name != "");
-
+    if (pn == animationDatas_.end())
       pn = animationDatas_.insert(pn, AnimationDatas::value_type(name, data));
-    }
 
     return (*pn).second;
   }

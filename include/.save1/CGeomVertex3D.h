@@ -27,12 +27,15 @@ class CGeomVertex3D : public CGeomPoint3D {
   };
 
   struct JointData {
-    bool          set { false };
     JointNodeData nodeDatas[4];
   };
 
  public:
   CGeomVertex3D(CGeomObject3D *pobject, const CPoint3D &point=CPoint3D::makeZero());
+
+  CGeomVertex3D(const CGeomVertex3D &vertex);
+
+  CGeomVertex3D &operator=(const CGeomVertex3D &rhs);
 
   virtual ~CGeomVertex3D() { }
 
@@ -89,15 +92,8 @@ class CGeomVertex3D : public CGeomPoint3D {
   //---
 
   // associated skeleton bone
-  bool hasJointData() const { return jointData_.set; }
   const JointData &getJointData() const { return jointData_; }
-
-  void setJointData(const JointData &data) {
-    assert(! jointData_.set);
-
-    jointData_     = data;
-    jointData_.set = true;
-  }
+  void setJointData(const JointData &data) { jointData_ = data; }
 
   //---
 
