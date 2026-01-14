@@ -5,7 +5,6 @@
 #include <CCoordFrame3D.h>
 #include <CGeomObject3D.h>
 #include <CGeomVertex3D.h>
-#include <accessor.h>
 
 class CGeomCamera3D {
  public:
@@ -21,9 +20,17 @@ class CGeomCamera3D {
 
   virtual ~CGeomCamera3D() { }
 
-  ACCESSOR(FieldOfView, double, fov )
-  ACCESSOR(Near       , double, near)
-  ACCESSOR(Far        , double, far )
+  const uint &getId() const { return id_; }
+  void setId(const uint &v) { id_ = v; }
+
+  double getFieldOfView() const { return fov_; }
+  void setFieldOfView(double r) { fov_ = r; }
+
+  double getNear() const { return near_; }
+  void setNear(double r) { near_ = r; }
+
+  double getFar() const { return far_; }
+  void setFar(double r) { far_ = r; }
 
   CPoint3D getPosition() const { return coordFrame_.getOrigin().point(); }
 
@@ -32,9 +39,9 @@ class CGeomCamera3D {
   void setPosition(const CPoint3D &position);
   void setDirection(const CVector3D &dir);
 
-  const CMatrix3DH &getProjectionMatrix() const { return projection_matrix_; }
+  const CMatrix3DH &getProjectionMatrix() const { return projectionMatrix_; }
 
-  const CMatrix3D &getWorldMatrix() const { return world_matrix_; }
+  const CMatrix3D &getWorldMatrix() const { return worldMatrix_; }
 
   CPoint3D transformTo(const CPoint3D &p) const { return coordFrame_.transformTo(p); }
 
@@ -51,12 +58,14 @@ class CGeomCamera3D {
   void rotateZ(double dz);
 
  protected:
+  uint          id_        { 0 };
   CCoordFrame3D coordFrame_;
   CVector3D     direction_ { 0, 0, 1 };
-  double        fov_ { 90 };
-  double        near_ { 0.1 }, far_ { 1000 };
-  CMatrix3DH    projection_matrix_;
-  CMatrix3D     world_matrix_;
+  double        fov_       { 90 };
+  double        near_      { 0.1 };
+  double        far_       { 1000 };
+  CMatrix3DH    projectionMatrix_;
+  CMatrix3D     worldMatrix_;
 };
 
 //-------------

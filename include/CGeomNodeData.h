@@ -53,6 +53,9 @@ class CGeomNodeData {
   const CMatrix3D &inverseBindMatrix() const { return inverseBindMatrix_; }
   void setInverseBindMatrix(const CMatrix3D &v) { inverseBindMatrix_ = v; }
 
+  const CGeomObject3D *rootObject() const { return rootObject_; }
+  void setRootObject(CGeomObject3D *p) { rootObject_ = p; }
+
   const CGeomObject3D *object() const { return object_; }
   void setObject(CGeomObject3D *p) { object_ = p; }
 
@@ -125,7 +128,8 @@ class CGeomNodeData {
   int              parent_ { -1 };
   std::vector<int> children_;
 
-  CGeomObject3D *object_ { nullptr };
+  CGeomObject3D *rootObject_ { nullptr };
+  CGeomObject3D *object_     { nullptr };
 
   // inverse bind matrix (transform to parent coords)
   CMatrix3D inverseBindMatrix_ { CMatrix3D::identity() };

@@ -42,7 +42,7 @@ createWorldMatrix(int w, int h)
   CTransform3D transform(-1,    -1, 0,     1, 1, 1,
                           0, h - 1, 0, w - 1, 0, 1);
 
-  world_matrix_ = *transform.getMatrix();
+  worldMatrix_ = *transform.getMatrix();
 }
 
 void
@@ -103,7 +103,7 @@ createProjectionMatrix(double left, double right, double bottom, double top)
   double near = getNear();
   double far  = getFar ();
 
-  projection_matrix_.buildPerspective(fov, aspect, near, far);
+  projectionMatrix_.buildPerspective(fov, aspect, near, far);
 }
 
 void
@@ -113,7 +113,7 @@ createProjectionMatrix(double left, double right, double bottom, double top)
   double near = getNear();
   double far  = getFar ();
 
-  projection_matrix_.buildFrustrum(left, right, bottom, top, near, far);
+  projectionMatrix_.buildFrustrum(left, right, bottom, top, near, far);
 }
 
 void
@@ -123,7 +123,7 @@ createProjectionMatrix(double left, double right, double bottom, double top)
   double near = getNear();
   double far  = getFar ();
 
-  projection_matrix_.buildOrtho(left, right, bottom, top, near, far);
+  projectionMatrix_.buildOrtho(left, right, bottom, top, near, far);
 }
 
 void
@@ -156,8 +156,8 @@ createProjectionMatrix(double left, double right, double bottom, double top)
   double ty = -(tpb - near)*ih;
   double tz =  near*id;
 
-  projection_matrix_ = CMatrix3DH(a, 0, c, tx,
-                                  0, e, f, ty,
-                                  0, 0, i, tz,
-                                  0, 0, 0, 1);
+  projectionMatrix_ = CMatrix3DH(a, 0, c, tx,
+                                 0, e, f, ty,
+                                 0, 0, i, tz,
+                                 0, 0, 0, 1);
 }

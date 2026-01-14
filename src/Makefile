@@ -16,6 +16,7 @@ CPP_SRC = \
 CGeomAxes3D.cpp \
 CGeomBox3D.cpp \
 CGeomCamera3D.cpp \
+CGeomCircle3D.cpp \
 CGeomCone3D.cpp \
 CGeomCube3D.cpp \
 CGeomCylinder3D.cpp \

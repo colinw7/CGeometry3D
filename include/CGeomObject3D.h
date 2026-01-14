@@ -181,6 +181,7 @@ class CGeomObject3D {
   bool findVertex(const CPoint3D &point, uint *ind);
 
   uint addVertex(const CPoint3D &point);
+  uint addVertex(CGeomVertex3D *vertex);
 
   void addVertexFace(uint vertex_ind, uint face_num);
 
@@ -190,6 +191,7 @@ class CGeomObject3D {
 
   uint getNumTextuePoints() const { return uint(texturePoints_.size()); }
 
+  uint addTexturePoint(const CPoint2D &point);
   uint addTexturePoint(const CPoint3D &point);
   const CPoint3D &texturePoint(uint i) const;
 
@@ -208,6 +210,7 @@ class CGeomObject3D {
   //---
 
   uint addLine(uint start, uint end);
+  uint addLine(CGeomLine3D *line);
 
   //---
 
@@ -222,6 +225,7 @@ class CGeomObject3D {
   //---
 
   uint addFace(const VertexIList &vertices);
+  uint addFace(CGeomFace3D *face);
 
   //---
 
@@ -381,6 +385,10 @@ class CGeomObject3D {
 
   CMatrix3D getNodeAnimHierTransform(CGeomNodeData &node, const std::string &animName,
                                      double t) const;
+
+  // animation
+  const std::string &animName() const { return animName_; }
+  void setAnimName(const std::string &s) { animName_ = s; }
 
   void setNodeAnimationData(int i, const std::string &name, const CGeomAnimationData &data);
 
@@ -576,6 +584,10 @@ class CGeomObject3D {
 
   FaceList getMaterialFaces(CGeomMaterial *material) const;
 
+  //---
+
+  void divideFace(CGeomFace3D *face, const CPoint3D &c);
+
  private:
   void validatePObject();
 
@@ -636,6 +648,9 @@ class CGeomObject3D {
   };
 
   TransformData transformData_;
+
+  // animation
+  std::string animName_;
 
   // motion
   CVector3D dv_ { 0, 0, 0 };

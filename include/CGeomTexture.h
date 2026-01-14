@@ -6,6 +6,7 @@
 #include <CImagePtr.h>
 #include <CImage.h>
 #include <CImageMgr.h>
+#include <CPoint2D.h>
 
 class CGeomTextureImage {
  public:
@@ -75,8 +76,7 @@ class CGeomTextureMapping {
       points_.push_back(CPoint2D(0        , 0         ));
     }
     else
-      std::cerr << "CGeomTextureMapping: " << num_vertices <<
-                   "vertices not supported" << std::endl;
+      std::cerr << "CGeomTextureMapping: " << num_vertices << " vertices not supported" << "\n";
   }
 
   CGeomTextureMapping(const CGeomTextureMapping &mapping) :
@@ -95,8 +95,10 @@ class CGeomTextureMapping {
 
 class CGeomTexture {
  public:
+  CGeomTexture() { }
+
   CGeomTexture(CGeomTextureImage *image, CGeomTextureMapping *mapping=nullptr) :
-   image_(image), mapping_(mapping), num_points_(4) {
+   image_(image), mapping_(mapping) {
     if (! mapping_)
       setMapping(image_, num_points_);
   }
@@ -125,20 +127,30 @@ class CGeomTexture {
    num_points_(texture.num_points_) {
   }
 
- ~CGeomTexture() {
+  virtual ~CGeomTexture() {
     delete image_;
     delete mapping_;
   }
 
-  CGeomTexture *dup() const {
+  virtual CGeomTexture *dup() const {
     return new CGeomTexture(*this);
   }
+
+  //---
 
   int id() const { return id_; }
   void setId(int i) { id_ = i; }
 
   const std::string &name() const { return image_->name(); }
   void setName(const std::string &s) { image_->setName(s); }
+
+  const std::string &fileName() const { return filename_; }
+  void setFilename(const std::string &s) { filename_ = s; }
+
+  bool isSelected() const { return selected_; }
+  void setSelected(bool b) { selected_ = b; }
+
+  //---
 
   CGeomTextureImage *image() const { return image_; }
 
@@ -200,33 +212,57 @@ class CGeomTexture {
 
  private:
   int                  id_         { -1 };
-  CGeomTextureImage   *image_      { nullptr };
-  CGeomTextureMapping *mapping_    { nullptr };
-  uint                 num_points_ { 0 };
+  bool                 selected_   { false };
+  std::string          filename_;
+  CGeomTextureImage*   image_      { nullptr };
+  CGeomTextureMapping* mapping_    { nullptr };
+  uint                 num_points_ { 4 };
 };
 
 //---
 
 class CGeomTextureMgr {
  public:
+  using Textures = std::vector<CGeomTexture *>;
+
+ public:
   CGeomTextureMgr() { }
 
+  const Textures &textures() const { return textures_; }
+
   void addTexture(CGeomTexture *texture) {
+    auto pt = textureMap_.find(texture->name());
+    assert(pt == textureMap_.end());
+
     textureMap_[texture->name()] = texture;
+
+    textures_.push_back(texture);
   }
 
-  CGeomTexture *getTexture(const std::string &name) const {
-    auto pm = textureMap_.find(name);
-    if (pm == textureMap_.end())
+  CGeomTexture *getTextureByName(const std::string &name) const {
+    auto pt = textureMap_.find(name);
+    if (pt == textureMap_.end())
       return nullptr;
 
-    return (*pm).second;
+    return (*pt).second;
+  }
+
+  CGeomTexture *getTextureById(int id) const {
+    for (const auto &pt : textureMap_) {
+      auto *texture = pt.second;
+
+      if (texture->id() == id)
+        return texture;
+    }
+
+    return nullptr;
   }
 
  private:
   using TextureMap = std::map<std::string, CGeomTexture *>;
 
   TextureMap textureMap_;
+  Textures   textures_;
 };
 
 #endif

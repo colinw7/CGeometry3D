@@ -35,7 +35,7 @@ class CGeomFace3D {
   };
 
  public:
-  CGeomFace3D(CGeomObject3D *pobject);
+  explicit CGeomFace3D(CGeomObject3D *pobject=nullptr);
   CGeomFace3D(CGeomObject3D *pobject, const VertexList &vertices);
 
   CGeomFace3D(const CGeomFace3D &face);
@@ -58,7 +58,7 @@ class CGeomFace3D {
 
   //---
 
-  bool getLighted () const { return (flags_ & LIGHTED); }
+  bool getLighted() const { return (flags_ & LIGHTED); }
   void setLighted(bool b);
 
   bool getTwoSided() const { return (flags_ & TWO_SIDED); }
@@ -89,10 +89,10 @@ class CGeomFace3D {
   void setSpecularTexture(CGeomTexture *texture);
   void setSpecularTexture(CImagePtr image);
 
-  CGeomTexture *getNormalTexture () const { return normalTexture_; }
+  CGeomTexture *getNormalTexture() const { return normalTexture_; }
   void setNormalTexture(CGeomTexture *texture);
 
-  CGeomTexture *getEmissiveTexture () const { return emissiveTexture_; }
+  CGeomTexture *getEmissiveTexture() const { return emissiveTexture_; }
   void setEmissiveTexture(CGeomTexture *texture);
 
   void setTextureMapping(const std::vector<CPoint2D> &points);
@@ -122,13 +122,8 @@ class CGeomFace3D {
 
   //---
 
-  void setFlags(uint flags) {
-    flags_ |= flags;
-  }
-
-  void unsetFlags(uint flags) {
-    flags_ &= ~flags;
-  }
+  void setFlags  (uint flags) { flags_ |=  flags; }
+  void unsetFlags(uint flags) { flags_ &= ~flags; }
 
   //---
 
@@ -155,20 +150,23 @@ class CGeomFace3D {
   //---
 
   uint addSubFace(const std::vector<uint> &vertices);
+  uint addSubFace(CGeomFace3D *face);
+
   uint addSubLine(uint start, uint end);
+  uint addSubLine(CGeomLine3D *line);
 
   //---
 
   CRGBA getColor() const { return getFrontColor(); }
   void setColor(const CRGBA &rgba) { setFrontColor(rgba); }
 
-  const OptColor &color() const { return frontMaterial_->diffuse(); }
+  const OptColor &color() const { return initFrontMaterial()->diffuse(); }
 
-  CRGBA getFrontColor() const { return frontMaterial_->getDiffuse(); }
-  void setFrontColor(const CRGBA &rgba) { frontMaterial_->setDiffuse(rgba); }
+  CRGBA getFrontColor() const { return initFrontMaterial()->getDiffuse(); }
+  void setFrontColor(const CRGBA &rgba) { initFrontMaterial()->setDiffuse(rgba); }
 
-  CRGBA getBackColor() const { return backMaterial_->getDiffuse(CRGBA(1, 1, 1, 1)); }
-  void setBackColor(const CRGBA &rgba) { backMaterial_->setDiffuse(rgba); }
+  CRGBA getBackColor() const { return initBackMaterial()->getDiffuse(CRGBA(1, 1, 1, 1)); }
+  void setBackColor(const CRGBA &rgba) { initBackMaterial()->setDiffuse(rgba); }
 
   //---
 
@@ -179,53 +177,53 @@ class CGeomFace3D {
 
   //---
 
-  const OptReal &shininess() const { return frontMaterial_->shininess(); }
+  const OptReal &shininess() const { return initFrontMaterial()->shininess(); }
 
-  const OptColor &emission() const { return frontMaterial_->emission(); }
+  const OptColor &emission() const { return initFrontMaterial()->emission(); }
 
   //---
 
   void setAmbient(const CRGBA &rgba) { setFrontAmbient(rgba); }
-  void setFrontAmbient(const CRGBA &rgba) { frontMaterial_->setAmbient(rgba); }
-  void setBackAmbient(const CRGBA &rgba) { backMaterial_->setAmbient(rgba); }
+  void setFrontAmbient(const CRGBA &rgba) { initFrontMaterial()->setAmbient(rgba); }
+  void setBackAmbient(const CRGBA &rgba) { initBackMaterial()->setAmbient(rgba); }
 
   //---
 
   void setDiffuse(const CRGBA &rgba) { setFrontDiffuse(rgba); }
-  void setFrontDiffuse(const CRGBA &rgba) { frontMaterial_->setDiffuse(rgba); }
-  void setBackDiffuse(const CRGBA &rgba) { backMaterial_->setDiffuse(rgba); }
+  void setFrontDiffuse(const CRGBA &rgba) { initFrontMaterial()->setDiffuse(rgba); }
+  void setBackDiffuse(const CRGBA &rgba) { initBackMaterial()->setDiffuse(rgba); }
 
   //---
 
   void setSpecular(const CRGBA &rgba) { setFrontSpecular(rgba); }
-  void setFrontSpecular(const CRGBA &rgba) { frontMaterial_->setSpecular(rgba); }
-  void setBackSpecular(const CRGBA &rgba) { backMaterial_->setSpecular(rgba); }
+  void setFrontSpecular(const CRGBA &rgba) { initFrontMaterial()->setSpecular(rgba); }
+  void setBackSpecular(const CRGBA &rgba) { initBackMaterial()->setSpecular(rgba); }
 
   //---
 
   CRGBA getEmission() const { return getFrontEmission(); }
-  CRGBA getFrontEmission() const { return frontMaterial_->getEmission(CRGBA(0, 0, 0, 1)); }
+  CRGBA getFrontEmission() const { return initFrontMaterial()->getEmission(CRGBA(0, 0, 0, 1)); }
 
   void setEmission(const CRGBA &rgba) { setFrontEmission(rgba); }
-  void setFrontEmission(const CRGBA &rgba) { frontMaterial_->setEmission(rgba); }
-  void setBackEmission(const CRGBA &rgba) { backMaterial_->setEmission(rgba); }
+  void setFrontEmission(const CRGBA &rgba) { initFrontMaterial()->setEmission(rgba); }
+  void setBackEmission(const CRGBA &rgba) { initBackMaterial()->setEmission(rgba); }
 
   //---
 
   void setShininess(double shininess) { setFrontShininess(shininess); }
-  void setFrontShininess(double shininess) { frontMaterial_->setShininess(shininess); }
-  void setBackShininess (double shininess) { backMaterial_->setShininess(shininess); }
+  void setFrontShininess(double shininess) { initFrontMaterial()->setShininess(shininess); }
+  void setBackShininess (double shininess) { initBackMaterial()->setShininess(shininess); }
 
   //---
 
   const CGeomMaterial &getMaterial() const { return getFrontMaterial(); }
   void setMaterial(const CGeomMaterial &material) { setFrontMaterial(material); }
 
-  const CGeomMaterial &getFrontMaterial() const { return *frontMaterial_; }
-  void setFrontMaterial(const CGeomMaterial &material) { *frontMaterial_ = material; }
+  const CGeomMaterial &getFrontMaterial() const { return *initFrontMaterial(); }
+  void setFrontMaterial(const CGeomMaterial &material) { *initFrontMaterial() = material; }
 
-  const CGeomMaterial &getBackMaterial () const { return *backMaterial_ ; }
-  void setBackMaterial(const CGeomMaterial &material) { *backMaterial_ = material; }
+  const CGeomMaterial &getBackMaterial () const { return *initBackMaterial() ; }
+  void setBackMaterial(const CGeomMaterial &material) { *initBackMaterial() = material; }
 
   CGeomMaterial *getMaterialP() { return materialP_; }
   void setMaterialP(CGeomMaterial *material) { materialP_ = material; }
@@ -233,6 +231,8 @@ class CGeomFace3D {
   //---
 
   const VertexList &getVertices() const { return vertices_; }
+
+  virtual void setVertices(const VertexList &vertices) { vertices_ = vertices; }
 
   uint getNumVertices() const { return uint(vertices_.size()); }
 
@@ -255,7 +255,7 @@ class CGeomFace3D {
   bool getAdjustedColor(CRGBA &rgba);
   bool getColorFactor(double *factor);
 
-  void getMidPoint(CPoint3D &mid_point);
+  void getMidPoint(CPoint3D &mid_point) const;
 
   void calcNormal(CVector3D &normal) const;
 
@@ -269,8 +269,19 @@ class CGeomFace3D {
 
   CPolygonOrientation orientation() const;
 
+  //---
+
+  void moveBy(const CVector3D &v);
+
+  void divideCenter();
+
+  void extrude(double d);
+
  private:
   void init();
+
+  CGeomMaterial *initFrontMaterial() const;
+  CGeomMaterial *initBackMaterial() const;
 
  protected:
   using OptVector = std::optional<CVector3D>;

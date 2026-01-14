@@ -1,7 +1,7 @@
 #ifndef CGEOMETRY_H
 #define CGEOMETRY_H
 
-#define CGeometryInst CGeometry3D::getInstance()
+#define CGeometry3DInst CGeometry3D::getInstance()
 
 #include <CGeomVertex3D.h>
 #include <CGeomLine3D.h>
@@ -22,14 +22,13 @@ class CGeometryFactory {
 
   virtual CGeomLine3D *createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const;
 
-  virtual CGeomFace3D *createFace3D(CGeomObject3D *pobject,
-                                    const std::vector<uint> &vertices) const;
+  virtual CGeomFace3D *createFace3D() const;
 
   virtual CGeomObject3D *createObject3D(CGeomScene3D *pscene, const std::string &name) const;
 
   virtual CGeomScene3D *createScene3D() const;
 
-  virtual CGeomTexture *createTexture(CImagePtr image) const;
+  virtual CGeomTexture *createTexture() const;
 
   virtual CGeomMask *createMask(CImagePtr image) const;
 

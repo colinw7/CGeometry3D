@@ -17,6 +17,7 @@ class CGeomScene3D {
 
  public:
   using ObjectList = std::vector<CGeomObject3D *>;
+  using Textures   = CGeomTextureMgr::Textures;
 
  public:
   CGeomScene3D();
@@ -179,13 +180,20 @@ class CGeomScene3D {
   //---
 
   // textures
+  const Textures &textures() const {
+    return textureMgr_.textures();
+  }
 
   void addTexture(CGeomTexture *texture) {
     textureMgr_.addTexture(texture);
   }
 
-  CGeomTexture *getTexture(const std::string &name) const {
-    return textureMgr_.getTexture(name);
+  CGeomTexture *getTextureByName(const std::string &name) const {
+    return textureMgr_.getTextureByName(name);
+  }
+
+  CGeomTexture *getTextureById(int id) const {
+    return textureMgr_.getTextureById(id);
   }
 
  private:

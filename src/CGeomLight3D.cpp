@@ -269,7 +269,7 @@ CGeomObjectLight3D::
 CGeomObjectLight3D(CGeomScene3D *pscene, const std::string &name) :
  CGeomLight3D(pscene, name)
 {
-  object_ = CGeometryInst->createObject3D(pscene_, name_);
+  object_ = CGeometry3DInst->createObject3D(pscene_, name_);
 
   CPoint3D center(0.0, 0.0, 0.0);
 

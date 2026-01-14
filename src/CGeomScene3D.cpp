@@ -6,7 +6,7 @@
 CGeomScene3D::
 CGeomScene3D()
 {
-  camera_ = CameraP(CGeometryInst->createCamera3D(this, "camera"));
+  camera_ = CameraP(CGeometry3DInst->createCamera3D(this, "camera"));
 
   axes_ = std::make_unique<CGeomAxes3D>(this, "axis");
 }

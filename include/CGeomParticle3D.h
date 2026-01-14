@@ -6,7 +6,6 @@
 #include <CRGBA.h>
 #include <CClipSide.h>
 #include <CGeomPoint3D.h>
-#include <accessor.h>
 
 class CGeomObject3D;
 class CGeomZBuffer;
@@ -23,9 +22,14 @@ class CGeomParticle3D : public CGeomPoint3D {
 
   virtual ~CGeomParticle3D() { }
 
-  ACCESSOR(Color , CRGBA    , color )
-  ACCESSOR(Normal, CVector3D, normal)
-  ACCESSOR(Size  , int      , size  )
+  const CRGBA &getColor() const { return color_; }
+  void setCOlor(const CRGBA &v) { color_ = v; }
+
+  const CVector3D &getNormal() const { return normal_; }
+  void setNormal(const CVector3D &v) { normal_ = v; }
+
+  int getSize() const { return size_; }
+  void setSize(int i) { size_ = i; }
 
   void draw(CGeomZBuffer *zbuffer);
 

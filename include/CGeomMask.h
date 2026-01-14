@@ -92,7 +92,7 @@ class CGeomMaskMapping {
       points_.push_back(CPoint2D(0        , height - 1));
     }
     else
-      std::cerr << "CGeomMaskMapping: " << num_vertices << "vertices not supported" << std::endl;
+      std::cerr << "CGeomMaskMapping: " << num_vertices << " vertices not supported\n";
   }
 
   CGeomMaskMapping(const CGeomMaskMapping &mapping) :

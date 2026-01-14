@@ -176,7 +176,7 @@ addTriangle(std::vector<CTriangle3D> &triangle_list,
             const std::list<EarPoint>::const_iterator &ep2,
             const std::list<EarPoint>::const_iterator &ep3)
 {
-  std::cout << "Diagonal " << (*ep2).point << "->" << (*ep3).point << std::endl;
+  std::cout << "Diagonal " << (*ep2).point << "->" << (*ep3).point << "\n";
 
   triangle_list.push_back(
     CTriangle3D((*ep1).point, (*ep2).point, (*ep3).point));

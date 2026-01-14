@@ -26,9 +26,9 @@ createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const
 
 CGeomFace3D *
 CGeometryFactory::
-createFace3D(CGeomObject3D *pobject, const std::vector<uint> &vertices) const
+createFace3D() const
 {
-  return new CGeomFace3D(pobject, vertices);
+  return new CGeomFace3D;
 }
 
 CGeomObject3D *
@@ -47,9 +47,9 @@ createScene3D() const
 
 CGeomTexture *
 CGeometryFactory::
-createTexture(CImagePtr image) const
+createTexture() const
 {
-  return new CGeomTexture(image);
+  return new CGeomTexture;
 }
 
 CGeomMask *
@@ -127,7 +127,12 @@ CGeomFace3D *
 CGeometry3D::
 createFace3D(CGeomObject3D *pobject, const std::vector<uint> &vertices) const
 {
-  return factory_->createFace3D(pobject, vertices);
+  auto *face = factory_->createFace3D();
+
+  face->setObject(pobject);
+  face->setVertices(vertices);
+
+  return face;
 }
 
 CGeomObject3D *
@@ -136,7 +141,7 @@ createObject3D(CGeomScene3D *pscene, const std::string &name) const
 {
   auto *obj = factory_->createObject3D(pscene, name);
 
-  obj->setInd(CGeometryInst->nextObjectId());
+  obj->setInd(CGeometry3DInst->nextObjectId());
 
   return obj;
 }
@@ -170,8 +175,11 @@ CGeomTexture *
 CGeometry3D::
 createTexture(CImagePtr image) const
 {
-  auto *texture = factory_->createTexture(image);
+  auto *texture = factory_->createTexture();
+
+  texture->setImage(image);
   texture->setId(++textureId_);
+
   return texture;
 }
 

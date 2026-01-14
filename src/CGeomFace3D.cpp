@@ -21,6 +21,7 @@ CGeomFace3D(CGeomObject3D *pobject, const VertexList &vertices) :
 CGeomFace3D::
 CGeomFace3D(const CGeomFace3D &face) :
  pobject_      (face.pobject_),
+ groupId_      (face.groupId_),
  flags_        (face.flags_),
  vertices_     (face.vertices_),
  texturePoints_(face.texturePoints_),
@@ -28,31 +29,33 @@ CGeomFace3D(const CGeomFace3D &face) :
 {
   init();
 
+  //---
+
   // copy sub faces and sub lines
   for (auto *sub_face : face.sub_faces_) {
     auto *face1 = sub_face->dup();
 
-    sub_faces_.push_back(face1);
-
-    auto ind = uint(sub_faces_.size() - 1);
-
-    face1->setInd(ind);
+    addSubFace(face1);
   }
 
   for (auto *sub_line : face.sub_lines_) {
     auto *line = sub_line->dup();
 
-    sub_lines_.push_back(line);
-
-    auto ind = uint(sub_lines_.size() - 1);
-
-    line->setInd(ind);
+    addSubLine(line);
   }
 
+  //---
+
   // copy materials
-  *frontMaterial_ = *face.frontMaterial_;
-  *backMaterial_  = *face.backMaterial_;
-  materialP_      = face.materialP_;
+  if (face.frontMaterial_)
+    setFrontMaterial(*face.frontMaterial_);
+
+  if (face.backMaterial_)
+    setBackMaterial(*face.backMaterial_);
+
+  materialP_ = face.materialP_;
+
+  //---
 
   // copy textures (TODO: share)
   if (face.diffuseTexture_)
@@ -64,6 +67,11 @@ CGeomFace3D(const CGeomFace3D &face) :
   if (face.normalTexture_)
     normalTexture_ = face.normalTexture_->dup();
 
+  if (face.emissiveTexture_)
+    emissiveTexture_ = face.emissiveTexture_->dup();
+
+  //---
+
   // copy mask
   if (face.mask_)
     mask_ = face.mask_->dup();
@@ -73,9 +81,6 @@ void
 CGeomFace3D::
 init()
 {
-  frontMaterial_ = CGeometryInst->createMaterial();
-  backMaterial_  = CGeometryInst->createMaterial();
-
   setVisible(true);
 }
 
@@ -85,6 +90,34 @@ dup() const
 {
   return new CGeomFace3D(*this);
 }
+
+//---
+
+CGeomMaterial *
+CGeomFace3D::
+initFrontMaterial() const
+{
+  auto *th = const_cast<CGeomFace3D *>(this);
+
+  if (! th->frontMaterial_)
+    th->frontMaterial_ = CGeometry3DInst->createMaterial();
+
+  return th->frontMaterial_;
+}
+
+CGeomMaterial *
+CGeomFace3D::
+initBackMaterial() const
+{
+  auto *th = const_cast<CGeomFace3D *>(this);
+
+  if (! th->backMaterial_)
+    th->backMaterial_ = CGeometry3DInst->createMaterial();
+
+  return th->backMaterial_;
+}
+
+//---
 
 CGeomScene3D *
 CGeomFace3D::
@@ -154,7 +187,7 @@ void
 CGeomFace3D::
 setDiffuseTexture(CImagePtr image)
 {
-  setDiffuseTexture(CGeometryInst->createTexture(image));
+  setDiffuseTexture(CGeometry3DInst->createTexture(image));
 }
 
 void
@@ -168,7 +201,7 @@ void
 CGeomFace3D::
 setSpecularTexture(CImagePtr image)
 {
-  setSpecularTexture(CGeometryInst->createTexture(image));
+  setSpecularTexture(CGeometry3DInst->createTexture(image));
 }
 
 void
@@ -200,7 +233,7 @@ setMask(CImagePtr image)
 {
   delete mask_;
 
-  mask_ = CGeometryInst->createMask(image);
+  mask_ = CGeometry3DInst->createMask(image);
 }
 
 void
@@ -264,7 +297,16 @@ uint
 CGeomFace3D::
 addSubFace(const std::vector<uint> &vertices)
 {
-  auto *face = CGeometryInst->createFace3D(pobject_, vertices);
+  auto *face = CGeometry3DInst->createFace3D(pobject_, vertices);
+
+  return addSubFace(face);
+}
+
+uint
+CGeomFace3D::
+addSubFace(CGeomFace3D *face)
+{
+  face->setObject(getObject());
 
   sub_faces_.push_back(face);
 
@@ -279,7 +321,16 @@ uint
 CGeomFace3D::
 addSubLine(uint start, uint end)
 {
-  auto *line = CGeometryInst->createLine3D(pobject_, start, end);
+  auto *line = CGeometry3DInst->createLine3D(pobject_, start, end);
+
+  return addSubLine(line);
+}
+
+uint
+CGeomFace3D::
+addSubLine(CGeomLine3D *line)
+{
+  line->setObject(getObject());
 
   sub_lines_.push_back(line);
 
@@ -616,7 +667,7 @@ getAdjustedColor(CRGBA &rgba)
 
   if (flags_ & LIGHTED) {
     if (! pobject_ ||
-        ! pobject_->lightPoint(mid_point, normal, *frontMaterial_, rgba)) {
+        ! pobject_->lightPoint(mid_point, normal, getFrontMaterial(), rgba)) {
       CVector3D dir(mid_point, CPoint3D(0, 0, 1));
 
       double factor1 = normal.dotProduct(dir.normalized());
@@ -672,7 +723,7 @@ getColorFactor(double *factor)
 
 void
 CGeomFace3D::
-getMidPoint(CPoint3D &mid_point)
+getMidPoint(CPoint3D &mid_point) const
 {
   mid_point = pobject_->verticesMidPoint(vertices_);
 }
@@ -727,4 +778,76 @@ orientation() const
   CTriangle3D triangle(point1, point2, point3);
 
   return triangle.orientationXY();
+}
+
+void
+CGeomFace3D::
+moveBy(const CVector3D &v)
+{
+  for (auto &vertex : vertices_) {
+    auto &v1 = pobject_->getVertex(vertex);
+
+    v1.setModel(v1.getModel() + v);
+  }
+}
+
+void
+CGeomFace3D::
+divideCenter()
+{
+  // calc center
+  CPoint3D c;
+
+  for (auto &vertex : vertices_) {
+    auto &v = pobject_->getVertex(vertex);
+
+    c += v.getModel();
+  }
+
+  c /= double(vertices_.size());
+
+  pobject_->divideFace(this, c);
+}
+
+void
+CGeomFace3D::
+extrude(double d)
+{
+  CVector3D normal;
+  calcNormal(normal);
+
+  std::vector<uint> inds;
+
+  for (auto &vertex : vertices_) {
+    auto &v = pobject_->getVertex(vertex);
+
+    auto ind = pobject_->addVertex(v.getModel() + d*normal);
+
+    pobject_->setVertexNormal(ind, normal);
+
+    inds.push_back(ind);
+  }
+
+  //(void) pobject_->addFace(inds);
+  auto *face1 = dup();
+  face1->setVertices(inds);
+  pobject_->addFace(face1);
+
+  auto nv = vertices_.size();
+
+  uint i1 = uint(nv - 1);
+
+  for (uint i2 = 0; i2 < nv; i1 = i2++) {
+    std::vector<uint> inds1;
+
+    inds1.push_back(vertices_[i1]);
+    inds1.push_back(vertices_[i2]);
+    inds1.push_back(inds     [i2]);
+    inds1.push_back(inds     [i1]);
+
+    //(void) pobject_->addFace(inds1);
+    auto *face2 = dup();
+    face2->setVertices(inds1);
+    pobject_->addFace(face2);
+  }
 }
