@@ -32,14 +32,14 @@ CGeomFace3D(const CGeomFace3D &face) :
   //---
 
   // copy sub faces and sub lines
-  for (auto *sub_face : face.sub_faces_) {
-    auto *face1 = sub_face->dup();
+  for (auto *subFace : face.subFaces_) {
+    auto *face1 = subFace->dup();
 
     addSubFace(face1);
   }
 
-  for (auto *sub_line : face.sub_lines_) {
-    auto *line = sub_line->dup();
+  for (auto *subLine : face.subLines_) {
+    auto *line = subLine->dup();
 
     addSubLine(line);
   }
@@ -135,11 +135,11 @@ setObject(CGeomObject3D *object)
 {
   pobject_ = object;
 
-  for (auto *sub_face : sub_faces_)
-    sub_face->setObject(object);
+  for (auto *subFace : subFaces_)
+    subFace->setObject(object);
 
-  for (auto *sub_line : sub_lines_)
-    sub_line->setObject(object);
+  for (auto *subLine : subLines_)
+    subLine->setObject(object);
 }
 
 void
@@ -244,6 +244,8 @@ setMaskMapping(const std::vector<CPoint2D> &points)
     mask_->setMapping(points);
 }
 
+//---
+
 void
 CGeomFace3D::
 setLighted(bool b)
@@ -284,6 +286,8 @@ setVisible(bool b)
     flags_ &= uint(~VISIBLE);
 }
 
+//---
+
 void
 CGeomFace3D::
 addVertex(uint ind)
@@ -308,9 +312,9 @@ addSubFace(CGeomFace3D *face)
 {
   face->setObject(getObject());
 
-  sub_faces_.push_back(face);
+  subFaces_.push_back(face);
 
-  auto ind = uint(sub_faces_.size() - 1);
+  auto ind = uint(subFaces_.size() - 1);
 
   face->setInd(ind);
 
@@ -332,9 +336,9 @@ addSubLine(CGeomLine3D *line)
 {
   line->setObject(getObject());
 
-  sub_lines_.push_back(line);
+  subLines_.push_back(line);
 
-  auto ind = uint(sub_lines_.size() - 1);
+  auto ind = uint(subLines_.size() - 1);
 
   line->setInd(ind);
 
@@ -345,22 +349,22 @@ void
 CGeomFace3D::
 setSubFaceColor(const CRGBA &rgba)
 {
-  for (auto *sub_face : sub_faces_)
-    sub_face->setColor(rgba);
+  for (auto *subFace : subFaces_)
+    subFace->setColor(rgba);
 }
 
 void
 CGeomFace3D::
 setSubFaceColor(uint ind, const CRGBA &rgba)
 {
-  sub_faces_[ind]->setColor(rgba);
+  subFaces_[ind]->setColor(rgba);
 }
 
 void
 CGeomFace3D::
 setSubLineColor(uint ind, const CRGBA &rgba)
 {
-  sub_lines_[ind]->setColor(rgba);
+  subLines_[ind]->setColor(rgba);
 }
 
 void
@@ -809,7 +813,7 @@ divideCenter()
   pobject_->divideFace(this, c);
 }
 
-void
+CGeomFace3D *
 CGeomFace3D::
 extrude(double d)
 {
@@ -829,9 +833,9 @@ extrude(double d)
   }
 
   //(void) pobject_->addFace(inds);
-  auto *face1 = dup();
-  face1->setVertices(inds);
-  pobject_->addFace(face1);
+  auto *newFace = dup();
+  newFace->setVertices(inds);
+  pobject_->addFace(newFace);
 
   auto nv = vertices_.size();
 
@@ -850,4 +854,66 @@ extrude(double d)
     face2->setVertices(inds1);
     pobject_->addFace(face2);
   }
+
+  return newFace;
+}
+
+void
+CGeomFace3D::
+extrudeMove(double d)
+{
+  CVector3D normal;
+  calcNormal(normal);
+
+  for (auto &vertex : vertices_) {
+    auto &v1 = pobject_->getVertex(vertex);
+
+    v1.setModel(v1.getModel() + d*normal);
+  }
+}
+
+CGeomFace3D *
+CGeomFace3D::
+loopCut()
+{
+  CGeomFace3D *newFace = nullptr;
+
+  auto nv = vertices_.size();
+
+  if (nv == 4) {
+    // split one edge 1 and edge 3
+    auto e1v1 = pobject_->getVertex(vertices_[0]);
+    auto e1v2 = pobject_->getVertex(vertices_[1]);
+
+    auto e2v1 = pobject_->getVertex(vertices_[2]);
+    auto e2v2 = pobject_->getVertex(vertices_[3]);
+
+    auto p1 = (e1v1.getModel() + e1v2.getModel())/2.0;
+    auto p2 = (e2v1.getModel() + e2v2.getModel())/2.0;
+
+    auto v1 = pobject_->addVertex(p1);
+    auto v2 = pobject_->addVertex(p2);
+
+    // build new vertices of left/right of split
+    std::vector<uint> vertices1, vertices2;
+
+    vertices1.push_back(vertices_[0]);
+    vertices1.push_back(v1);
+    vertices1.push_back(v2);
+    vertices1.push_back(vertices_[3]);
+
+    vertices2.push_back(vertices_[1]);
+    vertices2.push_back(vertices_[2]);
+    vertices2.push_back(v2);
+    vertices2.push_back(v1);
+
+    setVertices(vertices1);
+
+    //(void) pobject_->addFace(inds);
+    newFace = dup();
+    newFace->setVertices(vertices2);
+    pobject_->addFace(newFace);
+  }
+
+  return newFace;
 }

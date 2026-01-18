@@ -72,6 +72,11 @@ class CGeomFace3D {
 
   //---
 
+  void setFlags  (uint flags) { flags_ |=  flags; }
+  void unsetFlags(uint flags) { flags_ &= ~flags; }
+
+  //---
+
   CGeomScene3D *getScene() const;
 
   //---
@@ -119,11 +124,6 @@ class CGeomFace3D {
   bool getNormalSet() const { return !!normal_; }
 
   const CVector3D &getNormal() const { return normal_.value(); }
-
-  //---
-
-  void setFlags  (uint flags) { flags_ |=  flags; }
-  void unsetFlags(uint flags) { flags_ &= ~flags; }
 
   //---
 
@@ -240,6 +240,12 @@ class CGeomFace3D {
 
   //---
 
+  const SubFaceList &subFaces() const { return subFaces_; }
+
+  const SubLineList &subLines() const { return subLines_; }
+
+  //---
+
   void drawSolid(CGeom3DRenderer *renderer);
   void drawSolid(CGeomZBuffer *zbuffer);
 
@@ -275,7 +281,11 @@ class CGeomFace3D {
 
   void divideCenter();
 
-  void extrude(double d);
+  CGeomFace3D *extrude(double d);
+
+  void extrudeMove(double d);
+
+  CGeomFace3D *loopCut();
 
  private:
   void init();
@@ -292,15 +302,15 @@ class CGeomFace3D {
 
   uint groupId_ { 0 }; // parent group id
 
-  uint flags_ { LIGHTED }; // state flagse
+  uint flags_ { LIGHTED }; // state flags
 
   // geometry
 
   VertexList    vertices_;      // vertices (indices)
   TexturePoints texturePoints_; // texture points
 
-  SubFaceList sub_faces_; // sub faces
-  SubLineList sub_lines_; // sub lines
+  SubFaceList subFaces_; // sub faces
+  SubLineList subLines_; // sub lines
 
   OptVector normal_; // calculated normal
 
@@ -310,10 +320,10 @@ class CGeomFace3D {
   CGeomMaterial* materialP_     { nullptr };
 
   // textures (TODO: use material)
-  CGeomTexture*  diffuseTexture_  { nullptr };
-  CGeomTexture*  specularTexture_ { nullptr };
-  CGeomTexture*  normalTexture_   { nullptr };
-  CGeomTexture*  emissiveTexture_ { nullptr };
+  CGeomTexture* diffuseTexture_  { nullptr };
+  CGeomTexture* specularTexture_ { nullptr };
+  CGeomTexture* normalTexture_   { nullptr };
+  CGeomTexture* emissiveTexture_ { nullptr };
 
   CGeomMask* mask_{ nullptr };
 };

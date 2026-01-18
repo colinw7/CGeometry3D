@@ -19,9 +19,9 @@ createVertex3D(CGeomObject3D *pobject, const CPoint3D &point) const
 
 CGeomLine3D *
 CGeometryFactory::
-createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const
+createLine3D() const
 {
-  return new CGeomLine3D(pobject, v1, v2);
+  return new CGeomLine3D;
 }
 
 CGeomFace3D *
@@ -120,7 +120,12 @@ CGeomLine3D *
 CGeometry3D::
 createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const
 {
-  return factory_->createLine3D(pobject, v1, v2);
+  auto *line = factory_->createLine3D();
+
+  line->setObject(pobject);
+  line->setVertices(v1, v2);
+
+  return line;
 }
 
 CGeomFace3D *

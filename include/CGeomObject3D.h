@@ -69,7 +69,13 @@ class CGeomObject3D {
 
   virtual ~CGeomObject3D();
 
+  //---
+
   virtual CGeomObject3D *dup() const;
+
+  //---
+
+  void clearGeometry();
 
   //---
 
@@ -248,9 +254,14 @@ class CGeomObject3D {
 
   const LineList &getLines() const { return lines_; }
 
+  LineList &getLines() { return lines_; }
+
   uint getNumLines() const { return uint(lines_.size()); }
 
-  CGeomLine3D &getLine(uint i) const { return *lines_[i]; }
+  const CGeomLine3D &getLine(uint i) const { return *lines_[i]; }
+  CGeomLine3D *getLineP(uint i) const { return lines_[i]; }
+
+  CGeomLine3D &getLine(uint i) { return *lines_[i]; }
 
   //---
 

@@ -20,7 +20,7 @@ class CGeometryFactory {
 
   virtual CGeomVertex3D *createVertex3D(CGeomObject3D *pobject, const CPoint3D &point) const;
 
-  virtual CGeomLine3D *createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const;
+  virtual CGeomLine3D *createLine3D() const;
 
   virtual CGeomFace3D *createFace3D() const;
 

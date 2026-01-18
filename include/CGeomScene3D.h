@@ -223,4 +223,49 @@ class CGeomScene3D {
   AxesP            axes_;
 };
 
+//---
+
+class CGeomScene3DVisitor {
+ public:
+  CGeomScene3DVisitor(CGeomScene3D *scene);
+
+  virtual ~CGeomScene3DVisitor() { }
+
+  //---
+
+  bool isOnlyVisible() const { return onlyVisible_; }
+  void setOnlyVisible(bool b) { onlyVisible_ = b; }
+
+  //---
+
+  void visit();
+
+  virtual bool beginVisitObject(CGeomObject3D *) { return true; }
+  virtual void endVisitObject  (CGeomObject3D *) { }
+
+  virtual bool beginVisitFace(CGeomFace3D *) { return true; }
+  virtual void endVisitFace  (CGeomFace3D *) { }
+
+  virtual void visitFaceVertex(CGeomVertex3D *) { }
+
+  virtual void visitLine(CGeomLine3D *) { }
+
+  virtual bool beginVisitSubFace(CGeomFace3D *) { return true; }
+  virtual void endVisitSubFace  (CGeomFace3D *) { }
+
+  virtual void visitSubFaceVertex(CGeomVertex3D *) { }
+
+  virtual void visitSubLine(CGeomLine3D *) { }
+
+ protected:
+  CGeomScene3D* scene_       { nullptr };
+  bool          onlyVisible_ { true };
+
+  CGeomObject3D* object_  { nullptr };
+  CGeomFace3D*   face_    { nullptr };
+  CGeomLine3D*   line_    { nullptr };
+  CGeomFace3D*   subFace_ { nullptr };
+  CGeomLine3D*   subLine_ { nullptr };
+};
+
 #endif

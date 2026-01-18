@@ -30,6 +30,7 @@ CGeomMaterial.cpp \
 CGeomNodeData.cpp \
 CGeomObject3D.cpp \
 CGeomParticle3D.cpp \
+CGeomPlane3D.cpp \
 CGeomPoint3D.cpp \
 CGeomPyramid3D.cpp \
 CGeomScene3D.cpp \

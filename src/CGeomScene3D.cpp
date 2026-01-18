@@ -590,3 +590,90 @@ lightPoint(const CPoint3D &point, const CVector3D &normal,
 
   return true;
 }
+
+//---
+
+CGeomScene3DVisitor::
+CGeomScene3DVisitor(CGeomScene3D *scene) :
+ scene_(scene)
+{
+}
+
+void
+CGeomScene3DVisitor::
+visit()
+{
+  for (auto *object : scene_->getObjects()) {
+    if (isOnlyVisible() && ! object->getVisible())
+      continue;
+
+    object_ = object;
+
+    if (! beginVisitObject(object_))
+      continue;
+
+    //---
+
+    const auto &faces = object_->getFaces();
+
+    for (auto *face : faces) {
+      if (isOnlyVisible() && ! face->getVisible())
+        continue;
+
+      face_ = face;
+
+      if (! beginVisitFace(face))
+        continue;
+
+      for (const auto &v : face->getVertices()) {
+        auto *vertex = const_cast<CGeomVertex3D *>(object_->getVertexP(v));
+
+        visitFaceVertex(vertex);
+      }
+
+      for (auto *subFace : face->subFaces()) {
+        if (isOnlyVisible() && ! subFace->getVisible())
+          continue;
+
+        subFace_ = subFace;
+
+        if (! beginVisitSubFace(subFace))
+          continue;
+
+        for (const auto &v : subFace->getVertices()) {
+          auto *vertex = const_cast<CGeomVertex3D *>(object_->getVertexP(v));
+
+          visitSubFaceVertex(vertex);
+        }
+
+        endVisitSubFace(face_);
+      }
+
+      for (auto *subLine : face->subLines()) {
+        if (isOnlyVisible() && ! subLine->getVisible())
+          continue;
+
+        subLine_ = subLine;
+
+        visitSubLine(subLine);
+      }
+
+      endVisitFace(face_);
+    }
+
+    //---
+
+    for (auto *line : object_->getLines()) {
+      if (isOnlyVisible() && ! line->getVisible())
+        continue;
+
+      line_ = line;
+
+      visitLine(line);
+    }
+
+    //---
+
+    endVisitObject(object);
+  }
+}

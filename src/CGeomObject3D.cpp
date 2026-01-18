@@ -74,6 +74,8 @@ CGeomObject3D::
 {
 }
 
+//---
+
 CGeomObject3D *
 CGeomObject3D::
 dup() const
@@ -85,7 +87,33 @@ dup() const
   return obj;
 }
 
-//-----------
+//---
+
+void
+CGeomObject3D::
+clearGeometry()
+{
+  faces_    .clear();
+  lines_    .clear();
+  vertices_ .clear();
+
+  vertexFaceList_  .clear();
+  vertexFaceNormal_.clear();
+
+  groups_.clear();
+
+  texturePoints_.clear();
+
+  normals_.clear();
+
+  nodes_  .clear();
+  nodeIds_.clear();
+
+  meshNode_ = -1;
+  rootNode_ = -1;
+}
+
+//---
 
 CMatrix3D
 CGeomObject3D::
@@ -130,8 +158,8 @@ getRotate() const
 {
   if (transformData_.global)
     return CMatrix3D::identity();
-  else
-    return transformData_.rotate;
+
+  return transformData_.rotate;
 }
 
 void

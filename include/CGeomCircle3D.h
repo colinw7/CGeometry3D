@@ -5,12 +5,19 @@
 
 class CGeomCircle3D : public CGeomObject3D {
  public:
+  enum Type {
+    LINE,
+    NGON,
+    FAN
+  };
+
   enum { NUM_XY = 40 };
 
  public:
   struct ConfigData {
     ConfigData() { }
 
+    Type   type       { Type::FAN };
     uint   num_xy     { NUM_XY };
     double angleStart { 0.0 };
     double angleDelta { 2.0*M_PI };
@@ -29,6 +36,7 @@ class CGeomCircle3D : public CGeomObject3D {
 
  private:
   CPoint3D   center_;
+  double     radius_ { 1.0 };
   ConfigData configData_;
 };
 
