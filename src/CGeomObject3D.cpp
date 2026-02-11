@@ -72,6 +72,14 @@ CGeomObject3D(const CGeomObject3D &object) :
 CGeomObject3D::
 ~CGeomObject3D()
 {
+  for (auto *face : faces_)
+    delete face;
+
+  for (auto *line : lines_)
+    delete line;
+
+  for (auto *vertex : vertices_)
+    delete vertex;
 }
 
 //---
@@ -91,8 +99,19 @@ dup() const
 
 void
 CGeomObject3D::
-clearGeometry()
+clearGeometry(bool destroy)
 {
+  if (destroy) {
+    for (auto *face : faces_)
+      delete face;
+
+    for (auto *line : lines_)
+      delete line;
+
+    for (auto *vertex : vertices_)
+      delete vertex;
+  }
+
   faces_    .clear();
   lines_    .clear();
   vertices_ .clear();
@@ -738,6 +757,14 @@ setSubFaceColor(uint faceNum, uint subFaceNum, const CRGBA &rgba)
   auto *face = getFaceP(faceNum);
 
   face->setSubFaceColor(subFaceNum, rgba);
+}
+
+void
+CGeomObject3D::
+setSubFaceMaterialP(CGeomMaterial *material)
+{
+  for (auto *face : faces_)
+    face->setSubFaceMaterialP(material);
 }
 
 void
@@ -1777,6 +1804,26 @@ getBasis(CVector3D &right, CVector3D &up, CVector3D &dir)
   coordFrame_.getBasis(right, up, dir);
 }
 
+//---
+
+void
+CGeomObject3D::
+scale(double x, double y, double z)
+{
+  auto s = CMatrix3D::scale(x, y, z);
+
+  transform(s);
+}
+
+void
+CGeomObject3D::
+translate(double x, double y, double z)
+{
+  auto s = CMatrix3D::translation(x, y, z);
+
+  transform(s);
+}
+
 void
 CGeomObject3D::
 transform(const CMatrix3D &matrix)
@@ -2599,4 +2646,73 @@ divideFace(CGeomFace3D *face, const CPoint3D &c)
 
     v1 = v2;
   }
+}
+
+//---
+
+bool
+CGeomObject3D::
+splitFacesByMaterial(std::vector<CGeomObject3D *> &newObjects) const
+{
+  using Faces         = std::vector<CGeomFace3D *>;
+  using MaterialFaces = std::map<CGeomMaterial *, Faces>;
+
+  MaterialFaces materialFaces;
+
+  for (auto *face : faces_) {
+    materialFaces[face->getMaterialP()].push_back(face);
+  }
+
+  if (materialFaces.size() < 2) {
+    if (materialFaces.size() == 1) {
+      auto *th = const_cast<CGeomObject3D *>(this);
+
+      th->setMaterialP(materialFaces.begin()->first);
+    }
+
+    return false;
+  }
+
+  for (const auto &pm : materialFaces) {
+    auto *material = pm.first;
+
+    std::set<uint> vertexSet;
+
+    for (auto *face : pm.second) {
+      for (const auto &iv : face->getVertices()) {
+        vertexSet.insert(iv);
+      }
+    }
+
+    auto *newObject = CGeometry3DInst->createObject3D(pscene_, material->name());
+
+    newObject->setMaterialP(material);
+
+    std::map<uint, uint> vertexMap;
+
+    for (const auto &iv : vertexSet) {
+      const auto &v = getVertex(iv);
+
+      auto iv1 = newObject->addVertex(v.getModel());
+
+      vertexMap[iv] = iv1;
+    }
+
+    for (auto *face : pm.second) {
+      VertexIList faceVertices;
+
+      for (const auto &iv : face->getVertices())
+        faceVertices.push_back(vertexMap[iv]);
+
+      auto newFaceId = newObject->addFace(faceVertices);
+
+      auto *newFace = newObject->getFaceP(newFaceId);
+
+      newFace->setTexturePoints(face->getTexturePoints());
+    }
+
+    newObjects.push_back(newObject);
+  }
+
+  return true;
 }

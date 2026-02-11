@@ -21,7 +21,7 @@ class CGeomScene3D {
 
  public:
   CGeomScene3D();
- ~CGeomScene3D() { }
+ ~CGeomScene3D();
 
   void setRenderer(CGeom3DRenderer *renderer);
 

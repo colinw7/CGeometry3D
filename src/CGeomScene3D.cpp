@@ -11,6 +11,11 @@ CGeomScene3D()
   axes_ = std::make_unique<CGeomAxes3D>(this, "axis");
 }
 
+CGeomScene3D::
+~CGeomScene3D()
+{
+}
+
 void
 CGeomScene3D::
 setRenderer(CGeom3DRenderer *renderer)

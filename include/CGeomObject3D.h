@@ -29,12 +29,28 @@ class CGeomObject3D {
   using VertexIList      = std::vector<uint>;
   using VertexFaceList   = std::map<uint, FaceIList>;
   using VertexFaceNormal = std::map<uint, CVector3D>;
+  using TexturePoints    = std::vector<CPoint3D>;
 
-  enum Transform {
+  enum class Transform {
     NONE,
     ROTATION,
     TRANSLATION,
     SCALE
+  };
+
+  enum class ShapeType {
+    NONE,
+    BOX,
+    CIRCLE,
+    CONE,
+    CUBE,
+    CYLINDER,
+    HYPERBOLOID,
+    PLANE,
+    PYRAMID,
+    SPHERE,
+    TORUS,
+    TRIANGLE
   };
 
   class Group {
@@ -75,7 +91,7 @@ class CGeomObject3D {
 
   //---
 
-  void clearGeometry();
+  void clearGeometry(bool destroy=false);
 
   //---
 
@@ -194,6 +210,8 @@ class CGeomObject3D {
   uint dupVertex(uint vind);
 
   //---
+
+  const TexturePoints &getTexturePoints() const { return texturePoints_; }
 
   uint getNumTextuePoints() const { return uint(texturePoints_.size()); }
 
@@ -324,6 +342,8 @@ class CGeomObject3D {
   void setSubFaceColor(uint face_num, const CRGBA &rgba);
   void setSubFaceColor(uint face_num, uint sub_face_num, const CRGBA &rgba);
 
+  void setSubFaceMaterialP(CGeomMaterial *material);
+
   //---
 
   // individual line appearance
@@ -447,6 +467,9 @@ class CGeomObject3D {
   void getBasis(CVector3D &right, CVector3D &up, CVector3D &dir);
 
   //---
+
+  void scale    (double x, double y, double z);
+  void translate(double x, double y, double z);
 
   void transform(const CMatrix3D &matrix);
 
@@ -599,12 +622,15 @@ class CGeomObject3D {
 
   void divideFace(CGeomFace3D *face, const CPoint3D &c);
 
+  //---
+
+  bool splitFacesByMaterial(std::vector<CGeomObject3D *> &newObjects) const;
+
  private:
   void validatePObject();
 
  protected:
-  using TexturePoints = std::vector<CPoint3D>;
-  using Normals       = std::vector<CVector3D>;
+  using Normals = std::vector<CVector3D>;
 
   // scene
   CGeomScene3D* pscene_ { nullptr };

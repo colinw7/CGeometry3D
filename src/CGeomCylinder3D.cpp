@@ -5,54 +5,68 @@
 
 CGeomCylinder3D::
 CGeomCylinder3D(CGeomScene3D *pscene, const std::string &name,
-                double xc, double yc, double zc, double w, double h) :
- CGeomObject3D(pscene, name)
+                double xc, double yc, double zc, double w, double h,
+                const ConfigData &configData) :
+ CGeomObject3D(pscene, name), center_(xc, yc, zc), width_(w), height_(h), configData_(configData)
 {
-  addGeometry(this, xc, yc, zc, w, h, num_patches_);
+  addGeometry(this, center_, width_, height_, configData_);
 }
 
 CGeomCylinder3D::
 CGeomCylinder3D(CGeomScene3D *pscene, const std::string &name,
-                const CPoint3D &center, double w, double h) :
- CGeomObject3D(pscene, name)
+                const CPoint3D &center, double w, double h,
+                const ConfigData &configData) :
+ CGeomObject3D(pscene, name), center_(center), width_(w), height_(h), configData_(configData)
 {
-  addGeometry(this, center, w, h, num_patches_);
+  addGeometry(this, center_, width_, height_, configData_);
 }
 
 void
 CGeomCylinder3D::
 addGeometry(CGeomObject3D *object, const CPoint3D &center,
-            double w, double h, uint num_patches)
+            double w, double h, const ConfigData &configData)
 {
-  addGeometry(object, center.x, center.y, center.z, w, h, num_patches);
+  addGeometry(object, center.x, center.y, center.z, w, h, configData);
 }
 
 void
 CGeomCylinder3D::
 addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
-            double w, double h, uint num_patches)
+            double w, double h, const ConfigData &configData)
 {
-  // create C shape (0, -h/2, -w/2, h/2)
-  int np = 8;
+  int np = configData.num_xy;
 
   std::vector<double> x, y;
 
-  x.resize(np + 2);
-  y.resize(np + 2);
+  if (configData.cap_type != CapType::NONE) {
+    // create C shape (0, -h/2, -w/2, h/2)
+    x.resize(np + 2);
+    y.resize(np + 2);
+  }
+  else {
+    x.resize(np);
+    y.resize(np);
+  }
 
   auto dy = h/(np - 1);
 
   double y1 = -h/2.0;
 
-  x[0] = 0.0; y[0] = y1;
+  uint ii = 0;
+
+  if (configData.cap_type != CapType::NONE) {
+    x[ii] = 0.0; y[ii] = y1; ++ii;
+  }
 
   for (int i = 0; i < np; ++i) {
-    x[i + 1] = w/2; y[i + 1] = y1;
+    x[ii] = w/2; y[ii] = y1; ++ii;
 
     y1 += dy;
   }
 
-  x[np + 1] = 0.0; y[np + 1] = h/2.0;
+  if (configData.cap_type != CapType::NONE) {
+    x[ii] = 0.0; y[ii] = h/2.0;
+  }
 
   //---
 
@@ -61,12 +75,14 @@ addGeometry(CGeomObject3D *object, double xc, double yc, double zc,
 
   bodyRevData.uniquify = true;
 
-  bodyRevData.tagInds[0     ] = 1;
-  bodyRevData.tagInds[1     ] = 1;
-//bodyRevData.tagInds[np    ] = 2;
-  bodyRevData.tagInds[np + 1] = 2;
+  if (configData.cap_type != CapType::NONE) {
+    bodyRevData.tagInds[0     ] = 1; // bottom center
+    bodyRevData.tagInds[1     ] = 1; // first edge
+  //bodyRevData.tagInds[np    ] = 2;
+    bodyRevData.tagInds[np + 1] = 2; // top center
+  }
 
-  object->addBodyRev(&x[0], &y[0], np + 2, num_patches, bodyRevData);
+  object->addBodyRev(&x[0], &y[0], uint(x.size()), configData.num_patches, bodyRevData);
 
   object->moveBy(CPoint3D(xc, yc, zc));
 }
@@ -81,7 +97,7 @@ mapTexture(CGeomTexture *texture)
 
   texture->getImageSize(&twidth, &theight);
 
-  double dx = (twidth - 1)/double(num_patches_);
+  double dx = (twidth - 1)/double(configData_.num_patches);
   double dy = (theight - 1);
 
   double y1 = 0;
@@ -89,7 +105,7 @@ mapTexture(CGeomTexture *texture)
 
   double x1 = 0;
 
-  for (uint i = num_patches_; i < 2*num_patches_; ++i) {
+  for (uint i = configData_.num_patches; i < 2*configData_.num_patches; ++i) {
     double x2 = x1 + dx;
 
     faces[i]->setTexture(texture);
@@ -124,7 +140,7 @@ mapMask(CGeomMask *mask)
 
   mask->getImageSize(&twidth, &theight);
 
-  double dx = (twidth - 1)/double(num_patches_);
+  double dx = (twidth - 1)/double(configData_.num_patches);
   double dy = (theight - 1);
 
   double y1 = 0;
@@ -132,7 +148,7 @@ mapMask(CGeomMask *mask)
 
   double x1 = 0;
 
-  for (uint i = num_patches_; i < 2*num_patches_; ++i) {
+  for (uint i = configData_.num_patches; i < 2*configData_.num_patches; ++i) {
     double x2 = x1 + dx;
 
     faces[i]->setMask(mask);

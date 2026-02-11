@@ -11,6 +11,8 @@ enum class CGeomLight3DType {
 
 class CGeomLight3DData {
  public:
+  using Type = CGeomLight3DType;
+
   struct Attenuation {
     double constant  { 1.0 };
     double linear    { 0.0 };
@@ -42,10 +44,10 @@ class CGeomLight3DData {
   //---
 
   // type
-  const CGeomLight3DType &getType() const { return type_; }
-  void setType(const CGeomLight3DType &t) { type_ = t; }
+  const Type &getType() const { return type_; }
+  void setType(const Type &t) { type_ = t; }
 
-  bool getDirectional() const { return type_ == CGeomLight3DType::DIRECTIONAL; }
+  bool getDirectional() const { return type_ == Type::DIRECTIONAL; }
 
   //---
 
@@ -90,7 +92,7 @@ class CGeomLight3DData {
   void setAttenuation(const Attenuation &attenuation) { attenuation_ = attenuation; }
 
   double calcAttenuation(double dist) const {
-    if (type_ != CGeomLight3DType::POINT)
+    if (type_ != Type::POINT)
       return 1.0;
 
     return 1.0/(attenuation_.constant + dist*(attenuation_.linear + dist*attenuation_.quadratic));
@@ -121,13 +123,6 @@ class CGeomLight3DData {
   }
 
  private:
-  // colors
-  CRGBA ambient_  { 0.0, 0.0, 0.0 };
-  CRGBA diffuse_  { 1.0, 1.0, 1.0 };
-  CRGBA specular_ { 0.0, 0.0, 0.0 };
-
-  CGeomLight3DType type_ { CGeomLight3DType::POINT };
-
   struct DirectionData {
     CVector3D direction { 0.0, 0.0, -1.0 };
   };
@@ -141,6 +136,13 @@ class CGeomLight3DData {
     double    exponent    { 1.0 };
     double    cutoffAngle { 180.0 };
   };
+
+  // colors
+  CRGBA ambient_  { 0.0, 0.0, 0.0 };
+  CRGBA diffuse_  { 1.0, 1.0, 1.0 };
+  CRGBA specular_ { 0.0, 0.0, 0.0 };
+
+  Type type_ { Type::POINT };
 
   DirectionData directionData_;
   PointData     pointData_;
@@ -225,6 +227,9 @@ class CGeomLight3DMgr {
 
 class CGeomLight3D {
  public:
+  using Type = CGeomLight3DType;
+
+ public:
   CGeomLight3D(CGeomScene3D *scene, const std::string &name="");
 
   virtual ~CGeomLight3D() { }
@@ -274,8 +279,8 @@ class CGeomLight3D {
     return data_.getDirectional();
   }
 
-  const CGeomLight3DType &getType() const { return data_.getType(); }
-  virtual void setType(const CGeomLight3DType &t) { data_.setType(t); }
+  const Type &getType() const { return data_.getType(); }
+  virtual void setType(const Type &t) { data_.setType(t); }
 
   //---
 

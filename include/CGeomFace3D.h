@@ -175,6 +175,8 @@ class CGeomFace3D {
   void setSubFaceColor(uint ind, const CRGBA &rgba);
   void setSubLineColor(uint ind, const CRGBA &rgba);
 
+  void setSubFaceMaterialP(CGeomMaterial *);
+
   //---
 
   const OptReal &shininess() const { return initFrontMaterial()->shininess(); }

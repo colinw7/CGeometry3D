@@ -362,6 +362,14 @@ setSubFaceColor(uint ind, const CRGBA &rgba)
 
 void
 CGeomFace3D::
+setSubFaceMaterialP(CGeomMaterial *material)
+{
+  for (auto *subFace : subFaces_)
+    subFace->setMaterialP(material);
+}
+
+void
+CGeomFace3D::
 setSubLineColor(uint ind, const CRGBA &rgba)
 {
   subLines_[ind]->setColor(rgba);

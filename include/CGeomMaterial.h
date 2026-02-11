@@ -5,6 +5,10 @@
 #include <map>
 #include <vector>
 
+// Note: diffuse and albedo as same
+//  albedo is pure material color
+//  diffuse sometimes means color with baked in lighting/shadow/...
+
 class CGeomTexture;
 
 class CGeomMaterial {
@@ -66,6 +70,24 @@ class CGeomMaterial {
 
   //---
 
+  // TODO: add to CMaterial
+  const OptReal &metallic() const { return metallic_; }
+  void setMetallic(const OptReal &r) { metallic_ = r; }
+
+  double getMetallic(double def=0.0) const { return metallic_.value_or(def); }
+
+  const OptReal &roughness() const { return roughness_; }
+  void setRoughness(const OptReal &r) { roughness_ = r; }
+
+  double getRoughness(double def=0.0) const { return roughness_.value_or(def); }
+
+  const OptReal &ambientOcclusion() const { return ao_; }
+  void setAmbientOcclusion(const OptReal &r) { ao_ = r; }
+
+  double getAmbientOcclusion(double def=0.0) const { return ao_.value_or(def); }
+
+  //---
+
   // 0.0=opaque, 1.0=transparent
   double transparency() const { return transparency_; }
   void setTransparency(double r) { transparency_ = r; }
@@ -99,6 +121,12 @@ class CGeomMaterial {
   CGeomTexture *emissiveTexture() const { return emissiveTexture_; }
   void setEmissiveTexture(CGeomTexture *p) { emissiveTexture_ = p; }
 
+  CGeomTexture *metallicTexture() const { return metallicTexture_; }
+  void setMetallicTexture(CGeomTexture *p) { metallicTexture_ = p; }
+
+  CGeomTexture *ORMTexture() const { return ORMTexture_; }
+  void setORMTexture(CGeomTexture *p) { ORMTexture_ = p; }
+
  private:
   uint id_ { 0 };
 
@@ -109,11 +137,17 @@ class CGeomMaterial {
   bool    twoSided_     { false };
   Shading shading_      { Shading::FLAT };
 
+  OptReal metallic_;
+  OptReal roughness_;
+  OptReal ao_;
+
   CGeomTexture* ambientTexture_  { nullptr };
   CGeomTexture* diffuseTexture_  { nullptr };
   CGeomTexture* normalTexture_   { nullptr };
   CGeomTexture* specularTexture_ { nullptr };
   CGeomTexture* emissiveTexture_ { nullptr };
+  CGeomTexture* metallicTexture_ { nullptr };
+  CGeomTexture* ORMTexture_      { nullptr };
 };
 
 //---

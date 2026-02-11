@@ -60,6 +60,7 @@ class CGeometry3D {
   CGeomFace3D *createFace3D(CGeomObject3D *pobject, const std::vector<uint> &vertices) const;
 
   CGeomObject3D *createObject3D(CGeomScene3D *pscene, const std::string &name) const;
+  CGeomObject3D *dupObject(CGeomObject3D *obj) const;
 
   CGeomScene3D *createScene3D() const;
 

@@ -151,6 +151,17 @@ createObject3D(CGeomScene3D *pscene, const std::string &name) const
   return obj;
 }
 
+CGeomObject3D *
+CGeometry3D::
+dupObject(CGeomObject3D *obj) const
+{
+  auto *obj1 = obj->dup();
+
+  obj1->setInd(CGeometry3DInst->nextObjectId());
+
+  return obj1;
+}
+
 CGeomScene3D *
 CGeometry3D::
 createScene3D() const
