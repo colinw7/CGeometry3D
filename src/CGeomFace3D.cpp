@@ -290,6 +290,23 @@ setVisible(bool b)
 
 void
 CGeomFace3D::
+setNormals(const std::vector<CVector3D> &normals)
+{
+  auto nn = normals.size();
+
+  assert(nn == vertices_.size());
+
+  for (uint i = 0; i < nn; ++i) {
+    auto &v = pobject_->getVertex(vertices_[i]);
+
+    v.setNormal(normals[i]);
+  }
+}
+
+//---
+
+void
+CGeomFace3D::
 addVertex(uint ind)
 {
   vertices_.push_back(ind);

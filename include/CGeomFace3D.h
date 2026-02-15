@@ -125,6 +125,8 @@ class CGeomFace3D {
 
   const CVector3D &getNormal() const { return normal_.value(); }
 
+  void setNormals(const std::vector<CVector3D> &normals);
+
   //---
 
   void setGroup(uint id) { groupId_ = id; }
