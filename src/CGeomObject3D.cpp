@@ -21,6 +21,7 @@ CGeomObject3D(const CGeomObject3D &object) :
  pscene_          (object.pscene_),
  name_            (object.name_),
  id_              (object.id_),
+ meshName_        (object.meshName_),
  selected_        (object.selected_),
  visible_         (object.visible_),
  drawPosition_    (object.drawPosition_),
@@ -42,6 +43,7 @@ CGeomObject3D(const CGeomObject3D &object) :
  rootNode_        (object.rootNode_),
  viewMatrix_      (object.viewMatrix_),
  transformData_   (object.transformData_),
+ animName_        (object.animName_),
  dv_              (object.dv_),
  da_              (object.da_)
 {
@@ -66,7 +68,17 @@ CGeomObject3D(const CGeomObject3D &object) :
     addVertex(vertex1);
   }
 
+  // children done by hierDup
+
   updatePosition();
+
+  // fix nodes object
+  for (auto &pn : nodes_) {
+    auto &nodeData = pn.second;
+
+    nodeData.setAnimObject(this);
+    nodeData.setObject(nullptr);
+  }
 }
 
 CGeomObject3D::
@@ -80,19 +92,34 @@ CGeomObject3D::
 
   for (auto *vertex : vertices_)
     delete vertex;
+
+  // TODO: delete (or detach) children
 }
 
 //---
 
 CGeomObject3D *
 CGeomObject3D::
-dup() const
+hierDup() const
 {
-  auto *obj = new CGeomObject3D(*this);
+  auto *obj = dup();
 
   obj->setInd(CGeometry3DInst->nextObjectId());
 
+  for (auto *child : children_) {
+    auto *child1 = child->hierDup();
+
+    obj->addChild(child1);
+  }
+
   return obj;
+}
+
+CGeomObject3D *
+CGeomObject3D::
+dup() const
+{
+  return new CGeomObject3D(*this);
 }
 
 //---
@@ -207,6 +234,20 @@ setScale(const CMatrix3D &m)
   transformData_.scale  = m;
 }
 
+CMatrix3D
+CGeomObject3D::
+getHierTransform() const
+{
+  auto transform = getTransform();
+
+  if (parent())
+    transform = parent()->getHierTransform()*transform;
+
+  return transform;
+}
+
+//---
+
 bool
 CGeomObject3D::
 getHierSelected() const
@@ -220,7 +261,27 @@ getHierSelected() const
   return false;
 }
 
-//-----------
+//---
+
+void
+CGeomObject3D::
+setIsPrimitive(bool b, bool hier)
+{
+  isPrimitive_ = b;
+
+  if (hier) {
+    for (auto *child : children_)
+      child->setIsPrimitive(b, hier);
+  }
+
+#if 0
+  if (isPrimitive_) {
+    assert(! pscene_->getObjectByInd(getInd()));
+  }
+#endif
+}
+
+//---
 
 void
 CGeomObject3D::
@@ -254,7 +315,6 @@ CGeomObject3D::
 getModelCenter() const
 {
   CBBox3D bbox;
-
   getModelBBox(bbox);
 
   return bbox.getCenter();
@@ -276,7 +336,6 @@ CGeomObject3D::
 getModelSize() const
 {
   CBBox3D bbox;
-
   getModelBBox(bbox);
 
   return bbox.getSize();
@@ -837,6 +896,23 @@ setBackMaterial(const CGeomMaterial &material)
 
 //---
 
+CGeomObject3D *
+CGeomObject3D::
+getAnimObject() const
+{
+  if (isAnimObject())
+    return const_cast<CGeomObject3D *>(this);
+
+  return (parent_ ? parent_->getAnimObject() : nullptr);
+}
+
+bool
+CGeomObject3D::
+isAnimObject() const
+{
+  return (! nodes_.empty());
+}
+
 bool
 CGeomObject3D::
 hasNode(int i) const
@@ -867,7 +943,7 @@ addNode(int i, const CGeomNodeData &data)
   data1.resetIndex();
   data1.setValid  (true);
 
-  data1.setRootObject(this);
+  data1.setAnimObject(this);
 
   nodeIds_.push_back(i);
 }
@@ -892,9 +968,9 @@ mapNodeIndex(int index) const
   int i = 0;
 
   for (auto &pn : nodes_) {
-    auto &node = pn.second;
+    auto &nodeData = pn.second;
 
-    if (node.index() == index)
+    if (nodeData.index() == index)
       return i;
 
     ++i;
@@ -926,10 +1002,10 @@ CGeomObject3D::
 getNodeByInd(int ind) const
 {
   for (auto &pn : nodes_) {
-    auto &node = pn.second;
+    auto &nodeData = pn.second;
 
-    if (node.ind() == ind)
-      return const_cast<CGeomNodeData *>(&node);
+    if (nodeData.ind() == ind)
+      return const_cast<CGeomNodeData *>(&nodeData);
   }
 
   return nullptr;
@@ -985,14 +1061,14 @@ CGeomObject3D::
 getMeshGlobalTransform() const
 {
 #if 0
-  auto *rootObject = getRootObject();
+  auto *animObject = getAnimObject();
 
   int meshNodeId = getMeshNode();
 
   if (meshNodeId < 0)
-    meshNodeId = rootObject->getMeshNode();
+    meshNodeId = animObject->getMeshNode();
 
-  const auto &meshNodeData = rootObject->getNode(meshNodeId);
+  const auto &meshNodeData = animObject->getNode(meshNodeId);
 
   return meshNodeData.globalTransform();
 #else
@@ -1009,9 +1085,12 @@ getMeshGlobalTransform() const
   if (meshNodeId < 0)
     return CMatrix3D::identity();
 
-  auto *rootObject = getRootObject();
+  auto *animObject = getAnimObject();
 
-  const auto &meshNodeData = rootObject->getNode(meshNodeId);
+  if (! animObject)
+    return CMatrix3D::identity();
+
+  const auto &meshNodeData = animObject->getNode(meshNodeId);
 
   return meshNodeData.globalTransform();
 #endif
@@ -1021,16 +1100,19 @@ CMatrix3D
 CGeomObject3D::
 getMeshLocalTransform() const
 {
-  auto *rootObject = getRootObject();
+  auto *animObject = getAnimObject();
+
+  if (! animObject)
+    return CMatrix3D::identity();
 
   int meshNodeId = getMeshNode();
 
   if (meshNodeId < 0)
-    meshNodeId = rootObject->getMeshNode();
+    meshNodeId = animObject->getMeshNode();
 
-  const auto &meshNodeData = rootObject->getNode(meshNodeId);
+  const auto &meshNodeData = animObject->getNode(meshNodeId);
 
-  return meshNodeData.localTransform();
+  return meshNodeData.calcLocalTransform();
 }
 
 int
@@ -1058,11 +1140,11 @@ setNodeLocalTransforms(int i, const CTranslate3D &translation, const CRotate3D &
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
-  auto &node = (*pn).second;
+  auto &nodeData = (*pn).second;
 
-  node.setLocalTranslation(translation);
-  node.setLocalRotation   (rotation);
-  node.setLocalScale      (scale);
+  nodeData.setLocalTranslation(translation);
+  nodeData.setLocalRotation   (rotation);
+  nodeData.setLocalScale      (scale);
 }
 
 #if 0
@@ -1073,9 +1155,9 @@ setNodeLocalTransform(int i, const CMatrix3D &m)
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
-  auto &node = (*pn).second;
+  auto &nodeData = (*pn).second;
 
-  node.localTransform = m;
+  nodeData.localTransform = m;
 }
 #endif
 
@@ -1086,20 +1168,24 @@ setNodeGlobalTransform(int i, const CMatrix3D &m)
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
-  auto &node = (*pn).second;
+  auto &nodeData = (*pn).second;
 
-  node.setGlobalTransform(m);
+  nodeData.setGlobalTransform(m);
 }
 
 CMatrix3D
 CGeomObject3D::
-getNodeHierTransform(const CGeomNodeData &node) const
+getNodeHierTransform(const CGeomNodeData &nodeData) const
 {
-  auto m = node.localTranslation().matrix()*
-           node.localRotation().matrix()*
-           node.localScale().matrix();
+#if 0
+  auto m = nodeData.localTranslation().matrix()*
+           nodeData.localRotation().matrix()*
+           nodeData.localScale().matrix();
+#else
+  auto m = nodeData.calcLocalTransform();
+#endif
 
-  int parentId = node.parent();
+  int parentId = nodeData.parent();
 
   if (parentId >= 0) {
     const auto &pnode = getNode(parentId);
@@ -1112,13 +1198,13 @@ getNodeHierTransform(const CGeomNodeData &node) const
 
 CMatrix3D
 CGeomObject3D::
-getNodeAnimHierTransform(CGeomNodeData &node, const std::string &animName, double t) const
+getNodeAnimHierTransform(CGeomNodeData &nodeData, const std::string &animName, double t) const
 {
   CMatrix3D m;
   bool      mSet { false };
 
-  if (const_cast<CGeomObject3D *>(this)->updateNodeAnimationData(node, animName, t)) {
-    auto &animationData = node.getAnimationData(animName);
+  if (const_cast<CGeomObject3D *>(this)->updateNodeAnimationData(nodeData, animName, t)) {
+    auto &animationData = nodeData.getAnimationData(animName);
 
     m = animationData.animTranslation().matrix()*
         animationData.animRotation   ().matrix()*
@@ -1127,12 +1213,17 @@ getNodeAnimHierTransform(CGeomNodeData &node, const std::string &animName, doubl
     mSet = true;
   }
 
-  if (! mSet)
-    m = node.localTranslation().matrix()*
-        node.localRotation().matrix()*
-        node.localScale().matrix();
+  if (! mSet) {
+#if 0
+    m = nodeData.localTranslation().matrix()*
+        nodeData.localRotation().matrix()*
+        nodeData.localScale().matrix();
+#else
+    m = nodeData.calcLocalTransform();
+#endif
+  }
 
-  int parentId = node.parent();
+  int parentId = nodeData.parent();
 
   if (parentId >= 0) {
     auto &pnode = const_cast<CGeomNodeData &>(getNode(parentId));
@@ -1145,14 +1236,30 @@ getNodeAnimHierTransform(CGeomNodeData &node, const std::string &animName, doubl
 
 void
 CGeomObject3D::
+stepAnimTime()
+{
+  double tmin, tmax;
+
+  if (getAnimationTranslationRange(animName(), tmin, tmax)) {
+    auto d = (tmax - tmin)/animTimeStep();
+
+    animTime_ += d;
+
+    if (animTime_ > tmax)
+      animTime_ = tmin;
+  }
+}
+
+void
+CGeomObject3D::
 setNodeAnimationData(int i, const std::string &name, const CGeomAnimationData &data)
 {
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
-  auto &node = (*pn).second;
+  auto &nodeData = (*pn).second;
 
-  node.setAnimationData(name, data);
+  nodeData.setAnimationData(name, data);
 }
 
 void
@@ -1163,9 +1270,9 @@ setNodeAnimationTransformData(int i, const std::string &name, const Transform &t
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
-  auto &node = (*pn).second;
+  auto &nodeData = (*pn).second;
 
-  auto &animData = node.getAnimationData(name, data);
+  auto &animData = nodeData.getAnimationData(name, data);
 
   if      (transform == Transform::TRANSLATION) {
     animData.setTranslationRange        (data.translationRange());
@@ -1188,6 +1295,13 @@ setNodeAnimationTransformData(int i, const std::string &name, const Transform &t
     animData.setScaleInterpolation(data.scaleInterpolation());
     animData.setScales            (data.scales());
   }
+  else if (transform == Transform::TRANSFORM) {
+    animData.setTransformRange        (data.transformRange());
+    animData.setTransformRangeMin     (data.transformRangeMin());
+    animData.setTransformRangeMax     (data.transformRangeMax());
+    animData.setTransformInterpolation(data.transformInterpolation());
+    animData.setTransforms            (data.transforms());
+  }
 }
 
 bool
@@ -1198,9 +1312,9 @@ updateNodesAnimationData(const std::string &name, double t)
   bool rc = false;
 
   for (auto &pn : nodes_) {
-    auto &node = pn.second;
+    auto &nodeData = pn.second;
 
-    if (updateNodeAnimationData(node, name, t))
+    if (updateNodeAnimationData(nodeData, name, t))
       rc = true;
   }
 
@@ -1210,11 +1324,11 @@ updateNodesAnimationData(const std::string &name, double t)
 
   // calc hierarchical animation matrix for all nodes (joints)
   for (auto &pn : nodes_) {
-    auto &node = pn.second;
+    auto &nodeData = pn.second;
 
-    auto hierAnimMatrix = node.animMatrix();
+    auto hierAnimMatrix = nodeData.animMatrix();
 
-    int parentId = node.parent();
+    int parentId = nodeData.parent();
 
     while (parentId >= 0) {
       const auto &pnode = getNode(parentId);
@@ -1224,7 +1338,7 @@ updateNodesAnimationData(const std::string &name, double t)
       parentId = pnode.parent();
     }
 
-    node.setHierAnimMatrix(hierAnimMatrix);
+    nodeData.setHierAnimMatrix(hierAnimMatrix);
   }
 
   // TODO: calc node matrices
@@ -1244,21 +1358,21 @@ updateNodeAnimationData(int i, const std::string &name, double t)
 
 bool
 CGeomObject3D::
-updateHierNodeAnimationData(CGeomNodeData &node, const std::string &name, double t)
+updateHierNodeAnimationData(CGeomNodeData &nodeData, const std::string &name, double t)
 {
   bool rc = true;
 
-  if (! updateNodeAnimationData(node, name, t)) {
-    if (node.parent()) {
-      const auto &parentNode = getNode(node.parent());
+  if (! updateNodeAnimationData(nodeData, name, t)) {
+    if (nodeData.parent()) {
+      const auto &parentNode = getNode(nodeData.parent());
 
-      node.setAnimMatrix(parentNode.animMatrix()*node.animMatrix());
+      nodeData.setAnimMatrix(parentNode.animMatrix()*nodeData.animMatrix());
     }
     else
       rc = false;
   }
 
-  for (const auto &childId : node.children()) {
+  for (const auto &childId : nodeData.children()) {
     auto &childNode = const_cast<CGeomNodeData &>(getNode(childId));
 
     if (! updateHierNodeAnimationData(childNode, name, t))
@@ -1270,15 +1384,15 @@ updateHierNodeAnimationData(CGeomNodeData &node, const std::string &name, double
 
 bool
 CGeomObject3D::
-updateNodeAnimationData(CGeomNodeData &node, const std::string &name, double t)
+updateNodeAnimationData(CGeomNodeData &nodeData, const std::string &name, double t)
 {
   CMatrix3D anim_matrix;
   bool      animSet { false };
 
-  if (node.hasAnimationData(name)) {
-    auto &animationData = node.getAnimationData(name);
+  if (nodeData.hasAnimationData(name)) {
+    auto &animationData = nodeData.getAnimationData(name);
 
-    if (updateAnimationData(node, animationData, t)) {
+    if (updateAnimationData(nodeData, animationData, t)) {
       anim_matrix = animationData.animMatrix();
 
       animSet = true;
@@ -1286,31 +1400,46 @@ updateNodeAnimationData(CGeomNodeData &node, const std::string &name, double t)
   }
 
   if (! animSet) {
-    const auto &anim_translation = node.localTranslation();
-    const auto &anim_rotation    = node.localRotation();
-    const auto &anim_scale       = node.localScale();
+#if 0
+    const auto &anim_translation = nodeData.localTranslation();
+    const auto &anim_rotation    = nodeData.localRotation();
+    const auto &anim_scale       = nodeData.localScale();
 
     anim_matrix = anim_translation.matrix()*anim_rotation.matrix()*anim_scale.matrix();
+#else
+#if 0
+    anim_matrix = nodeData.localTranslation().matrix()*
+                  nodeData.localRotation().matrix()*
+                  nodeData.localScale().matrix();
+#else
+    anim_matrix = nodeData.calcLocalTransform();
+#endif
+#endif
   }
 
-  node.setAnimMatrix(anim_matrix);
+  nodeData.setAnimMatrix(anim_matrix);
 
   return animSet;
 }
 
 bool
 CGeomObject3D::
-updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, double t) const
+updateAnimationData(CGeomNodeData &nodeData, CGeomAnimationData &animationData, double t) const
 {
   if (animationData.translations().empty() &&
       animationData.rotations   ().empty() &&
-      animationData.scales      ().empty())
+      animationData.scales      ().empty() &&
+      animationData.transforms  ().empty())
     return false;
 
   CTranslate3D anim_translation;
   CRotate3D    anim_rotation;
   CScale3D     anim_scale;
+  CMatrix3D    anim_transform;
 
+  //---
+
+  // translation
   if (! animationData.translations().empty()) {
     if (animationData.translationRange().empty()) {
       std::cerr << "Invalid range for animation translation\n";
@@ -1358,8 +1487,11 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
     }
   }
   else
-    anim_translation = node.localTranslation();
+    anim_translation = nodeData.localTranslation();
 
+  //---
+
+  // rotation
   if (! animationData.rotations().empty()) {
     if (animationData.rotationRange().empty()) {
       std::cerr << "Invalid Range for animation rotation\n";
@@ -1407,8 +1539,11 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
     }
   }
   else
-    anim_rotation = node.localRotation();
+    anim_rotation = nodeData.localRotation();
 
+  //---
+
+  // scale
   if (! animationData.scales().empty()) {
     if (animationData.scaleRange().empty()) {
       std::cerr << "Invalid Range for animation scale\n";
@@ -1456,11 +1591,72 @@ updateAnimationData(CGeomNodeData &node, CGeomAnimationData &animationData, doub
     }
   }
   else
-    anim_scale = node.localScale();
+    anim_scale = nodeData.localScale();
 
-  animationData.setAnimTranslation(anim_translation);
-  animationData.setAnimRotation   (anim_rotation);
-  animationData.setAnimScale      (anim_scale);
+  //---
+
+  // transform
+  if (! animationData.transforms().empty()) {
+    if (animationData.transformRange().empty()) {
+      std::cerr << "Invalid Range for animation transform\n";
+      return false;
+    }
+
+    auto iv = CMathGen::mapIntoRangeSet<double>(t, animationData.transformRange());
+
+    if (iv.first < 0) {
+      std::cerr << "Invalid Range for animation transform\n";
+      return false;
+    }
+
+    auto ii = iv.first;
+    auto fi = iv.second;
+
+    //if (isDebug())
+    //  std::cerr << "    sampler.output ind: " << ii << " " << fi << "\n";
+
+    //---
+
+    auto transformInterpolation = animationData.transformInterpolation();
+
+    if      (transformInterpolation == CGeomAnimationData::Interpolation::LINEAR) {
+      auto ov = CMathGen::interpRangeSetDiscreet<CMatrix3D>(ii, fi, animationData.transforms());
+
+      if (! ov.first) {
+        std::cerr << "Invalid values for animation transform\n";
+        return false;
+      }
+
+      //if (isDebug())
+      //  std::cerr << "    transform: " << ov.second << "\n";
+
+      anim_transform = ov.second;
+    }
+    else if (transformInterpolation == CGeomAnimationData::Interpolation::STEP) {
+      const auto &transform = animationData.transforms()[ii];
+
+      anim_transform = transform;
+    }
+    else {
+      std::cerr << "Invalid interpolation for animation transform\n";
+      return false;
+    }
+  }
+  else
+    anim_transform = nodeData.localTransform();
+
+  //---
+
+  if (! animationData.translations().empty() ||
+      ! animationData.rotations   ().empty() ||
+      ! animationData.scales      ().empty()) {
+    animationData.setAnimTranslation(anim_translation);
+    animationData.setAnimRotation   (anim_rotation);
+    animationData.setAnimScale      (anim_scale);
+  }
+  else {
+    animationData.setAnimTransform  (anim_transform);
+  }
 
   return true;
 }
@@ -1490,25 +1686,41 @@ bool
 CGeomObject3D::
 getAnimationTranslationRange(const std::string &name, double &min, double &max) const
 {
-  min = 0.0;
-  max = 1.0;
+  auto pt = animationRangeMap_.find(name);
 
-  for (const auto &pn : nodes_) {
-    const auto &nodeData = pn.second;
+  if (pt == animationRangeMap_.end()) {
+    AnimationRange range;
 
-    if (! nodeData.hasAnimationData(name))
-      continue;
+    range.min = 0.0;
+    range.max = 1.0;
 
-    auto &animationData = const_cast<CGeomNodeData &>(nodeData).getAnimationData(name);
+    for (const auto &pn : nodes_) {
+      const auto &nodeData = pn.second;
 
-    if (animationData.translationRangeMin() && animationData.translationRangeMax()) {
-      min = animationData.translationRangeMin().value();
-      max = animationData.translationRangeMax().value();
-      return true;
+      if (! nodeData.hasAnimationData(name))
+        continue;
+
+      auto &animationData = const_cast<CGeomNodeData &>(nodeData).getAnimationData(name);
+
+      if (animationData.translationRangeMin() && animationData.translationRangeMax()) {
+        range.min = animationData.translationRangeMin().value();
+        range.max = animationData.translationRangeMax().value();
+        range.set = true;
+        break;
+      }
     }
+
+    auto *th = const_cast<CGeomObject3D *>(this);
+
+    pt = th->animationRangeMap_.insert(pt, AnimationRangeMap::value_type(name, range));
   }
 
-  return false;
+  const auto &range = (*pt).second;
+
+  min = range.min;
+  max = range.max;
+
+  return range.set;
 }
 
 CGeomAnimationData &
@@ -1787,6 +1999,75 @@ moveBy(const CPoint3D &offset)
 
 void
 CGeomObject3D::
+moveX(double dx)
+{
+  coordFrame_.moveX(dx);
+
+  updatePosition();
+}
+
+void
+CGeomObject3D::
+moveY(double dy)
+{
+  coordFrame_.moveY(dy);
+
+  updatePosition();
+}
+
+void
+CGeomObject3D::
+moveZ(double dz)
+{
+  coordFrame_.moveZ(dz);
+
+  updatePosition();
+}
+
+void
+CGeomObject3D::
+rotate(const CPoint3D &angle)
+{
+  coordFrame_.rotateAboutXYZ(angle.x, angle.y, angle.z);
+}
+
+void
+CGeomObject3D::
+rotateX(double dx)
+{
+  coordFrame_.rotateAboutX(dx);
+}
+
+void
+CGeomObject3D::
+rotateY(double dy)
+{
+  coordFrame_.rotateAboutY(dy);
+}
+
+void
+CGeomObject3D::
+rotateZ(double dz)
+{
+  coordFrame_.rotateAboutZ(dz);
+}
+
+CPoint3D
+CGeomObject3D::
+transformTo(const CPoint3D &p) const
+{
+  return coordFrame_.transformTo(p);
+}
+
+CVector3D
+CGeomObject3D::
+transformTo(const CVector3D &v) const
+{
+  return coordFrame_.transformTo(v);
+}
+
+void
+CGeomObject3D::
 setBasis(const CVector3D &right, const CVector3D &up, const CVector3D &dir)
 {
   if (! CCoordFrame3D::validate(right, up, dir)) {
@@ -1808,25 +2089,25 @@ getBasis(CVector3D &right, CVector3D &up, CVector3D &dir)
 
 void
 CGeomObject3D::
-scale(double x, double y, double z)
+scale(double x, double y, double z, bool hier)
 {
   auto s = CMatrix3D::scale(x, y, z);
 
-  transform(s);
+  transform(s, hier);
 }
 
 void
 CGeomObject3D::
-translate(double x, double y, double z)
+translate(double x, double y, double z, bool hier)
 {
   auto s = CMatrix3D::translation(x, y, z);
 
-  transform(s);
+  transform(s, hier);
 }
 
 void
 CGeomObject3D::
-transform(const CMatrix3D &matrix)
+transform(const CMatrix3D &matrix, bool hier)
 {
   CPoint3D point;
 
@@ -1835,18 +2116,32 @@ transform(const CMatrix3D &matrix)
 
     vertex->setModel(point);
   }
+
+  if (hier) {
+    for (auto *child : children_)
+      child->transform(matrix);
+  }
 }
 
-CMatrix3D
+//---
+
+void
 CGeomObject3D::
-getHierTransform() const
+getMeshBBox(CBBox3D &bbox, bool hier) const
 {
-  auto transform = getTransform();
+  auto m = getMeshGlobalTransform();
 
-  if (parent())
-    transform = parent()->getHierTransform()*transform;
+  for (auto *vertex : vertices_)
+    bbox += m*vertex->getModel();
 
-  return transform;
+  if (hier) {
+    for (auto *child : children_) {
+      CBBox3D bbox1;
+      child->getMeshBBox(bbox1);
+
+      bbox += bbox1;
+    }
+  }
 }
 
 void
@@ -1866,6 +2161,8 @@ getModelBBox(CBBox3D &bbox, bool hier) const
   }
 }
 
+//---
+
 void
 CGeomObject3D::
 reset()
@@ -1879,7 +2176,21 @@ reset()
 
 CPoint3D
 CGeomObject3D::
-verticesMidPoint(const VertexIList &ivertices) const
+verticesModelMidPoint(const VertexIList &ivertices) const
+{
+  CPoint3D mid_point(0, 0, 0);
+
+  double n1 = 1.0/double(ivertices.size());
+
+  for (const auto &iv : ivertices)
+    mid_point += n1*vertices_[iv]->getModel();
+
+  return mid_point;
+}
+
+CPoint3D
+CGeomObject3D::
+verticesViewedMidPoint(const VertexIList &ivertices) const
 {
   CPoint3D mid_point(0, 0, 0);
 
@@ -1893,7 +2204,21 @@ verticesMidPoint(const VertexIList &ivertices) const
 
 CVector3D
 CGeomObject3D::
-verticesNormal(const VertexIList &vertices) const
+verticesModelNormal(const VertexIList &vertices) const
+{
+  auto *v1 = vertices_[vertices[0]];
+  auto *v2 = vertices_[vertices[1]];
+  auto *v3 = vertices_[vertices[2]];
+
+  CVector3D diff1(v1->getModel(), v2->getModel());
+  CVector3D diff2(v2->getModel(), v3->getModel());
+
+  return diff1.crossProduct(diff2).normalized();
+}
+
+CVector3D
+CGeomObject3D::
+verticesViewedNormal(const VertexIList &vertices) const
 {
   auto *v1 = vertices_[vertices[0]];
   auto *v2 = vertices_[vertices[1]];
@@ -1927,7 +2252,7 @@ getVertexFaceNormal(uint ind) const
   for (auto pf = faces.begin(); pf != faces.end(); ++pf) {
     auto *face = getFaceP(*pf);
 
-    face->calcNormal(fn);
+    face->calcViewedNormal(fn);
 
     n += fn;
   }
@@ -1935,20 +2260,6 @@ getVertexFaceNormal(uint ind) const
   th->vertexFaceNormal_[ind] = n;
 
   return n;
-}
-
-CPoint3D
-CGeomObject3D::
-transformTo(const CPoint3D &p) const
-{
-  return coordFrame_.transformTo(p);
-}
-
-CVector3D
-CGeomObject3D::
-transformTo(const CVector3D &v) const
-{
-  return coordFrame_.transformTo(v);
 }
 
 void
@@ -2023,6 +2334,8 @@ drawWireframe(const CGeomCamera3D &camera, CGeomZBuffer *zbuffer)
     drawBBox(camera, zbuffer);
 }
 
+//---
+
 void
 CGeomObject3D::
 modelToPixel(const CGeomCamera3D &camera)
@@ -2069,7 +2382,6 @@ createViewMatrix(CGeom3DRenderer *renderer, CMatrix3D &matrix)
   int h2 = renderer->getHeight()/2;
 
   CBBox3D bbox;
-
   getModelBBox(bbox);
 
   if (! bbox.isSet())
@@ -2164,7 +2476,6 @@ drawBBox(const CGeomCamera3D &camera, CGeomZBuffer *zbuffer)
     return;
 
   CBBox3D bbox;
-
   getModelBBox(bbox);
 
   bbox.scale(1.01);
@@ -2227,7 +2538,6 @@ drawBBox(const CGeomCamera3D &, CGeom3DRenderer *)
 {
 #if 0
   CBBox3D bbox;
-
   getModelBBox(bbox);
 
   renderer->drawLine(bbox->getMin().x, bbox->getMin().y, bbox->getMin().z,
@@ -2259,50 +2569,16 @@ drawBBox(const CGeomCamera3D &, CGeom3DRenderer *)
 #endif
 }
 
-void
-CGeomObject3D::
-moveZ(double dz)
-{
-  coordFrame_.moveZ(dz);
-
-  updatePosition();
-}
-
-void
-CGeomObject3D::
-moveY(double dy)
-{
-  coordFrame_.moveY(dy);
-
-  updatePosition();
-}
-
-void
-CGeomObject3D::
-moveX(double dx)
-{
-  coordFrame_.moveX(dx);
-
-  updatePosition();
-}
+//---
 
 void
 CGeomObject3D::
 moveModel(const CPoint3D &d)
 {
   CMatrix3D m;
-
   m.setTranslation(d.x, d.y, d.z);
 
-  CPoint3D model1;
-
-  for (auto *vertex : vertices_) {
-    auto model = vertex->getModel();
-
-    m.multiplyPoint(model, model1);
-
-    vertex->setModel(model1);
-  }
+  transform(m, /*hier*/false);
 }
 
 void
@@ -2328,49 +2604,12 @@ moveModelZ(double dz)
 
 void
 CGeomObject3D::
-rotate(const CPoint3D &angle)
-{
-  coordFrame_.rotateAboutXYZ(angle.x, angle.y, angle.z);
-}
-
-void
-CGeomObject3D::
-rotateX(double dx)
-{
-  coordFrame_.rotateAboutX(dx);
-}
-
-void
-CGeomObject3D::
-rotateY(double dy)
-{
-  coordFrame_.rotateAboutY(dy);
-}
-
-void
-CGeomObject3D::
-rotateZ(double dz)
-{
-  coordFrame_.rotateAboutZ(dz);
-}
-
-void
-CGeomObject3D::
 rotateModelZ(double dz)
 {
   CMatrix3D m;
-
   m.setRotation(CMathGen::Z_AXIS_3D, dz);
 
-  CPoint3D model1;
-
-  for (auto *vertex : vertices_) {
-    auto model = vertex->getModel();
-
-    m.multiplyPoint(model, model1);
-
-    vertex->setModel(model1);
-  }
+  transform(m, /*hier*/false);
 }
 
 void
@@ -2378,18 +2617,9 @@ CGeomObject3D::
 rotateModelY(double dy)
 {
   CMatrix3D m;
-
   m.setRotation(CMathGen::Y_AXIS_3D, dy);
 
-  CPoint3D model1;
-
-  for (auto *vertex : vertices_) {
-    auto model = vertex->getModel();
-
-    m.multiplyPoint(model, model1);
-
-    vertex->setModel(model1);
-  }
+  transform(m, /*hier*/false);
 }
 
 void
@@ -2397,65 +2627,49 @@ CGeomObject3D::
 rotateModelX(double dx)
 {
   CMatrix3D m;
-
   m.setRotation(CMathGen::X_AXIS_3D, dx);
 
-  CPoint3D model1;
-
-  for (auto *vertex : vertices_) {
-    auto model = vertex->getModel();
-
-    m.multiplyPoint(model, model1);
-
-    vertex->setModel(model1);
-  }
+  transform(m, /*hier*/false);
 }
 
 void
 CGeomObject3D::
 resizeModel(double factor)
 {
-  for (auto *vertex : vertices_)
-    vertex->setModel(vertex->getModel()*factor);
+  CMatrix3D m;
+  m.setScale(factor, factor, factor);
+
+  transform(m, /*hier*/false);
 }
 
 void
 CGeomObject3D::
 resizeModelX(double dx)
 {
-  for (auto *vertex : vertices_) {
-    auto model = vertex->getModel();
+  CMatrix3D m;
+  m.setScale(dx, 1.0, 1.0);
 
-    model.x *= dx;
-
-    vertex->setModel(model);
-  }
+  transform(m, /*hier*/false);
 }
 
 void
 CGeomObject3D::
 resizeModelY(double dy)
 {
-  for (auto *vertex : vertices_) {
-    auto model = vertex->getModel();
+  CMatrix3D m;
+  m.setScale(1.0, dy, 1.0);
 
-    model.y *= dy;
-
-    vertex->setModel(model);
-  }
+  transform(m, /*hier*/false);
 }
 
 void
 CGeomObject3D::
 resizeModelZ(double dz)
 {
-  for (auto *vertex : vertices_) {
-    auto model = vertex->getModel();
+  CMatrix3D m;
+  m.setScale(1.0, 1.0, dz);
 
-    model.z *= dz;
-
-    vertex->setModel(model);
-  }
+  transform(m, /*hier*/false);
 }
 
 //---
@@ -2610,7 +2824,7 @@ CGeomObject3D::
 divideFace(CGeomFace3D *face, const CPoint3D &c)
 {
   CVector3D normal;
-  face->calcNormal(normal);
+  face->calcModelNormal(normal);
 
   auto ind = addVertex(c);
 
@@ -2691,9 +2905,11 @@ splitFacesByMaterial(std::vector<CGeomObject3D *> &newObjects) const
     std::map<uint, uint> vertexMap;
 
     for (const auto &iv : vertexSet) {
-      const auto &v = getVertex(iv);
+      auto *v = getVertexP(iv);
 
-      auto iv1 = newObject->addVertex(v.getModel());
+      auto *v1 = v->dup();
+
+      auto iv1 = newObject->addVertex(v1);
 
       vertexMap[iv] = iv1;
     }

@@ -26,10 +26,14 @@ setRenderer(CGeom3DRenderer *renderer)
   }
 }
 
+//---
+
 void
 CGeomScene3D::
 addPrimitive(CGeomObject3D *object)
 {
+  object->setIsPrimitive(true);
+
   primitives_.push_back(object);
 
   primitiveMap_[object->getName()] = object;
@@ -56,11 +60,45 @@ getPrimitiveP(const std::string &name) const
 
 void
 CGeomScene3D::
-addObject(CGeomObject3D *object)
+removeAllPrimitives()
 {
+  for (auto *primitive : primitives_) {
+    removeObjectHier(primitive, /*force*/true);
+
+    delete primitive;
+  }
+
+  primitives_.clear();
+
+  primitiveMap_.clear();
+}
+
+//---
+
+void
+CGeomScene3D::
+addObject(CGeomObject3D *object, bool hier)
+{
+//assert(! object->isPrimitive());
+
   objects_.push_back(object);
 
   objectMap_[object->getName()] = object;
+
+  if (hier) {
+    for (auto *child : object->children())
+      addObject(child, hier);
+  }
+}
+
+void
+CGeomScene3D::
+removeObjectHier(CGeomObject3D *object, bool force)
+{
+  for (auto *child : object->children())
+    removeObjectHier(child, force);
+
+  removeObject(object, force);
 }
 
 void

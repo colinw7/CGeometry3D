@@ -20,6 +20,7 @@ class CGeom3DRenderer;
 class CGeomFace3D {
  public:
   using VertexList    = std::vector<uint>;
+  using Normals       = std::vector<CVector3D>;
   using TexturePoints = std::vector<CPoint2D>;
   using SubFaceList   = std::vector<CGeomFace3D *>;
   using SubLineList   = std::vector<CGeomLine3D *>;
@@ -125,7 +126,9 @@ class CGeomFace3D {
 
   const CVector3D &getNormal() const { return normal_.value(); }
 
-  void setNormals(const std::vector<CVector3D> &normals);
+  void setVertexNormals(const std::vector<CVector3D> &normals, bool propagate=true);
+  bool hasVertexNormals() const { return normals_.size() == vertices_.size(); }
+  CVector3D getVertexNormal(uint i) const { return normals_[i]; }
 
   //---
 
@@ -265,9 +268,13 @@ class CGeomFace3D {
   bool getAdjustedColor(CRGBA &rgba);
   bool getColorFactor(double *factor);
 
-  void getMidPoint(CPoint3D &mid_point) const;
+  //---
 
-  void calcNormal(CVector3D &normal) const;
+  void getModelMidPoint(CPoint3D &mid_point) const;
+  void getViewedMidPoint(CPoint3D &mid_point) const;
+
+  void calcModelNormal(CVector3D &normal) const;
+  void calcViewedNormal(CVector3D &normal) const;
 
   //---
 
@@ -282,6 +289,10 @@ class CGeomFace3D {
   //---
 
   void moveBy(const CVector3D &v);
+
+  //---
+
+  void triangulate();
 
   void divideCenter();
 
@@ -311,7 +322,8 @@ class CGeomFace3D {
   // geometry
 
   VertexList    vertices_;      // vertices (indices)
-  TexturePoints texturePoints_; // texture points
+  Normals       normals_;       // individual vertex normals
+  TexturePoints texturePoints_; // individual vertex texture points
 
   SubFaceList subFaces_; // sub faces
   SubLineList subLines_; // sub lines
@@ -329,7 +341,7 @@ class CGeomFace3D {
   CGeomTexture* normalTexture_   { nullptr };
   CGeomTexture* emissiveTexture_ { nullptr };
 
-  CGeomMask* mask_{ nullptr };
+  CGeomMask* mask_ { nullptr };
 };
 
 #endif

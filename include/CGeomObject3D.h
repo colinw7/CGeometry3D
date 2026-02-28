@@ -35,7 +35,8 @@ class CGeomObject3D {
     NONE,
     ROTATION,
     TRANSLATION,
-    SCALE
+    SCALE,
+    TRANSFORM
   };
 
   enum class ShapeType {
@@ -87,6 +88,8 @@ class CGeomObject3D {
 
   //---
 
+  virtual CGeomObject3D *hierDup() const;
+
   virtual CGeomObject3D *dup() const;
 
   //---
@@ -100,6 +103,7 @@ class CGeomObject3D {
 
   //---
 
+  // no copy
   const uint &getInd() const { return ind_; }
   void setInd(const uint &i) { ind_ = i; }
 
@@ -121,6 +125,10 @@ class CGeomObject3D {
 
   bool getVisible() const { return visible_; }
   void setVisible(bool b) { visible_ = b; }
+
+  // no copy
+  bool isPrimitive() const { return isPrimitive_; }
+  void setIsPrimitive(bool b, bool hier=true);
 
   //---
 
@@ -228,6 +236,7 @@ class CGeomObject3D {
 
   //---
 
+  // matrix to convert from model to view (camera view)
   const CMatrix3D &viewMatrix() const { return viewMatrix_; }
   void setViewMatrix(const CMatrix3D &v) { viewMatrix_ = v; }
 
@@ -385,6 +394,9 @@ class CGeomObject3D {
   //---
 
   // skeleton
+  CGeomObject3D *getAnimObject() const;
+  bool isAnimObject() const;
+
   bool hasNode(int i) const;
   void addNode(int i, const CGeomNodeData &data);
 
@@ -420,6 +432,13 @@ class CGeomObject3D {
   // animation
   const std::string &animName() const { return animName_; }
   void setAnimName(const std::string &s) { animName_ = s; }
+
+  double animTime() const { return animTime_; }
+  void setAnimTime(double t) { animTime_ = t; }
+  void stepAnimTime();
+
+  double animTimeStep() const { return animTimeStep_; }
+  void setAnimTimeStep(double r) { animTimeStep_ = r; }
 
   void setNodeAnimationData(int i, const std::string &name, const CGeomAnimationData &data);
 
@@ -458,21 +477,59 @@ class CGeomObject3D {
 
   //---
 
-  void moveTo(const CPoint3D &position);
-  void moveBy(const CPoint3D &offset);
+  // get/set coord frame
+  const CCoordFrame3D &coordFrame() const { return coordFrame_; }
+  void setCoordFrame(const CCoordFrame3D &v) { coordFrame_ = v; }
 
-  //---
-
+  // get/set coord frame orthonormal basis
   void setBasis(const CVector3D &right, const CVector3D &up, const CVector3D &dir);
   void getBasis(CVector3D &right, CVector3D &up, CVector3D &dir);
 
+  // move coord frame of object
+  void moveTo(const CPoint3D &position);
+  void moveBy(const CPoint3D &offset);
+
+  virtual void moveX(double dx);
+  virtual void moveY(double dy);
+  virtual void moveZ(double dz);
+
+  virtual void rotate(const CPoint3D &angle);
+  virtual void rotateX(double dx);
+  virtual void rotateY(double dy);
+  virtual void rotateZ(double dz);
+
+  // transform to coord frame
+  CPoint3D transformTo(const CPoint3D &p) const;
+  CVector3D transformTo(const CVector3D &v) const;
+
   //---
 
-  void scale    (double x, double y, double z);
-  void translate(double x, double y, double z);
+  // transform in place
+  void scale    (double x, double y, double z, bool hier=false);
+  void translate(double x, double y, double z, bool hier=false);
 
-  void transform(const CMatrix3D &matrix);
+  void transform(const CMatrix3D &matrix, bool hier=false);
 
+  // move
+  virtual void moveModel(const CPoint3D &d);
+  virtual void moveModelX(double dx);
+  virtual void moveModelY(double dy);
+  virtual void moveModelZ(double dz);
+
+  // rotate
+  virtual void rotateModelX(double dx);
+  virtual void rotateModelY(double dy);
+  virtual void rotateModelZ(double dz);
+
+  // scale
+  virtual void resizeModel(double factor);
+  virtual void resizeModelX(double dx);
+  virtual void resizeModelY(double dy);
+  virtual void resizeModelZ(double dz);
+
+  //---
+
+  // store local transform (to manually apply to geometry)
   CMatrix3D getTransform() const;
   void setTransform(const CMatrix3D &m);
 
@@ -489,6 +546,7 @@ class CGeomObject3D {
 
   //---
 
+  void getMeshBBox(CBBox3D &bbox, bool hier=true) const;
   void getModelBBox(CBBox3D &bbox, bool hier=true) const;
 
   //---
@@ -497,18 +555,15 @@ class CGeomObject3D {
 
   //---
 
-  CPoint3D verticesMidPoint(const VertexIList &vertices) const;
+  CPoint3D verticesModelMidPoint(const VertexIList &vertices) const;
+  CPoint3D verticesViewedMidPoint(const VertexIList &vertices) const;
 
-  CVector3D verticesNormal(const VertexIList &vertices) const;
+  CVector3D verticesModelNormal(const VertexIList &vertices) const;
+  CVector3D verticesViewedNormal(const VertexIList &vertices) const;
 
   //---
 
   CVector3D getVertexFaceNormal(uint i) const;
-
-  //---
-
-  CPoint3D transformTo(const CPoint3D &p) const;
-  CVector3D transformTo(const CVector3D &v) const;
 
   //---
 
@@ -558,36 +613,12 @@ class CGeomObject3D {
 
   //---
 
-  // transform
-  virtual void moveX(double dx);
-  virtual void moveY(double dy);
-  virtual void moveZ(double dz);
-
-  virtual void moveModel(const CPoint3D &d);
-  virtual void moveModelX(double dx);
-  virtual void moveModelY(double dy);
-  virtual void moveModelZ(double dz);
-
-  virtual void rotate(const CPoint3D &angle);
-  virtual void rotateX(double dx);
-  virtual void rotateY(double dy);
-  virtual void rotateZ(double dz);
-
-  virtual void rotateModelX(double dx);
-  virtual void rotateModelY(double dy);
-  virtual void rotateModelZ(double dz);
-
-  virtual void resizeModel(double factor);
-  virtual void resizeModelX(double dx);
-  virtual void resizeModelY(double dy);
-  virtual void resizeModelZ(double dz);
-
-  //---
-
+  // swap coordinates
   void swapXY();
   void swapYZ();
   void swapZX();
 
+  // invert coordinates (negate)
   void invertX();
   void invertY();
   void invertZ();
@@ -640,9 +671,11 @@ class CGeomObject3D {
   std::string name_;
   std::string id_;
   std::string meshName_;
-  bool        selected_ { false };
-  bool        visible_ { true };
-  bool        drawPosition_ { true };
+
+  bool selected_     { false };
+  bool visible_      { true };
+  bool isPrimitive_  { false };
+  bool drawPosition_ { true };
 
   // position
   CCoordFrame3D coordFrame_;
@@ -688,6 +721,18 @@ class CGeomObject3D {
 
   // animation
   std::string animName_;
+  double      animTime_     { 0.0 };
+  double      animTimeStep_ { 100.0 };
+
+  struct AnimationRange {
+    double min { 0.0 };
+    double max { 0.0 };
+    bool   set { false };
+  };
+
+  using AnimationRangeMap = std::map<std::string, AnimationRange>;
+
+  AnimationRangeMap animationRangeMap_;
 
   // motion
   CVector3D dv_ { 0, 0, 0 };
@@ -700,6 +745,7 @@ class CGeomObject3D {
 
 //------
 
+// instance of geometry object (TODO: remove)
 class CGeomObjectInst3D {
  public:
   CGeomObjectInst3D(CGeomObject3D &object) :

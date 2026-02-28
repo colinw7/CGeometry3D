@@ -132,9 +132,8 @@ class CGeomVertex3D : public CGeomPoint3D {
   }
 
  protected:
-  using FaceList  = std::vector<CGeomFace3D *>;
-  using OptVector = std::optional<CVector3D>;
   using OptColor  = std::optional<CRGBA>;
+  using OptVector = std::optional<CVector3D>;
   using OptPoint2 = std::optional<CPoint2D>;
 
   CGeomObject3D *pobject_ { nullptr };

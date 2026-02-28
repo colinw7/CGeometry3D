@@ -24,6 +24,7 @@ CGeomFace3D(const CGeomFace3D &face) :
  groupId_      (face.groupId_),
  flags_        (face.flags_),
  vertices_     (face.vertices_),
+ normals_      (face.normals_),
  texturePoints_(face.texturePoints_),
  normal_       (face.normal_)
 {
@@ -290,16 +291,19 @@ setVisible(bool b)
 
 void
 CGeomFace3D::
-setNormals(const std::vector<CVector3D> &normals)
+setVertexNormals(const std::vector<CVector3D> &normals, bool propagate)
 {
   auto nn = normals.size();
-
   assert(nn == vertices_.size());
 
-  for (uint i = 0; i < nn; ++i) {
-    auto &v = pobject_->getVertex(vertices_[i]);
+  normals_ = normals;
 
-    v.setNormal(normals[i]);
+  if (propagate) {
+    for (uint i = 0; i < nn; ++i) {
+      auto &v = pobject_->getVertex(vertices_[i]);
+
+      v.setNormal(normals[i]);
+    }
   }
 }
 
@@ -687,10 +691,10 @@ CGeomFace3D::
 getAdjustedColor(CRGBA &rgba)
 {
   CPoint3D mid_point;
-  getMidPoint(mid_point);
+  getViewedMidPoint(mid_point);
 
   CVector3D normal;
-  calcNormal(normal);
+  calcViewedNormal(normal);
 
   //------
 
@@ -733,10 +737,10 @@ CGeomFace3D::
 getColorFactor(double *factor)
 {
   CPoint3D mid_point;
-  getMidPoint(mid_point);
+  getViewedMidPoint(mid_point);
 
   CVector3D normal;
-  calcNormal(normal);
+  calcViewedNormal(normal);
 
   CVector3D dir(mid_point, CPoint3D(0, 0, 1));
 
@@ -752,16 +756,30 @@ getColorFactor(double *factor)
 
 void
 CGeomFace3D::
-getMidPoint(CPoint3D &mid_point) const
+getModelMidPoint(CPoint3D &mid_point) const
 {
-  mid_point = pobject_->verticesMidPoint(vertices_);
+  mid_point = pobject_->verticesModelMidPoint(vertices_);
 }
 
 void
 CGeomFace3D::
-calcNormal(CVector3D &normal) const
+getViewedMidPoint(CPoint3D &mid_point) const
 {
-  normal = pobject_->verticesNormal(vertices_);
+  mid_point = pobject_->verticesViewedMidPoint(vertices_);
+}
+
+void
+CGeomFace3D::
+calcModelNormal(CVector3D &normal) const
+{
+  normal = pobject_->verticesModelNormal(vertices_);
+}
+
+void
+CGeomFace3D::
+calcViewedNormal(CVector3D &normal) const
+{
+  normal = pobject_->verticesViewedNormal(vertices_);
 }
 
 CPoint2D
@@ -822,6 +840,66 @@ moveBy(const CVector3D &v)
 
 void
 CGeomFace3D::
+triangulate()
+{
+  auto nv = vertices_.size();
+  if (nv <= 3) return;
+
+  bool hasNormals       = (normals_      .size() == nv);
+  bool hasTexturePoints = (texturePoints_.size() == nv);
+
+  uint i1 = 0;
+
+  // assume triangle fan ?
+  for (uint i2 = 2; i2 < nv - 1; ++i2) {
+    uint i3 = i2 + 1;
+
+    auto *v1 = pobject_->getVertexP(vertices_[i1])->dup();
+    auto *v2 = pobject_->getVertexP(vertices_[i2])->dup();
+    auto *v3 = pobject_->getVertexP(vertices_[i3])->dup();
+
+    auto iv1 = pobject_->addVertex(v1);
+    auto iv2 = pobject_->addVertex(v2);
+    auto iv3 = pobject_->addVertex(v3);
+
+    auto faceNum1 = pobject_->addITriangle(iv1, iv2, iv3);
+
+    auto *face1 = pobject_->getFaceP(faceNum1);
+
+    face1->flags_ = flags_;
+
+    if (hasNormals) {
+      face1->normals_.push_back(normals_[i1]);
+      face1->normals_.push_back(normals_[i2]);
+      face1->normals_.push_back(normals_[i3]);
+    }
+
+    if (hasTexturePoints) {
+      face1->texturePoints_.push_back(texturePoints_[i1]);
+      face1->texturePoints_.push_back(texturePoints_[i2]);
+      face1->texturePoints_.push_back(texturePoints_[i3]);
+    }
+
+    face1->materialP_ = materialP_;
+
+    // TODO: assert if non-shared material or texture ?
+  }
+
+  while (nv > 3) {
+    vertices_.pop_back();
+
+    if (hasNormals)
+      normals_.pop_back();
+
+    if (hasTexturePoints)
+      texturePoints_.pop_back();
+
+    --nv;
+  }
+}
+
+void
+CGeomFace3D::
 divideCenter()
 {
   // calc center
@@ -843,7 +921,7 @@ CGeomFace3D::
 extrude(double d)
 {
   CVector3D normal;
-  calcNormal(normal);
+  calcModelNormal(normal);
 
   std::vector<uint> inds;
 
@@ -888,7 +966,7 @@ CGeomFace3D::
 extrudeMove(double d)
 {
   CVector3D normal;
-  calcNormal(normal);
+  calcModelNormal(normal);
 
   for (auto &vertex : vertices_) {
     auto &v1 = pobject_->getVertex(vertex);

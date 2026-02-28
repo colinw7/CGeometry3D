@@ -53,9 +53,11 @@ class CGeomNodeData {
   const CMatrix3D &inverseBindMatrix() const { return inverseBindMatrix_; }
   void setInverseBindMatrix(const CMatrix3D &v) { inverseBindMatrix_ = v; }
 
-  const CGeomObject3D *rootObject() const { return rootObject_; }
-  void setRootObject(CGeomObject3D *p) { rootObject_ = p; }
+  // object with animation data
+  const CGeomObject3D *animObject() const { return animObject_; }
+  void setAnimObject(CGeomObject3D *p) { animObject_ = p; }
 
+  // object animated by this data
   const CGeomObject3D *object() const { return object_; }
   void setObject(CGeomObject3D *p) { object_ = p; }
 
@@ -80,30 +82,43 @@ class CGeomNodeData {
     return (*pn).second;
   }
 
+  //---
+
   const CTranslate3D &localTranslation() const { return localTranslation_; }
   void setLocalTranslation(const CTranslate3D &v) {
-    localTranslation_ = v; localTransformValid_ = false; }
+    localTranslation_ = v; localTransformParts_ = true; localTransformValid_ = false; }
 
   const CRotate3D &localRotation() const { return localRotation_; }
   void setLocalRotation(const CRotate3D &v) {
-    localRotation_ = v; localTransformValid_ = false; }
+    localRotation_ = v; localTransformParts_ = true; localTransformValid_ = false; }
 
   const CScale3D &localScale() const { return localScale_; }
   void setLocalScale(const CScale3D &v) {
-    localScale_ = v; localTransformValid_ = false; }
+    localScale_ = v; localTransformParts_ = true; localTransformValid_ = false; }
 
-  const CMatrix3D &globalTransform() const { return globalTransform_; }
-  void setGlobalTransform(const CMatrix3D &v) { globalTransform_ = v; }
+  const CMatrix3D &localTransform() const { return localTransform_; }
+  void setLocalTransform(const CMatrix3D &v) {
+    localTransform_ = v; localTransformParts_ = false; localTransformValid_ = false; }
 
-  const CMatrix3D &localTransform() const {
+  const CMatrix3D &calcLocalTransform() const {
     if (! localTransformValid_) {
-      localTransform_ = localTranslation_.matrix()*localRotation_.matrix()*localScale_.matrix();
+      if (localTransformParts_)
+        localTransform1_ = localTranslation_.matrix()*localRotation_.matrix()*localScale_.matrix();
+      else
+        localTransform1_ = localTransform_;
 
       localTransformValid_ = true;
     }
 
-    return localTransform_;
+    return localTransform1_;
   }
+
+  //---
+
+  const CMatrix3D &globalTransform() const { return globalTransform_; }
+  void setGlobalTransform(const CMatrix3D &v) { globalTransform_ = v; }
+
+  //---
 
   const CMatrix3D &animMatrix() const { return animMatrix_; }
   void setAnimMatrix(const CMatrix3D &v) { animMatrix_ = v; }
@@ -128,7 +143,7 @@ class CGeomNodeData {
   int              parent_ { -1 };
   std::vector<int> children_;
 
-  CGeomObject3D *rootObject_ { nullptr };
+  CGeomObject3D *animObject_ { nullptr };
   CGeomObject3D *object_     { nullptr };
 
   // inverse bind matrix (transform to parent coords)
@@ -141,9 +156,11 @@ class CGeomNodeData {
   mutable CTranslate3D localTranslation_;
   mutable CRotate3D    localRotation_;
   mutable CScale3D     localScale_;
+  mutable CMatrix3D    localTransform_;
 
   // matrix product of above (t*r*s)
-  mutable CMatrix3D localTransform_      { CMatrix3D::identity() };
+  mutable CMatrix3D localTransform1_     { CMatrix3D::identity() };
+  mutable bool      localTransformParts_ { false };
   mutable bool      localTransformValid_ { false };
 
   // explicit/default joint hier transformations

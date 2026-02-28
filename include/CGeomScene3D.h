@@ -49,11 +49,15 @@ class CGeomScene3D {
   CGeomObject3D &getPrimitive (const std::string &name) const;
   CGeomObject3D *getPrimitiveP(const std::string &name) const;
 
+  void removeAllPrimitives();
+
   //----
 
   // objects
 
-  void addObject   (CGeomObject3D *object);
+  void addObject(CGeomObject3D *object, bool hier=false);
+
+  void removeObjectHier(CGeomObject3D *object, bool force=false);
   void removeObject(CGeomObject3D *object, bool force=false);
 
   uint getNumObjects() const { return uint(objects_.size()); }

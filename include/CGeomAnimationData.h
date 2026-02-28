@@ -41,6 +41,7 @@ class CGeomAnimationData {
   using Translations  = std::vector<CVector3D>;
   using Rotations     = std::vector<CQuaternion>;
   using Scales        = std::vector<CVector3D>;
+  using Transforms    = std::vector<CMatrix3D>;
   using Interpolation = CGeomAnimInterpolation;
 
  public:
@@ -104,21 +105,51 @@ class CGeomAnimationData {
 
   //---
 
+  // transform
+  const Reals &transformRange() const { return transform_.range; }
+  void setTransformRange(const Reals &v) { transform_.range = v; }
+  void addTransformRangeValue(double r) { transform_.range.push_back(r); }
+
+  const OptReal &transformRangeMin() const { return transform_.rangeMin; }
+  void setTransformRangeMin(const OptReal &v) { transform_.rangeMin = v; }
+
+  const OptReal &transformRangeMax() const { return transform_.rangeMax; }
+  void setTransformRangeMax(const OptReal &v) { transform_.rangeMax = v; }
+
+  const Transforms &transforms() const { return transform_.values; }
+  void setTransforms(const Transforms &v) { transform_.values = v; }
+  void addTransform(const CMatrix3D &v) { transform_.values.push_back(v); }
+
+  const Interpolation &transformInterpolation() const { return transform_.interpolation; }
+  void setTransformInterpolation(const Interpolation &v) { transform_.interpolation = v; }
+
+  //---
+
+  // transform
   const CTranslate3D &animTranslation() const { return animTranslation_; }
   void setAnimTranslation(const CTranslate3D &v) {
-    animTranslation_ = v; animMatrixValid_ = false; }
+    animTranslation_ = v; animMatrixParts_ = true; animMatrixValid_ = false; }
 
   const CRotate3D &animRotation() const { return animRotation_; }
   void setAnimRotation(const CRotate3D &v) {
-    animRotation_ = v; animMatrixValid_ = false; }
+    animRotation_ = v; animMatrixParts_ = true; animMatrixValid_ = false; }
 
   const CScale3D &animScale() const { return animScale_; }
   void setAnimScale(const CScale3D &v) {
-    animScale_ = v; animMatrixValid_ = false; }
+    animScale_ = v; animMatrixParts_ = true; animMatrixValid_ = false; }
+
+  const CMatrix3D &animTransform() const { return animTransform_; }
+  void setAnimTransform(const CMatrix3D &v) {
+    animTransform_ = v; animMatrixParts_ = false; animMatrixValid_ = false; }
+
+  //---
 
   const CMatrix3D &animMatrix() const {
     if (! animMatrixValid_) {
-      animMatrix_ = animTranslation_.matrix()*animRotation_.matrix()*animScale_.matrix();
+      if (animMatrixParts_)
+        animMatrix_ = animTranslation_.matrix()*animRotation_.matrix()*animScale_.matrix();
+      else
+        animMatrix_ = animTransform_;
 
       animMatrixValid_ = true;
     }
@@ -131,15 +162,18 @@ class CGeomAnimationData {
   CGeomAnimValues<CVector3D>   translation_;
   CGeomAnimValues<CQuaternion> rotation_;
   CGeomAnimValues<CVector3D>   scale_;
+  CGeomAnimValues<CMatrix3D>   transform_;
 
   // current (calculated) transformations
   mutable CTranslate3D animTranslation_;
   mutable CRotate3D    animRotation_;
   mutable CScale3D     animScale_;
+  mutable CMatrix3D    animTransform_;
 
   // matrix product of above (t*r*s)
   mutable CMatrix3D animMatrix_      { CMatrix3D::identity() };
   mutable bool      animMatrixValid_ { false };
+  mutable bool      animMatrixParts_ { false };
 };
 
 #endif

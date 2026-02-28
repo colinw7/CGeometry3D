@@ -155,9 +155,9 @@ CGeomObject3D *
 CGeometry3D::
 dupObject(CGeomObject3D *obj) const
 {
-  auto *obj1 = obj->dup();
+  auto *obj1 = obj->hierDup();
 
-  obj1->setInd(CGeometry3DInst->nextObjectId());
+  //obj1->setInd(CGeometry3DInst->nextObjectId());
 
   return obj1;
 }
