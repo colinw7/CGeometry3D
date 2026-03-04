@@ -25,6 +25,7 @@ CGeomObject3D(const CGeomObject3D &object) :
  selected_        (object.selected_),
  visible_         (object.visible_),
  drawPosition_    (object.drawPosition_),
+ jointed_         (object.jointed_),
  coordFrame_      (object.coordFrame_),
  position_        (object.position_),
  diffuseTexture_  (object.diffuseTexture_),
@@ -917,6 +918,8 @@ bool
 CGeomObject3D::
 hasNode(int i) const
 {
+  if (i < 0) return false;
+
   auto pn = nodes_.find(i);
 
   return (pn != nodes_.end());
@@ -926,6 +929,8 @@ void
 CGeomObject3D::
 addNode(int i, const CGeomNodeData &data)
 {
+  assert(i >= 0);
+
 #if 1
   auto pn = nodes_.find(i);
   assert(pn == nodes_.end());
@@ -985,9 +990,14 @@ getNode(int i) const
 {
   static CGeomNodeData noData;
 
-  auto pn = nodes_.find(i);
+  if (i >= 0) {
+    auto pn = nodes_.find(i);
 
-  return (pn != nodes_.end() ? (*pn).second : noData);
+    if (pn != nodes_.end())
+      return (*pn).second;
+  }
+
+  return noData;
 }
 
 CGeomNodeData &
@@ -1010,6 +1020,8 @@ getNodeByInd(int ind) const
 
   return nullptr;
 }
+
+//---
 
 CGeomObject3D *
 CGeomObject3D::
@@ -1043,6 +1055,8 @@ setMeshNode(int id)
 {
   meshNode_ = id;
 }
+
+//---
 
 CGeomObject3D *
 CGeomObject3D::
@@ -1137,6 +1151,8 @@ CGeomObject3D::
 setNodeLocalTransforms(int i, const CTranslate3D &translation, const CRotate3D &rotation,
                        const CScale3D &scale)
 {
+  assert(i >= 0);
+
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
@@ -1152,6 +1168,8 @@ void
 CGeomObject3D::
 setNodeLocalTransform(int i, const CMatrix3D &m)
 {
+  assert(i >= 0);
+
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
@@ -1165,6 +1183,8 @@ void
 CGeomObject3D::
 setNodeGlobalTransform(int i, const CMatrix3D &m)
 {
+  assert(i >= 0);
+
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
@@ -1190,7 +1210,19 @@ getNodeHierTransform(const CGeomNodeData &nodeData) const
   if (parentId >= 0) {
     const auto &pnode = getNode(parentId);
 
-    m = getNodeHierTransform(pnode)*m;
+    if (pnode.isValid()) {
+      m = getNodeHierTransform(pnode)*m;
+    }
+    else {
+      auto *animObject = getAnimObject();
+
+      if (animObject != this) {
+        const auto &pnode1 = animObject->getNode(parentId);
+
+        if (pnode1.isValid())
+          m = animObject->getNodeHierTransform(pnode1)*m;
+      }
+    }
   }
 
   return m;
@@ -1198,17 +1230,54 @@ getNodeHierTransform(const CGeomNodeData &nodeData) const
 
 CMatrix3D
 CGeomObject3D::
-getNodeAnimHierTransform(CGeomNodeData &nodeData, const std::string &animName, double t) const
+getNodeAnimHierTransform(const CGeomNodeData &nodeData, const std::string &animName, double t) const
 {
+  auto m = getNodeAnimTransform(nodeData, animName, t);
+
+  int parentId = nodeData.parent();
+
+  if (parentId >= 0) {
+    auto &pnode = const_cast<CGeomNodeData &>(getNode(parentId));
+
+    if (pnode.isValid()) {
+      m = getNodeAnimHierTransform(pnode, animName, t)*m;
+    }
+    else {
+      auto *animObject = getAnimObject();
+
+      if (animObject != this) {
+        const auto &pnode1 = animObject->getNode(parentId);
+
+        if (pnode1.isValid())
+          m = animObject->getNodeAnimHierTransform(pnode1, animName, t)*m;
+      }
+    }
+  }
+
+  return m;
+}
+
+CMatrix3D
+CGeomObject3D::
+getNodeAnimTransform(const CGeomNodeData &nodeData, const std::string &animName, double t) const
+{
+  auto *th = const_cast<CGeomObject3D *>(this);
+
+  auto &nodeData1 = const_cast<CGeomNodeData &>(nodeData);
+
   CMatrix3D m;
   bool      mSet { false };
 
-  if (const_cast<CGeomObject3D *>(this)->updateNodeAnimationData(nodeData, animName, t)) {
-    auto &animationData = nodeData.getAnimationData(animName);
+  if (th->updateNodeAnimationData(nodeData1, animName, t)) {
+    auto &animationData = nodeData1.getAnimationData(animName);
 
+#if 0
     m = animationData.animTranslation().matrix()*
         animationData.animRotation   ().matrix()*
         animationData.animScale      ().matrix();
+#else
+    m = animationData.animMatrix();
+#endif
 
     mSet = true;
   }
@@ -1223,15 +1292,25 @@ getNodeAnimHierTransform(CGeomNodeData &nodeData, const std::string &animName, d
 #endif
   }
 
-  int parentId = nodeData.parent();
+  return m;
+}
 
-  if (parentId >= 0) {
-    auto &pnode = const_cast<CGeomNodeData &>(getNode(parentId));
+double
+CGeomObject3D::
+calcTimeStep() const
+{
+  double tmin, tmax;
 
-    m = getNodeAnimHierTransform(pnode, animName, t)*m;
+  if (getAnimationTranslationRange(animName(), tmin, tmax)) {
+    int nt = animTimeFrames();
+
+    if (nt > 1)
+      return (tmax - tmin)/(nt - 1);
+    else
+      return (tmax - tmin);
   }
 
-  return m;
+  return 0.1;
 }
 
 void
@@ -1241,7 +1320,7 @@ stepAnimTime()
   double tmin, tmax;
 
   if (getAnimationTranslationRange(animName(), tmin, tmax)) {
-    auto d = (tmax - tmin)/animTimeStep();
+    auto d = animTimeStep();
 
     animTime_ += d;
 
@@ -1254,6 +1333,8 @@ void
 CGeomObject3D::
 setNodeAnimationData(int i, const std::string &name, const CGeomAnimationData &data)
 {
+  assert(i >= 0);
+
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
@@ -1267,6 +1348,8 @@ CGeomObject3D::
 setNodeAnimationTransformData(int i, const std::string &name, const Transform &transform,
                               const CGeomAnimationData &data)
 {
+  assert(i >= 0);
+
   auto pn = nodes_.find(i);
   assert(pn != nodes_.end());
 
@@ -1333,6 +1416,9 @@ updateNodesAnimationData(const std::string &name, double t)
     while (parentId >= 0) {
       const auto &pnode = getNode(parentId);
 
+      if (! pnode.isValid())
+        break;
+
       hierAnimMatrix = pnode.animMatrix()*hierAnimMatrix;
 
       parentId = pnode.parent();
@@ -1350,6 +1436,8 @@ bool
 CGeomObject3D::
 updateNodeAnimationData(int i, const std::string &name, double t)
 {
+  assert(i >= 0);
+
   auto pn = nodes_.find(i);
   if (pn == nodes_.end()) return false;
 
@@ -1728,6 +1816,8 @@ CGeomObject3D::
 getNodeAnimationData(int i, const std::string &name)
 {
   static CGeomAnimationData noAnimationData;
+
+  assert(i >= 0);
 
   auto pn = nodes_.find(i);
   if (pn == nodes_.end()) return noAnimationData;

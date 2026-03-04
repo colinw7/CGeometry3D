@@ -22,6 +22,22 @@ draw(CGeomZBuffer *zbuffer)
   zbuffer->getRenderer()->drawPoint(CIPoint2D(int(pixel_.x), int(pixel_.y)));
 }
 
+//---
+
+void
+CGeomVertex3D::
+setJointData(const JointData &data)
+{
+  assert(! jointData_.set);
+
+  jointData_     = data;
+  jointData_.set = true;
+
+  pobject_->setJointed(true);
+}
+
+//---
+
 void
 CGeomVertex3D::
 swapXY()

@@ -40,10 +40,10 @@ class CGeomNodeData {
   void setName(const std::string &s) { name_ = s; }
 
   bool isJoint() const { return isJoint_; }
-  void setJoint(bool b) { isJoint_ = b; }
+  void setJoint(bool b) { assert(isValid()); isJoint_ = b; }
 
   int parent() const { return parent_; }
-  void setParent(int i) { parent_ = i; }
+  void setParent(int i) { assert(isValid()); parent_ = i; }
 
   const std::vector<int> &children() const { return children_; }
 
@@ -51,15 +51,15 @@ class CGeomNodeData {
   void setChild(uint i, int child) { assert(i < children_.size()); children_[i] = child; }
 
   const CMatrix3D &inverseBindMatrix() const { return inverseBindMatrix_; }
-  void setInverseBindMatrix(const CMatrix3D &v) { inverseBindMatrix_ = v; }
+  void setInverseBindMatrix(const CMatrix3D &v) { assert(isValid()); inverseBindMatrix_ = v; }
 
   // object with animation data
   const CGeomObject3D *animObject() const { return animObject_; }
-  void setAnimObject(CGeomObject3D *p) { animObject_ = p; }
+  void setAnimObject(CGeomObject3D *p) { assert(isValid()); animObject_ = p; }
 
   // object animated by this data
   const CGeomObject3D *object() const { return object_; }
-  void setObject(CGeomObject3D *p) { object_ = p; }
+  void setObject(CGeomObject3D *p) { assert(isValid()); object_ = p; }
 
   void setAnimationData(const std::string &name, const AnimationData &data) {
     animationDatas_[name] = data;
@@ -85,27 +85,31 @@ class CGeomNodeData {
   //---
 
   const CTranslate3D &localTranslation() const { return localTranslation_; }
-  void setLocalTranslation(const CTranslate3D &v) {
-    localTranslation_ = v; localTransformParts_ = true; localTransformValid_ = false; }
+  void setLocalTranslation(const CTranslate3D &v) { localTranslation_ = v;
+    transformSet_ = true; localTransformParts_ = true; localTransformValid_ = false; }
 
   const CRotate3D &localRotation() const { return localRotation_; }
-  void setLocalRotation(const CRotate3D &v) {
-    localRotation_ = v; localTransformParts_ = true; localTransformValid_ = false; }
+  void setLocalRotation(const CRotate3D &v) { localRotation_ = v;
+    transformSet_ = true; localTransformParts_ = true; localTransformValid_ = false; }
 
   const CScale3D &localScale() const { return localScale_; }
-  void setLocalScale(const CScale3D &v) {
-    localScale_ = v; localTransformParts_ = true; localTransformValid_ = false; }
+  void setLocalScale(const CScale3D &v) { localScale_ = v;
+    transformSet_ = true; localTransformParts_ = true; localTransformValid_ = false; }
 
   const CMatrix3D &localTransform() const { return localTransform_; }
-  void setLocalTransform(const CMatrix3D &v) {
-    localTransform_ = v; localTransformParts_ = false; localTransformValid_ = false; }
+  void setLocalTransform(const CMatrix3D &v) { localTransform_ = v;
+    transformSet_ = true; localTransformParts_ = false; localTransformValid_ = false; }
 
   const CMatrix3D &calcLocalTransform() const {
     if (! localTransformValid_) {
       if (localTransformParts_)
         localTransform1_ = localTranslation_.matrix()*localRotation_.matrix()*localScale_.matrix();
-      else
-        localTransform1_ = localTransform_;
+      else {
+        if (transformSet_)
+          localTransform1_ = localTransform_;
+        else
+          localTransform1_ = CMatrix3D::identity();
+      }
 
       localTransformValid_ = true;
     }
@@ -160,6 +164,7 @@ class CGeomNodeData {
 
   // matrix product of above (t*r*s)
   mutable CMatrix3D localTransform1_     { CMatrix3D::identity() };
+  mutable bool      transformSet_        { false };
   mutable bool      localTransformParts_ { false };
   mutable bool      localTransformValid_ { false };
 

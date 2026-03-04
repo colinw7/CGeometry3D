@@ -231,38 +231,42 @@ class CGeomTextureMgr {
   const Textures &textures() const { return textures_; }
 
   void addTexture(CGeomTexture *texture) {
-    auto pt = textureMap_.find(texture->name());
-    assert(pt == textureMap_.end());
+    auto pt = idTextureMap_.find(texture->id());
+    assert(pt == idTextureMap_.end());
 
-    textureMap_[texture->name()] = texture;
+    idTextureMap_[texture->id()] = texture;
+
+    nameTextureMap_[texture->name()].push_back(texture);
 
     textures_.push_back(texture);
   }
 
   CGeomTexture *getTextureByName(const std::string &name) const {
-    auto pt = textureMap_.find(name);
-    if (pt == textureMap_.end())
+    auto pt = nameTextureMap_.find(name);
+    if (pt == nameTextureMap_.end())
+      return nullptr;
+
+    if ((*pt).second.size() > 1)
+      std::cerr << "Multiple textures of name '" << name << "'\n";
+
+    return ((*pt).second)[0];
+  }
+
+  CGeomTexture *getTextureById(int id) const {
+    auto pt = idTextureMap_.find(id);
+    if (pt == idTextureMap_.end())
       return nullptr;
 
     return (*pt).second;
   }
 
-  CGeomTexture *getTextureById(int id) const {
-    for (const auto &pt : textureMap_) {
-      auto *texture = pt.second;
-
-      if (texture->id() == id)
-        return texture;
-    }
-
-    return nullptr;
-  }
-
  private:
-  using TextureMap = std::map<std::string, CGeomTexture *>;
+  using NameTextureMap = std::map<std::string, Textures>;
+  using IdTextureMap   = std::map<int, CGeomTexture *>;
 
-  TextureMap textureMap_;
-  Textures   textures_;
+  NameTextureMap nameTextureMap_;
+  IdTextureMap   idTextureMap_;
+  Textures       textures_;
 };
 
 #endif

@@ -92,12 +92,7 @@ class CGeomVertex3D : public CGeomPoint3D {
   bool hasJointData() const { return jointData_.set; }
   const JointData &getJointData() const { return jointData_; }
 
-  void setJointData(const JointData &data) {
-    assert(! jointData_.set);
-
-    jointData_     = data;
-    jointData_.set = true;
-  }
+  void setJointData(const JointData &data);
 
   //---
 

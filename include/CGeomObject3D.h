@@ -9,7 +9,9 @@
 #include <CTranslate3D.h>
 #include <CScale3D.h>
 #include <CRotate3D.h>
+
 #include <map>
+#include <optional>
 
 class CGeomScene3D;
 class CGeomCamera;
@@ -112,9 +114,6 @@ class CGeomObject3D {
 
   const std::string &getId() const { return id_; }
   void setId(const std::string &id) { id_ = id; }
-
-  const std::string &getMeshName() const { return meshName_; }
-  void setMeshName(const std::string &name) { meshName_ = name; }
 
   //---
 
@@ -411,10 +410,22 @@ class CGeomObject3D {
 
   CGeomNodeData *getNodeByInd(int ind) const;
 
+  //---
+
+  const std::string &getMeshName() const { return meshName_; }
+  void setMeshName(const std::string &name) { meshName_ = name; }
+
+  bool isJointed() const { return jointed_; }
+  void setJointed(bool b) { jointed_ = b; }
+
+  // get object with mesh node (this or child)
   CGeomObject3D *getMeshObject() const;
 
+  // node of mesh associated with object
   int getMeshNode() const;
   void setMeshNode(int ind);
+
+  //---
 
   int getRootNode() const;
   void setRootNode(int ind);
@@ -426,8 +437,10 @@ class CGeomObject3D {
 
   CMatrix3D getNodeHierTransform(const CGeomNodeData &node) const;
 
-  CMatrix3D getNodeAnimHierTransform(CGeomNodeData &node, const std::string &animName,
+  CMatrix3D getNodeAnimHierTransform(const CGeomNodeData &nodeData, const std::string &animName,
                                      double t) const;
+  CMatrix3D getNodeAnimTransform(const CGeomNodeData &nodeData, const std::string &animName,
+                                 double t) const;
 
   // animation
   const std::string &animName() const { return animName_; }
@@ -437,8 +450,13 @@ class CGeomObject3D {
   void setAnimTime(double t) { animTime_ = t; }
   void stepAnimTime();
 
-  double animTimeStep() const { return animTimeStep_; }
+  double animTimeStep() const { return animTimeStep_.value_or(calcTimeStep()); }
   void setAnimTimeStep(double r) { animTimeStep_ = r; }
+
+  int animTimeFrames() const { return animTimeFrames_; }
+  void setAnimTimeFrames(int i) { animTimeFrames_ = i; }
+
+  double calcTimeStep() const;
 
   void setNodeAnimationData(int i, const std::string &name, const CGeomAnimationData &data);
 
@@ -662,6 +680,7 @@ class CGeomObject3D {
 
  protected:
   using Normals = std::vector<CVector3D>;
+  using OptReal = std::optional<double>;
 
   // scene
   CGeomScene3D* pscene_ { nullptr };
@@ -676,6 +695,8 @@ class CGeomObject3D {
   bool visible_      { true };
   bool isPrimitive_  { false };
   bool drawPosition_ { true };
+
+  bool jointed_ { false };
 
   // position
   CCoordFrame3D coordFrame_;
@@ -721,8 +742,9 @@ class CGeomObject3D {
 
   // animation
   std::string animName_;
-  double      animTime_     { 0.0 };
-  double      animTimeStep_ { 100.0 };
+  double      animTime_       { 0.0 };
+  OptReal     animTimeStep_;
+  int         animTimeFrames_ { 60 }; // frame per second
 
   struct AnimationRange {
     double min { 0.0 };
