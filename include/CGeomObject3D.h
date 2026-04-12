@@ -117,13 +117,19 @@ class CGeomObject3D {
 
   //---
 
+  // is selected
   bool getSelected() const { return selected_; }
   void setSelected(bool b) { selected_ = b; }
 
   bool getHierSelected() const;
 
+  // is visible
   bool getVisible() const { return visible_; }
   void setVisible(bool b) { visible_ = b; }
+
+  // generates shadows
+  bool getShadowed() const { return shadowed_; }
+  void setShadowed(bool b) { shadowed_ = b; }
 
   // no copy
   bool isPrimitive() const { return isPrimitive_; }
@@ -392,6 +398,10 @@ class CGeomObject3D {
 
   //---
 
+  CGeomObject3D *getChildOfName(const std::string &name) const;
+
+  //---
+
   // skeleton
   CGeomObject3D *getAnimObject() const;
   bool isAnimObject() const;
@@ -567,6 +577,9 @@ class CGeomObject3D {
   void getMeshBBox(CBBox3D &bbox, bool hier=true) const;
   void getModelBBox(CBBox3D &bbox, bool hier=true) const;
 
+  void getTransformedModelBBox(CBBox3D &bbox, bool hier=true) const;
+  void getTransformedModelBBox1(const CMatrix3D &t, CBBox3D &bbox, bool hier=true) const;
+
   //---
 
   void reset();
@@ -673,6 +686,8 @@ class CGeomObject3D {
 
   //---
 
+  bool triangulate();
+
   bool splitFacesByMaterial(std::vector<CGeomObject3D *> &newObjects) const;
 
  private:
@@ -693,6 +708,7 @@ class CGeomObject3D {
 
   bool selected_     { false };
   bool visible_      { true };
+  bool shadowed_     { true };
   bool isPrimitive_  { false };
   bool drawPosition_ { true };
 

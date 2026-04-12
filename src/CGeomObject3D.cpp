@@ -24,6 +24,7 @@ CGeomObject3D(const CGeomObject3D &object) :
  meshName_        (object.meshName_),
  selected_        (object.selected_),
  visible_         (object.visible_),
+ shadowed_        (object.shadowed_),
  drawPosition_    (object.drawPosition_),
  jointed_         (object.jointed_),
  coordFrame_      (object.coordFrame_),
@@ -893,6 +894,30 @@ setBackMaterial(const CGeomMaterial &material)
 {
   for (auto *face : faces_)
     face->setBackMaterial(material);
+}
+
+//---
+
+CGeomObject3D *
+CGeomObject3D::
+getChildOfName(const std::string &name) const
+{
+  for (auto *child : children_) {
+    if (child->getName() == name)
+      return child;
+  }
+
+  for (auto *child : children_) {
+    if (child->children_.empty())
+      continue;
+
+    auto *child1 = child->getChildOfName(name);
+
+    if (child1)
+      return child1;
+  }
+
+  return nullptr;
 }
 
 //---
@@ -2209,7 +2234,7 @@ transform(const CMatrix3D &matrix, bool hier)
 
   if (hier) {
     for (auto *child : children_)
-      child->transform(matrix);
+      child->transform(matrix, hier);
   }
 }
 
@@ -2227,7 +2252,7 @@ getMeshBBox(CBBox3D &bbox, bool hier) const
   if (hier) {
     for (auto *child : children_) {
       CBBox3D bbox1;
-      child->getMeshBBox(bbox1);
+      child->getMeshBBox(bbox1, hier);
 
       bbox += bbox1;
     }
@@ -2244,7 +2269,45 @@ getModelBBox(CBBox3D &bbox, bool hier) const
   if (hier) {
     for (auto *child : children_) {
       CBBox3D bbox1;
-      child->getModelBBox(bbox1);
+      child->getModelBBox(bbox1, hier);
+
+      bbox += bbox1;
+    }
+  }
+}
+
+void
+CGeomObject3D::
+getTransformedModelBBox(CBBox3D &bbox, bool hier) const
+{
+  auto t = getTransform();
+
+  for (auto *vertex : vertices_)
+    bbox += t*vertex->getModel();
+
+  if (hier) {
+    for (auto *child : children_) {
+      CBBox3D bbox1;
+      child->getTransformedModelBBox1(t, bbox1);
+
+      bbox += bbox1;
+    }
+  }
+}
+
+void
+CGeomObject3D::
+getTransformedModelBBox1(const CMatrix3D &t, CBBox3D &bbox, bool hier) const
+{
+  auto t1 = t*getTransform();
+
+  for (auto *vertex : vertices_)
+    bbox += t1*vertex->getModel();
+
+  if (hier) {
+    for (auto *child : children_) {
+      CBBox3D bbox1;
+      child->getTransformedModelBBox1(t1, bbox1, hier);
 
       bbox += bbox1;
     }
@@ -2953,6 +3016,21 @@ divideFace(CGeomFace3D *face, const CPoint3D &c)
 }
 
 //---
+
+bool
+CGeomObject3D::
+triangulate()
+{
+  auto faces = getFaces();
+
+  for (auto *face : faces)
+    face->triangulate();
+
+  for (auto *child : children_)
+    child->triangulate();
+
+  return true;
+}
 
 bool
 CGeomObject3D::

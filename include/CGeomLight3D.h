@@ -6,7 +6,8 @@
 enum class CGeomLight3DType {
   DIRECTIONAL,
   POINT,
-  SPOT
+  SPOT,
+  FLASHLIGHT
 };
 
 class CGeomLight3DData {
@@ -14,9 +15,9 @@ class CGeomLight3DData {
   using Type = CGeomLight3DType;
 
   struct Attenuation {
-    double constant  { 1.0 };
-    double linear    { 0.0 };
-    double quadratic { 0.0 };
+    double constant  { 1.000 };
+    double linear    { 0.090 };
+    double quadratic { 0.032 };
 
     Attenuation() { }
   };
@@ -33,10 +34,10 @@ class CGeomLight3DData {
   // color
 
   const CRGBA &getAmbient() const { return ambient_; }
-  void setAmbient (const CRGBA &ambient ) { ambient_  = ambient; }
+  void setAmbient(const CRGBA &ambient ) { ambient_  = ambient; }
 
   const CRGBA &getDiffuse() const { return diffuse_; }
-  void setDiffuse (const CRGBA &diffuse ) { diffuse_  = diffuse; }
+  void setDiffuse(const CRGBA &diffuse ) { diffuse_  = diffuse; }
 
   const CRGBA &getSpecular() const { return specular_; }
   void setSpecular(const CRGBA &specular) { specular_ = specular; }
@@ -48,6 +49,7 @@ class CGeomLight3DData {
   void setType(const Type &t) { type_ = t; }
 
   bool getDirectional() const { return type_ == Type::DIRECTIONAL; }
+  void setDirectional(bool b=true) { setType(b ? Type::DIRECTIONAL : Type::POINT); }
 
   //---
 
@@ -75,6 +77,9 @@ class CGeomLight3DData {
 
   double getSpotCutOffAngle() const { return spotData_.cutoffAngle; }
   void setSpotCutOffAngle(double a) { spotData_.cutoffAngle = a; }
+
+  double getSpotOuterCutOffAngle() const { return spotData_.outerCutoffAngle; }
+  void setSpotOuterCutOffAngle(double a) { spotData_.outerCutoffAngle = a; }
 
   //---
 
@@ -132,9 +137,10 @@ class CGeomLight3DData {
   };
 
   struct SpotData {
-    CVector3D direction   { 0.0, 0.0, -1.0 };
-    double    exponent    { 1.0 };
-    double    cutoffAngle { 180.0 };
+    CVector3D direction        { 0.0, 0.0, -1.0 };
+    double    exponent         { 1.0 };
+    double    cutoffAngle      { 45.0 };
+    double    outerCutoffAngle { 65.0 };
   };
 
   // colors
@@ -224,6 +230,7 @@ class CGeomLight3DMgr {
 //   spot
 //     direction
 //     cutoff angle
+//     outer cutoff angle
 
 class CGeomLight3D {
  public:
@@ -250,13 +257,8 @@ class CGeomLight3D {
 
   // position
 
-  virtual void setPosition(const CPoint3D &point) {
-    position_ = point;
-  }
-
-  virtual const CPoint3D &getPosition() const {
-    return position_;
-  }
+  virtual const CPoint3D &getPosition() const { return position_; }
+  virtual void setPosition(const CPoint3D &point) { position_ = point; }
 
   //---
 
@@ -275,9 +277,7 @@ class CGeomLight3D {
 
   // type
 
-  bool getDirectional() const {
-    return data_.getDirectional();
-  }
+  bool getDirectional() const { return data_.getDirectional(); }
 
   const Type &getType() const { return data_.getType(); }
   virtual void setType(const Type &t) { data_.setType(t); }
@@ -285,8 +285,8 @@ class CGeomLight3D {
   //---
 
   // directional light
-  const CVector3D &getDirection() const { return data_.getDirection(); }
-  void setDirection(const CVector3D &dir) { data_.setDirection(dir); }
+  virtual const CVector3D &getDirection() const { return data_.getDirection(); }
+  virtual void setDirection(const CVector3D &dir) { data_.setDirection(dir); }
 
   //---
 
@@ -311,6 +311,9 @@ class CGeomLight3D {
 
   double getSpotCutOffAngle() const { return data_.getSpotCutOffAngle(); }
   virtual void setSpotCutOffAngle(double a) { data_.setSpotCutOffAngle(a); }
+
+  double getSpotOuterCutOffAngle() const { return data_.getSpotOuterCutOffAngle(); }
+  virtual void setSpotOuterCutOffAngle(double a) { data_.setSpotOuterCutOffAngle(a); }
 
   //---
 
