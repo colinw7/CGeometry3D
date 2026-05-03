@@ -1,4 +1,5 @@
 #include <CGeomObject3D.h>
+#include <CGeomEdge3D.h>
 #include <CGeometry3D.h>
 #include <CGeomScene3D.h>
 #include <CGeomZBuffer.h>
@@ -45,7 +46,7 @@ CGeomObject3D(const CGeomObject3D &object) :
  rootNode_        (object.rootNode_),
  viewMatrix_      (object.viewMatrix_),
  transformData_   (object.transformData_),
- animName_        (object.animName_),
+ animData_        (object.animData_),
  dv_              (object.dv_),
  da_              (object.da_)
 {
@@ -94,6 +95,9 @@ CGeomObject3D::
 
   for (auto *vertex : vertices_)
     delete vertex;
+
+  for (auto &pe : edgeFaces_)
+    delete pe.first;
 
   // TODO: delete (or detach) children
 }
@@ -159,6 +163,8 @@ clearGeometry(bool destroy)
 
   meshNode_ = -1;
   rootNode_ = -1;
+
+  edgesValid_ = false;
 }
 
 //---
@@ -486,6 +492,8 @@ addVertex(CGeomVertex3D *vertex)
 
   vertex->setInd(ind);
 
+  edgesValid_ = false;
+
   return ind;
 }
 
@@ -645,6 +653,8 @@ addFace(CGeomFace3D *face)
   auto ind = uint(faces_.size() - 1);
 
   face->setInd(ind);
+
+  edgesValid_ = false;
 
   return ind;
 }
@@ -1347,10 +1357,14 @@ stepAnimTime()
   if (getAnimationTranslationRange(animName(), tmin, tmax)) {
     auto d = animTimeStep();
 
-    animTime_ += d;
+    animData_.time += d;
 
-    if (animTime_ > tmax)
-      animTime_ = tmin;
+    if (animData_.time > tmax) {
+      if (isAnimRepeat())
+        animData_.time = tmin;
+      else
+        animData_.time = tmax;
+    }
   }
 }
 
@@ -2359,6 +2373,9 @@ CVector3D
 CGeomObject3D::
 verticesModelNormal(const VertexIList &vertices) const
 {
+  if (vertices.size() < 3)
+    return CVector3D(0, 1, 0);
+
   auto *v1 = vertices_[vertices[0]];
   auto *v2 = vertices_[vertices[1]];
   auto *v3 = vertices_[vertices[2]];
@@ -2373,6 +2390,9 @@ CVector3D
 CGeomObject3D::
 verticesViewedNormal(const VertexIList &vertices) const
 {
+  if (vertices.size() < 3)
+    return CVector3D(0, 1, 0);
+
   auto *v1 = vertices_[vertices[0]];
   auto *v2 = vertices_[vertices[1]];
   auto *v3 = vertices_[vertices[2]];
@@ -3099,4 +3119,270 @@ splitFacesByMaterial(std::vector<CGeomObject3D *> &newObjects) const
   }
 
   return true;
+}
+
+//---
+
+void
+CGeomObject3D::
+updateMaterials()
+{
+  auto *objectMaterial = getMaterialP();
+  if (objectMaterial) return;
+
+  using MaterialSet = std::set<CGeomMaterial *>;
+
+  MaterialSet materialSet;
+
+  auto getMaterial = [&](const CRGBA &diffuse) {
+    for (auto *m : materialSet) {
+      if (m->getDiffuse() == diffuse)
+        return m;
+    }
+
+    return static_cast<CGeomMaterial *>(nullptr);
+  };
+
+  uint materialNum = 1;
+
+  for (auto *face : faces_) {
+    auto *faceMaterial = face->getMaterialP();
+    if (faceMaterial) continue;
+
+    if (! face->color())
+      face->setColor(CRGBA::white());
+
+    auto diffuse = face->color().value();
+
+    faceMaterial = getMaterial(diffuse);
+
+    if (! faceMaterial) {
+      faceMaterial = CGeometry3DInst->createMaterial();
+
+      faceMaterial->setName("_material" + std::to_string(materialNum++));
+
+      faceMaterial->setDiffuse(diffuse);
+
+      materialSet.insert(faceMaterial);
+    }
+
+    face->setMaterialP(faceMaterial);
+  }
+}
+
+//---
+
+const CGeomObject3D::EdgeList &
+CGeomObject3D::
+getEdges() const
+{
+  if (! edgesValid_) {
+    auto *th = const_cast<CGeomObject3D *>(this);
+
+    for (auto &pe : th->edgeFaces_)
+      delete pe.first;
+
+    th->edges_    .clear();
+    th->edgeFaces_.clear();
+
+    uint edgeInd { 0 };
+
+    for (auto *face : th->faces_) {
+      const auto &vertices = face->getVertices();
+
+      auto nv = vertices.size();
+
+      size_t i1 = nv - 1;
+
+      for (size_t i2 = 0; i2 < nv; i1 = i2++) {
+        CGeomEdge3D tempEdge(vertices[i1], vertices[i2]);
+
+        bool found = false;
+
+        auto pe = th->edgeFaces_.begin();
+
+        while (pe != th->edgeFaces_.end()) {
+          auto *edge1 = (*pe).first;
+
+          if (edge1->cmp(tempEdge) == 0) {
+            found = true;
+            break;
+          }
+
+          ++pe;
+        }
+
+        if (! found) {
+          auto *edge = CGeometry3DInst->createEdge3D(th, vertices[i1], vertices[i2]);
+
+          edge->setInd(edgeInd++);
+
+          pe = th->edgeFaces_.insert(pe, EdgeFaces::value_type(edge, FaceList()));
+        }
+
+        (*pe).second.push_back(face);
+      }
+    }
+
+    std::map<uint, CGeomEdge3D *> sortedEdges;
+
+    for (auto &pe : th->edgeFaces_)
+      sortedEdges[pe.first->getInd()] = pe.first;
+
+    for (auto &pe : sortedEdges)
+      th->edges_.push_back(pe.second);
+
+    th->edgesValid_ = true;
+  }
+
+  return edges_;
+}
+
+const CGeomEdge3D *
+CGeomObject3D::
+getEdgeP(uint edgeId) const
+{
+  const auto &edges = getEdges();
+
+  for (auto *edge : edges) {
+    if (edge->getInd() == edgeId)
+      return edge;
+  }
+
+  return nullptr;
+}
+
+CGeomObject3D::EdgeList
+CGeomObject3D::
+getFaceEdges(CGeomFace3D *face) const
+{
+  (void) getEdges();
+
+  EdgeList edges;
+
+  for (const auto &pe : edgeFaces_) {
+    bool found = false;
+
+    for (auto *face1 : pe.second) {
+      if (face1 == face) {
+        found = true;
+        break;
+      }
+    }
+
+    if (found)
+      edges.push_back(pe.first);
+  }
+
+  return edges;
+}
+
+uint
+CGeomObject3D::
+mergeEdge(uint edgeId)
+{
+  auto *edge = getEdgeP(edgeId);
+  assert(edge);
+
+  return edge->getObject()->mergeVertices(edge->getStart(), edge->getEnd());
+}
+
+uint
+CGeomObject3D::
+mergeVertices(uint vind1, uint vind2)
+{
+  auto *v1 = const_cast<CGeomVertex3D *>(getVertexP(vind1));
+  auto *v2 = const_cast<CGeomVertex3D *>(getVertexP(vind2));
+
+  // set new (merged) point
+  auto p = (v1->getModel() + v2->getModel())/2.0;
+
+  // move one vertex to point
+  v1->setModel(p);
+
+  // remove other vertex
+  removeMergedVertex(vind2, vind1);
+
+  edgesValid_ = false;
+
+  return vind1;
+}
+
+void
+CGeomObject3D::
+removeMergedVertex(uint oldInd, uint newInd)
+{
+  for (auto &face : faces_) {
+    auto b1 = face->hasVertex(oldInd);
+    if (! b1) continue;
+
+    auto b2 = face->hasVertex(newInd);
+
+    if (! b2)
+      face->replaceVertex(oldInd, newInd);
+    else
+      face->removeVertex(oldInd);
+  }
+}
+
+CGeomObject3D *
+CGeomObject3D::
+separateFace(const CGeomFace3D *face) const
+{
+  auto name = "object." + std::to_string(pscene_->getObjects().size() + 1);
+
+  auto *newObject = CGeometry3DInst->createObject3D(pscene_, name);
+
+  auto *face1 = face->dup();
+
+  std::vector<uint> vertices1;
+
+  for (const auto &vind : face->getVertices()) {
+    auto *v  = getVertexP(vind);
+    auto *v1 = v->dup();
+
+    auto vind1 = newObject->addVertex(v1);
+
+    vertices1.push_back(vind1);
+  }
+
+  face1->setVertices(vertices1);
+
+  newObject->addFace(face1);
+
+  pscene_->addObject(newObject);
+
+  return newObject;
+}
+
+CGeomObject3D *
+CGeomObject3D::
+separateEdge(const CGeomEdge3D *edge) const
+{
+  auto name = "object." + std::to_string(pscene_->getObjects().size() + 1);
+
+  auto *newObject = CGeometry3DInst->createObject3D(pscene_, name);
+
+  auto *v1 = getVertexP(edge->getStart());
+  auto *v2 = getVertexP(edge->getEnd  ());
+
+  auto *vv1 = v1->dup();
+  auto *vv2 = v2->dup();
+  auto *vv3 = v2->dup();
+  auto *vv4 = v1->dup();
+
+  std::vector<uint> vertices1;
+
+  vertices1.push_back(newObject->addVertex(vv1));
+  vertices1.push_back(newObject->addVertex(vv2));
+  vertices1.push_back(newObject->addVertex(vv3));
+  vertices1.push_back(newObject->addVertex(vv4));
+
+  auto *face1 = CGeometry3DInst->createFace3D(newObject, vertices1);
+
+  newObject->addFace(face1);
+
+  pscene_->addObject(newObject);
+
+  return newObject;
 }

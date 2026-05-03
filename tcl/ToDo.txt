@@ -1,0 +1,7 @@
+svg to obj
+
+get object faces, edges, vertices, ...
+
+move face/edge/vertex
+
+move free,x,y,z,normal(up),left,right

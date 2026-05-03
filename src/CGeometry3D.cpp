@@ -1,4 +1,5 @@
 #include <CGeometry3D.h>
+#include <CGeomEdge3D.h>
 
 CGeometryFactory::
 CGeometryFactory()
@@ -29,6 +30,13 @@ CGeometryFactory::
 createFace3D() const
 {
   return new CGeomFace3D;
+}
+
+CGeomEdge3D *
+CGeometryFactory::
+createEdge3D() const
+{
+  return new CGeomEdge3D;
 }
 
 CGeomObject3D *
@@ -138,6 +146,19 @@ createFace3D(CGeomObject3D *pobject, const std::vector<uint> &vertices) const
   face->setVertices(vertices);
 
   return face;
+}
+
+CGeomEdge3D *
+CGeometry3D::
+createEdge3D(CGeomObject3D *pobject, uint start, uint end) const
+{
+  auto *edge = factory_->createEdge3D();
+
+  edge->setObject(pobject);
+  edge->setStart(start);
+  edge->setEnd(end);
+
+  return edge;
 }
 
 CGeomObject3D *

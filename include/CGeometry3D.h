@@ -24,6 +24,8 @@ class CGeometryFactory {
 
   virtual CGeomFace3D *createFace3D() const;
 
+  virtual CGeomEdge3D *createEdge3D() const;
+
   virtual CGeomObject3D *createObject3D(CGeomScene3D *pscene, const std::string &name) const;
 
   virtual CGeomScene3D *createScene3D() const;
@@ -58,6 +60,8 @@ class CGeometry3D {
   CGeomLine3D *createLine3D(CGeomObject3D *pobject, uint v1, uint v2) const;
 
   CGeomFace3D *createFace3D(CGeomObject3D *pobject, const std::vector<uint> &vertices) const;
+
+  CGeomEdge3D *createEdge3D(CGeomObject3D *pobject, uint start, uint end) const;
 
   CGeomObject3D *createObject3D(CGeomScene3D *pscene, const std::string &name) const;
   CGeomObject3D *dupObject(CGeomObject3D *obj) const;

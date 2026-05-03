@@ -7,11 +7,13 @@
 
 #include <CImagePtr.h>
 #include <CMatrix3D.h>
+#include <CBBox3D.h>
 #include <CPoint2D.h>
 #include <CPolygonOrientation.h>
 
 class CGeomScene3D;
 class CGeomObject3D;
+class CGeomEdge3D;
 class CGeomZBuffer;
 class CGeomTexture;
 class CGeomMask;
@@ -24,6 +26,7 @@ class CGeomFace3D {
   using TexturePoints = std::vector<CPoint2D>;
   using SubFaceList   = std::vector<CGeomFace3D *>;
   using SubLineList   = std::vector<CGeomLine3D *>;
+  using EdgeList      = std::vector<CGeomEdge3D *>;
 
   using OptColor = std::optional<CRGBA>;
   using OptReal  = std::optional<double>;
@@ -103,6 +106,7 @@ class CGeomFace3D {
 
   void setTextureMapping(const std::vector<CPoint2D> &points);
 
+  bool hasVertexTexturePoints() const { return (texturePoints_.size() == vertices_.size()); }
   const std::vector<CPoint2D> &getTexturePoints() const { return texturePoints_; }
   void setTexturePoints(const TexturePoints &points);
 
@@ -253,6 +257,18 @@ class CGeomFace3D {
 
   //---
 
+  bool edgesValid() const;
+
+  const EdgeList &getEdges() const;
+
+  //---
+
+  void getModelBBox(CBBox3D &bbox) const;
+
+  double distanceTo(const CPoint3D &p) const;
+
+  //---
+
   void drawSolid(CGeom3DRenderer *renderer);
   void drawSolid(CGeomZBuffer *zbuffer);
 
@@ -290,17 +306,30 @@ class CGeomFace3D {
 
   void moveBy(const CVector3D &v);
 
+  void scale(double sx, double sy, double sz);
+
+  void rotateModelX(double a);
+  void rotateModelY(double a);
+  void rotateModelZ(double a);
+
   //---
 
   void triangulate();
 
   void divideCenter();
 
+  CPoint3D calcCenter() const;
+
   CGeomFace3D *extrude(double d);
 
   void extrudeMove(double d);
 
   CGeomFace3D *loopCut();
+
+  bool removeVertex(uint ind);
+  bool replaceVertex(uint oldInd, uint newInd);
+
+  bool hasVertex(uint ind) const;
 
  private:
   void init();
@@ -342,6 +371,8 @@ class CGeomFace3D {
   CGeomTexture* emissiveTexture_ { nullptr };
 
   CGeomMask* mask_ { nullptr };
+
+  mutable EdgeList edges_;
 };
 
 #endif

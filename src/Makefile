@@ -21,6 +21,7 @@ CGeomCone3D.cpp \
 CGeomCube3D.cpp \
 CGeomCylinder3D.cpp \
 CGeometry3D.cpp \
+CGeomEdge3D.cpp \
 CGeomFace3D.cpp \
 CGeomFill3D.cpp \
 CGeomHyperboloid3D.cpp \
@@ -47,6 +48,7 @@ CFLAGS = \
 $(CDEBUG) \
 -I$(INC_DIR) \
 -I. \
+-I../../CImportModel/include \
 -I../../CRenderer/include \
 -I../../CImageLib/include \
 -I../../CFont/include \

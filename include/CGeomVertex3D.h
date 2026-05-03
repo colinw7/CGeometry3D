@@ -12,7 +12,6 @@
 class CGeomObject3D;
 class CGeomZBuffer;
 class CGeomCamera3D;
-class CGeomFace3D;
 
 class CGeomVertex3D : public CGeomPoint3D {
  public:

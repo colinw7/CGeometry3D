@@ -14,6 +14,7 @@
 #include <optional>
 
 class CGeomScene3D;
+class CGeomEdge3D;
 class CGeomCamera;
 class CGeomZBuffer;
 class CGeom3DRenderer;
@@ -32,6 +33,8 @@ class CGeomObject3D {
   using VertexFaceList   = std::map<uint, FaceIList>;
   using VertexFaceNormal = std::map<uint, CVector3D>;
   using TexturePoints    = std::vector<CPoint3D>;
+  using EdgeList         = std::vector<CGeomEdge3D *>;
+  using EdgeFaces        = std::map<CGeomEdge3D *, FaceList>;
 
   enum class Transform {
     NONE,
@@ -453,18 +456,21 @@ class CGeomObject3D {
                                  double t) const;
 
   // animation
-  const std::string &animName() const { return animName_; }
-  void setAnimName(const std::string &s) { animName_ = s; }
+  const std::string &animName() const { return animData_.name; }
+  void setAnimName(const std::string &s) { animData_.name = s; }
 
-  double animTime() const { return animTime_; }
-  void setAnimTime(double t) { animTime_ = t; }
+  double animTime() const { return animData_.time; }
+  void setAnimTime(double t) { animData_.time = t; }
   void stepAnimTime();
 
-  double animTimeStep() const { return animTimeStep_.value_or(calcTimeStep()); }
-  void setAnimTimeStep(double r) { animTimeStep_ = r; }
+  double animTimeStep() const { return animData_.timeStep.value_or(calcTimeStep()); }
+  void setAnimTimeStep(double r) { animData_.timeStep = r; }
 
-  int animTimeFrames() const { return animTimeFrames_; }
-  void setAnimTimeFrames(int i) { animTimeFrames_ = i; }
+  int animTimeFrames() const { return animData_.timeFrames; }
+  void setAnimTimeFrames(int i) { animData_.timeFrames = i; }
+
+  bool isAnimRepeat() const { return animData_.repeat; }
+  void setAnimRepeat(bool b) { animData_.repeat = b; }
 
   double calcTimeStep() const;
 
@@ -690,6 +696,33 @@ class CGeomObject3D {
 
   bool splitFacesByMaterial(std::vector<CGeomObject3D *> &newObjects) const;
 
+  //---
+
+  void updateMaterials();
+
+  //---
+
+  bool edgesValid() const { return edgesValid_; }
+
+  const EdgeList &getEdges() const;
+
+  const CGeomEdge3D *getEdgeP(uint edgeId) const;
+
+  EdgeList getFaceEdges(CGeomFace3D *face) const;
+
+  //---
+
+  uint mergeEdge(uint edgeId);
+
+  uint mergeVertices(uint v1, uint v2);
+
+  void removeMergedVertex(uint oldInd, uint newInd);
+
+  //---
+
+  CGeomObject3D *separateFace(const CGeomFace3D *face) const;
+  CGeomObject3D *separateEdge(const CGeomEdge3D *edge) const;
+
  private:
   void validatePObject();
 
@@ -757,10 +790,15 @@ class CGeomObject3D {
   TransformData transformData_;
 
   // animation
-  std::string animName_;
-  double      animTime_       { 0.0 };
-  OptReal     animTimeStep_;
-  int         animTimeFrames_ { 60 }; // frame per second
+  struct AnimData {
+    std::string name;
+    double      time       { 0.0 };
+    OptReal     timeStep;
+    int         timeFrames { 60 }; // frame per second
+    bool        repeat     { true };
+  };
+
+  AnimData animData_;
 
   struct AnimationRange {
     double min { 0.0 };
@@ -779,6 +817,11 @@ class CGeomObject3D {
   // hierarchy (parent, children)
   CGeomObject3D*               parent_ { nullptr };
   std::vector<CGeomObject3D *> children_;
+
+  // edges
+  bool      edgesValid_ { false };
+  EdgeFaces edgeFaces_;
+  EdgeList  edges_;
 };
 
 //------

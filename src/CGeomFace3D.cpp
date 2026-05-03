@@ -1,8 +1,10 @@
 #include <CGeometry3D.h>
+#include <CGeomEdge3D.h>
 #include <CGeomZBuffer.h>
 #include <CGeomLight3D.h>
 #include <CGeomUtil3D.h>
 #include <CMathRound.h>
+#include <CPlane3D.h>
 
 CGeomFace3D::
 CGeomFace3D(CGeomObject3D *pobject) :
@@ -395,6 +397,74 @@ setSubLineColor(uint ind, const CRGBA &rgba)
 {
   subLines_[ind]->setColor(rgba);
 }
+
+//---
+
+bool
+CGeomFace3D::
+edgesValid() const
+{
+  return pobject_->edgesValid();
+}
+
+const CGeomFace3D::EdgeList &
+CGeomFace3D::
+getEdges() const
+{
+  auto *th = const_cast<CGeomFace3D *>(this);
+
+  // TODO: cache ?
+  th->edges_ = pobject_->getFaceEdges(th);
+
+  return th->edges_;
+}
+
+//---
+
+void
+CGeomFace3D::
+getModelBBox(CBBox3D &bbox) const
+{
+  for (const auto &vertex : vertices_) {
+    const auto &p = pobject_->getVertex(vertex).getModel();
+
+    bbox += p;
+  }
+}
+
+double
+CGeomFace3D::
+distanceTo(const CPoint3D &p) const
+{
+  std::vector<CPoint3D> points;
+
+  for (const auto &vertex : vertices_) {
+    const auto &p1 = pobject_->getVertex(vertex).getModel();
+
+    points.push_back(p1);
+  }
+
+  double dist;
+
+  if      (points.size() == 1)
+    dist = p.distanceTo(points[0]);
+  else if (points.size() == 1) {
+    CLine3D line(points[0], points[1]);
+
+    if (! line.pointDistance(p, &dist))
+      dist = 1E50;
+  }
+  else {
+    CPlane3D plane(points[0], points[1], points[2]);
+
+    if (! CMathGeom3D::PointPlaneDistance(p, plane, &dist))
+      dist = 1E50;
+  }
+
+  return dist;
+}
+
+//---
 
 void
 CGeomFace3D::
@@ -840,13 +910,93 @@ moveBy(const CVector3D &v)
 
 void
 CGeomFace3D::
+scale(double sx, double sy, double sz)
+{
+  CVector3D s(sx, sy, sz);
+
+  auto c = calcCenter();
+
+  for (auto &vertex : vertices_) {
+    auto &v1 = pobject_->getVertex(vertex);
+
+    auto &p = v1.getModel();
+
+    v1.setModel(CPoint3D((p.x - c.x)*s.x() + c.x,
+                         (p.y - c.y)*s.y() + c.y,
+                         (p.z - c.z)*s.z() + c.z));
+  }
+}
+
+void
+CGeomFace3D::
+rotateModelX(double dx)
+{
+  CMatrix3D m;
+  m.setRotation(CMathGen::X_AXIS_3D, dx);
+
+  auto c = calcCenter();
+
+  for (auto &vertex : vertices_) {
+    auto &v1 = pobject_->getVertex(vertex);
+
+    auto p = v1.getModel() - c;
+
+    auto p1 = m.multiplyPoint(p) + c;
+
+    v1.setModel(p1);
+  }
+}
+
+void
+CGeomFace3D::
+rotateModelY(double dy)
+{
+  CMatrix3D m;
+  m.setRotation(CMathGen::Y_AXIS_3D, dy);
+
+  auto c = calcCenter();
+
+  for (auto &vertex : vertices_) {
+    auto &v1 = pobject_->getVertex(vertex);
+
+    auto p = v1.getModel() - c;
+
+    auto p1 = m.multiplyPoint(p) + c;
+
+    v1.setModel(p1);
+  }
+}
+
+void
+CGeomFace3D::
+rotateModelZ(double dz)
+{
+  CMatrix3D m;
+  m.setRotation(CMathGen::Z_AXIS_3D, dz);
+
+  auto c = calcCenter();
+
+  for (auto &vertex : vertices_) {
+    auto &v1 = pobject_->getVertex(vertex);
+
+    auto p = v1.getModel() - c;
+
+    auto p1 = m.multiplyPoint(p) + c;
+
+    v1.setModel(p1);
+  }
+}
+
+// convert face to triangles (adds new faces as needed)
+void
+CGeomFace3D::
 triangulate()
 {
   auto nv = vertices_.size();
   if (nv <= 3) return;
 
-  bool hasNormals       = (normals_      .size() == nv);
-  bool hasTexturePoints = (texturePoints_.size() == nv);
+  bool hasNormals       = hasVertexNormals();
+  bool hasTexturePoints = hasVertexTexturePoints();
 
   uint i1 = 0;
 
@@ -898,11 +1048,21 @@ triangulate()
   }
 }
 
+// divide face a center point
 void
 CGeomFace3D::
 divideCenter()
 {
   // calc center
+  auto c = calcCenter();
+
+  pobject_->divideFace(this, c);
+}
+
+CPoint3D
+CGeomFace3D::
+calcCenter() const
+{
   CPoint3D c;
 
   for (auto &vertex : vertices_) {
@@ -913,16 +1073,22 @@ divideCenter()
 
   c /= double(vertices_.size());
 
-  pobject_->divideFace(this, c);
+  return c;
 }
 
+// duplicate face and move along normal
 CGeomFace3D *
 CGeomFace3D::
 extrude(double d)
 {
   CVector3D normal;
-  calcModelNormal(normal);
 
+  if (getNormalSet())
+    normal = getNormal();
+  else
+    calcModelNormal(normal);
+
+  // add new vertices
   std::vector<uint> inds;
 
   for (auto &vertex : vertices_) {
@@ -961,12 +1127,17 @@ extrude(double d)
   return newFace;
 }
 
+// move face on normal
 void
 CGeomFace3D::
 extrudeMove(double d)
 {
   CVector3D normal;
-  calcModelNormal(normal);
+
+  if (getNormalSet())
+    normal = getNormal();
+  else
+    calcModelNormal(normal);
 
   for (auto &vertex : vertices_) {
     auto &v1 = pobject_->getVertex(vertex);
@@ -1019,4 +1190,70 @@ loopCut()
   }
 
   return newFace;
+}
+
+bool
+CGeomFace3D::
+removeVertex(uint ind)
+{
+  assert(hasVertex(ind));
+
+  VertexList    vertices;
+  Normals       normals;
+  TexturePoints texturePoints;
+
+  bool hasNormals       = hasVertexNormals();
+  bool hasTexturePoints = hasVertexTexturePoints();
+
+  int iv = 0;
+
+  for (auto vind : vertices_) {
+    if (vind != ind) {
+      vertices.push_back(vind);
+
+      if (hasNormals)
+        normals.push_back(normals_[iv]);
+
+      if (hasTexturePoints)
+        texturePoints.push_back(texturePoints_[iv]);
+    }
+
+    ++iv;
+  }
+
+  std::swap(vertices_     , vertices);
+  std::swap(normals_      , normals);
+  std::swap(texturePoints_, texturePoints);
+
+  return true;
+}
+
+bool
+CGeomFace3D::
+replaceVertex(uint oldInd, uint newInd)
+{
+  assert(hasVertex(oldInd));
+
+  int iv = 0;
+
+  for (auto vind : vertices_) {
+    if (vind == oldInd)
+      vertices_[iv] = newInd;
+
+    ++iv;
+  }
+
+  return true;
+}
+
+bool
+CGeomFace3D::
+hasVertex(uint ind) const
+{
+  for (auto v : vertices_) {
+    if (v == ind)
+      return true;
+  }
+
+  return false;
 }

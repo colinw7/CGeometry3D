@@ -2,6 +2,7 @@
 #include <CGeometry3D.h>
 #include <CGeomZBuffer.h>
 #include <CTransform2D.h>
+#include <CSG.h>
 
 CGeomScene3D::
 CGeomScene3D()
@@ -632,6 +633,148 @@ lightPoint(const CPoint3D &point, const CVector3D &normal,
   rgba.clamp();
 
   return true;
+}
+
+//---
+
+namespace {
+
+CSG::CSG *objectToCSG(CGeomObject3D *object) {
+  CSG::PolygonArray polygons;
+
+  for (auto *face : object->getFaces()) {
+    std::vector<CSG::Vertex *> vertices;
+
+    auto fnormal = (face->getNormalSet() ? face->getNormal() : CVector3D(0, 1, 0));
+
+    for (const auto &iv : face->getVertices()) {
+      auto *v = const_cast<CGeomVertex3D *>(object->getVertexP(iv));
+
+      const auto &model  = v->getModel();
+
+      auto normal = (v->hasNormal() ? v->getNormal() : fnormal);
+
+      CSG::Vector pos(model.x, model.y, model.z);
+
+      auto n = CSG::Vector(normal.getX(), normal.getY(), normal.getZ());
+
+      auto *vertex = CSGMgrInst->createVertex(pos, n);
+
+      vertices.push_back(vertex);
+    }
+
+    auto *p = CSGMgrInst->createPolygon(vertices);
+
+    polygons.push_back(p);
+  }
+
+  return CSG::fromPolygons(polygons);
+}
+
+CGeomObject3D *csgToObject(CGeomScene3D *scene, CSG::CSG *csg) {
+  auto *object = CGeometry3DInst->createObject3D(scene, "csg");
+
+  auto polygons = csg->toPolygons();
+
+  for (auto *poly : polygons) {
+    std::vector<uint> inds;
+
+    for (auto *v : poly->vertices) {
+      auto ind = object->addVertex(CPoint3D(v->pos.x, v->pos.y, v->pos.z));
+
+      object->setVertexNormal(ind, CVector3D(v->normal.x, v->normal.y, v->normal.z));
+
+      inds.push_back(ind);
+    }
+
+    object->addFace(inds);
+  }
+
+  return object;
+}
+
+}
+
+CGeomObject3D *
+CGeomScene3D::
+subtractObjects(const std::vector<CGeomObject3D *> &objects)
+{
+  CSG::CSG *csg { nullptr };
+
+  for (auto *object : objects) {
+    auto *csg1 = objectToCSG(object);
+
+    if (! csg)
+      csg = csg1;
+    else {
+      auto *csg2 = csg->subtractOp(csg1);
+
+      delete csg;
+
+      csg = csg2;
+    }
+  }
+
+  return csgToObject(this, csg);
+}
+
+CGeomObject3D *
+CGeomScene3D::
+intersectObjects(const std::vector<CGeomObject3D *> &objects)
+{
+  CSG::CSG *csg { nullptr };
+
+  for (auto *object : objects) {
+    auto *csg1 = objectToCSG(object);
+
+    if (! csg)
+      csg = csg1;
+    else {
+      auto *csg2 = csg->intersectOp(csg1);
+
+      delete csg;
+
+      csg = csg2;
+    }
+  }
+
+  return csgToObject(this, csg);
+}
+
+CGeomObject3D *
+CGeomScene3D::
+inverseObject(CGeomObject3D *object)
+{
+  auto *csg = objectToCSG(object);
+
+  auto *csg1 = csg->inverseOp();
+
+  delete csg;
+
+  return csgToObject(this, csg1);
+}
+
+CGeomObject3D *
+CGeomScene3D::
+unionObjects(const std::vector<CGeomObject3D *> &objects)
+{
+  CSG::CSG *csg { nullptr };
+
+  for (auto *object : objects) {
+    auto *csg1 = objectToCSG(object);
+
+    if (! csg)
+      csg = csg1;
+    else {
+      auto *csg2 = csg->unionOp(csg1);
+
+      delete csg;
+
+      csg = csg2;
+    }
+  }
+
+  return csgToObject(this, csg);
 }
 
 //---

@@ -200,6 +200,13 @@ class CGeomScene3D {
     return textureMgr_.getTextureById(id);
   }
 
+  //---
+
+  CGeomObject3D *subtractObjects (const std::vector<CGeomObject3D *> &objects);
+  CGeomObject3D *intersectObjects(const std::vector<CGeomObject3D *> &objects);
+  CGeomObject3D *inverseObject   (CGeomObject3D *object);
+  CGeomObject3D *unionObjects    (const std::vector<CGeomObject3D *> &objects);
+
  private:
   CGeomScene3D(const CGeomScene3D &rhs);
   CGeomScene3D &operator=(const CGeomScene3D &rhs);
