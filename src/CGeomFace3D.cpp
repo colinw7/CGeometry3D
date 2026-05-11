@@ -419,6 +419,26 @@ getEdges() const
   return th->edges_;
 }
 
+CVector3D
+CGeomFace3D::
+edgeVector(const CGeomEdge3D *edge) const
+{
+  CVector3D n;
+  calcModelNormal(n);
+
+  auto v = n.crossProduct(edge->vector());
+
+  auto p1 = edge->calcCenter() + v*0.001;
+  auto p2 = edge->calcCenter() - v*0.001;
+
+  auto c = calcCenter();
+
+  if (c.distanceTo(p2) < c.distanceTo(p1))
+    v = -v;
+
+  return v;
+}
+
 //---
 
 void
@@ -888,13 +908,80 @@ CPolygonOrientation
 CGeomFace3D::
 orientation() const
 {
-  const auto &point1 = pobject_->getVertex(vertices_[0]).getProjected();
-  const auto &point2 = pobject_->getVertex(vertices_[1]).getProjected();
-  const auto &point3 = pobject_->getVertex(vertices_[2]).getProjected();
+  return orientationI(0);
+}
+
+CPolygonOrientation
+CGeomFace3D::
+orientationI(uint i1) const
+{
+  auto nv = vertices_.size();
+
+  auto i2 = i1 + 1; if (i2 >= nv) i2 = 0;
+  auto i3 = i2 + 1; if (i3 >= nv) i3 = 0;
+
+  const auto &point1 = pobject_->getVertex(vertices_[i1]).getProjected();
+  const auto &point2 = pobject_->getVertex(vertices_[i2]).getProjected();
+  const auto &point3 = pobject_->getVertex(vertices_[i3]).getProjected();
 
   CTriangle3D triangle(point1, point2, point3);
 
   return triangle.orientationXY();
+}
+
+CPolygonOrientation
+CGeomFace3D::
+modelOrientation() const
+{
+  return modelOrientationI(0);
+}
+
+CPolygonOrientation
+CGeomFace3D::
+modelOrientationI(uint i1) const
+{
+  CVector3D n;
+  calcModelNormal(n);
+
+  auto q = CQuaternion::rotationArc(n, CVector3D(0, 0, -1));
+
+  CMatrix3D m;
+  q.toRotationMatrix(m);
+
+  auto nv = vertices_.size();
+
+  auto i2 = i1 + 1; if (i2 >= nv) i2 = 0;
+  auto i3 = i2 + 1; if (i3 >= nv) i3 = 0;
+
+  const auto &p1 = pobject_->getVertex(vertices_[i1]).getModel();
+  const auto &p2 = pobject_->getVertex(vertices_[i2]).getModel();
+  const auto &p3 = pobject_->getVertex(vertices_[i3]).getModel();
+
+  auto pp1 = m*p1;
+  auto pp2 = m*p2;
+  auto pp3 = m*p3;
+
+  CTriangle3D triangle(pp1, pp2, pp3);
+
+  return triangle.orientationXY();
+}
+
+bool
+CGeomFace3D::
+checkModelOrientation() const
+{
+  auto nv = vertices_.size();
+
+  auto orient = modelOrientationI(0);
+
+  for (uint i = 1; i < nv; ++i) {
+    auto orient1 = modelOrientationI(i);
+
+    if (orient1 != orient)
+      return false;
+  }
+
+  return true;
 }
 
 void
@@ -1256,4 +1343,88 @@ hasVertex(uint ind) const
   }
 
   return false;
+}
+
+//---
+
+CGeomFace3D::FaceList
+CGeomFace3D::
+bevel(double d)
+{
+  return bevelInset(d, d);
+}
+
+CGeomFace3D::FaceList
+CGeomFace3D::
+inset(double d)
+{
+  return bevelInset(d, 0);
+}
+
+// TODO: set normals
+CGeomFace3D::FaceList
+CGeomFace3D::
+bevelInset(double dx, double dy)
+{
+  // get perp distance to face point to center
+  auto d1 = std::sqrt(2.0)*dx;
+
+  auto c = calcCenter();
+
+  // get normal to move new point down
+  CVector3D n;
+  calcModelNormal(n);
+
+  std::vector<uint> vinds1;
+
+  for (const auto &vind : vertices_) {
+    auto *v = pobject_->getVertexP(vind);
+
+    auto p = v->getModel();
+
+    // move existing vertex down
+    auto p1 = p - n*dy;
+
+    v->setModel(p1);
+
+    // add new vertex by moving towards center
+    auto v1 = CVector3D(p, c).normalized();
+
+    auto p2 = p + v1*d1;
+
+    auto vind1 = pobject_->addVertex(p2);
+
+    vinds1.push_back(vind1);
+  }
+
+  // update face to use new vertices
+  auto oldVertices = vertices_;
+
+  setVertices(vinds1);
+
+  //---
+
+  // create new faces for tapers
+  FaceList faces;
+
+  auto nv = vertices_.size();
+
+  for (uint iv = 0; iv < nv; ++iv) {
+    auto iv1 = iv + 1; if (iv1 == nv) iv1 = 0;
+
+    std::vector<uint> vinds2;
+
+    vinds2.push_back(oldVertices[iv ]);
+    vinds2.push_back(oldVertices[iv1]);
+    vinds2.push_back(vinds1     [iv1]);
+    vinds2.push_back(vinds1     [iv ]);
+
+    auto faceId = pobject_->addFace(vinds2);
+
+    auto *taperFace = pobject_->getFaceP(faceId);
+
+    faces.push_back(taperFace);
+  }
+
+  return faces;
 }

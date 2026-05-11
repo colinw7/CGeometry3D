@@ -57,6 +57,10 @@ class CGeomPoint3D {
   void invertY();
   void invertZ();
 
+  void flipX(double);
+  void flipY(double);
+  void flipZ(double);
+
   //---
 
   void print(std::ostream &os) const {

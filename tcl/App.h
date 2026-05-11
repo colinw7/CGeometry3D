@@ -3,6 +3,7 @@
 
 #include <CPoint3D.h>
 
+#include <vector>
 #include <string>
 
 #include <tcl/tcl.h>
@@ -61,11 +62,16 @@ class App {
   static int mergeEdgeProc   (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int separateFaceProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int separateEdgeProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
+  static int mirrorObjectProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
 
   static int deleteObjectsProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int writeObjProc     (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
 
-  bool decodeObjectEdge(const std::string &arg, CGeomEdge3D* &egde) const;
+  static int writeObjProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
+
+  bool decodeObject      (const std::string &arg, CGeomObject3D* &object) const;
+  bool decodeObjectFace  (const std::string &arg, CGeomFace3D* &face) const;
+  bool decodeObjectEdge  (const std::string &arg, CGeomEdge3D* &edge) const;
+  bool decodeObjectVertex(const std::string &arg, CGeomVertex3D* &vertex) const;
 
   CGeomObject3D *getNearestObject(const CPoint3D &) const;
   CGeomFace3D   *getNearestFace(CGeomObject3D *, const CPoint3D &) const;
@@ -73,6 +79,9 @@ class App {
   CGeomVertex3D *getNearestVertex(CGeomObject3D *, const CPoint3D &) const;
 
   bool stringToPoint(const std::string &str, CPoint3D &p) const;
+
+ public:
+  int readObjProc(const std::vector<std::string> &args);
 
  private:
   CTcl*         tcl_   { nullptr };

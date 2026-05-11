@@ -103,6 +103,11 @@ class CGeomVertex3D : public CGeomPoint3D {
   void invertY();
   void invertZ();
 
+  void flipX(double);
+  void flipY(double);
+  void flipZ(double);
+
+
   //---
 
   void draw(CGeomZBuffer *zbuffer);

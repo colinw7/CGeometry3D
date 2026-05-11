@@ -24,6 +24,7 @@ class CGeomFace3D {
   using VertexList    = std::vector<uint>;
   using Normals       = std::vector<CVector3D>;
   using TexturePoints = std::vector<CPoint2D>;
+  using FaceList      = std::vector<CGeomFace3D *>;
   using SubFaceList   = std::vector<CGeomFace3D *>;
   using SubLineList   = std::vector<CGeomLine3D *>;
   using EdgeList      = std::vector<CGeomEdge3D *>;
@@ -132,6 +133,7 @@ class CGeomFace3D {
 
   void setVertexNormals(const std::vector<CVector3D> &normals, bool propagate=true);
   bool hasVertexNormals() const { return normals_.size() == vertices_.size(); }
+  const Normals &getVertexNormals() const { return normals_; }
   CVector3D getVertexNormal(uint i) const { return normals_[i]; }
 
   //---
@@ -261,6 +263,8 @@ class CGeomFace3D {
 
   const EdgeList &getEdges() const;
 
+  CVector3D edgeVector(const CGeomEdge3D *edge) const;
+
   //---
 
   void getModelBBox(CBBox3D &bbox) const;
@@ -301,6 +305,12 @@ class CGeomFace3D {
   //---
 
   CPolygonOrientation orientation() const;
+  CPolygonOrientation orientationI(uint i1) const;
+
+  CPolygonOrientation modelOrientation() const;
+  CPolygonOrientation modelOrientationI(uint i1) const;
+
+  bool checkModelOrientation() const;
 
   //---
 
@@ -331,11 +341,18 @@ class CGeomFace3D {
 
   bool hasVertex(uint ind) const;
 
+  //---
+
+  FaceList bevel(double d);
+  FaceList inset(double d);
+
  private:
   void init();
 
   CGeomMaterial *initFrontMaterial() const;
   CGeomMaterial *initBackMaterial() const;
+
+  FaceList bevelInset(double dx, double dy);
 
  protected:
   using OptVector = std::optional<CVector3D>;

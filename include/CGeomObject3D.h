@@ -59,6 +59,13 @@ class CGeomObject3D {
     TRIANGLE
   };
 
+  enum class MirrorDir {
+    NONE = 0,
+    X    = (1<<0),
+    Y    = (1<<1),
+    Z    = (1<<2)
+  };
+
   class Group {
    public:
     Group(const std::string &name, uint id) :
@@ -280,10 +287,10 @@ class CGeomObject3D {
   uint getNumVertices() const { return uint(vertices_.size()); }
 
   const CGeomVertex3D &getVertex(uint i) const { return *vertices_[i]; }
+  CGeomVertex3D &getVertex(uint i) { return *vertices_[i]; }
 
   const CGeomVertex3D *getVertexP(uint i) const { return vertices_[i]; }
-
-  CGeomVertex3D &getVertex(uint i) { return *vertices_[i]; }
+  CGeomVertex3D *getVertexP(uint i) { return vertices_[i]; }
 
   //---
 
@@ -660,6 +667,11 @@ class CGeomObject3D {
   void invertY();
   void invertZ();
 
+  // flip coordinates
+  void flipX(double x);
+  void flipY(double y);
+  void flipZ(double z);
+
   //---
 
   // spin animation
@@ -708,7 +720,14 @@ class CGeomObject3D {
 
   const CGeomEdge3D *getEdgeP(uint edgeId) const;
 
-  EdgeList getFaceEdges(CGeomFace3D *face) const;
+  EdgeList getFaceEdges(const CGeomFace3D *face) const;
+
+  FaceList getEdgeFaces(const CGeomEdge3D *edge) const;
+
+  std::vector<CGeomFace3D *> getVertexFaces(const CGeomVertex3D *v) const;
+
+  CGeomEdge3D *getVertexVertexEdge(uint v1, uint v2) const;
+  CGeomEdge3D *addVertexVertexEdge(uint v1, uint v2);
 
   //---
 
@@ -722,6 +741,10 @@ class CGeomObject3D {
 
   CGeomObject3D *separateFace(const CGeomFace3D *face) const;
   CGeomObject3D *separateEdge(const CGeomEdge3D *edge) const;
+
+  //---
+
+  std::vector<CGeomObject3D *> mirror(MirrorDir dir, const CPoint3D &c) const;
 
  private:
   void validatePObject();
@@ -822,6 +845,12 @@ class CGeomObject3D {
   bool      edgesValid_ { false };
   EdgeFaces edgeFaces_;
   EdgeList  edges_;
+
+  using VertexEdgeMap       = std::map<uint, CGeomEdge3D *>;
+  using VertexVertexEdgeMap = std::map<uint, VertexEdgeMap>;
+
+  VertexVertexEdgeMap vertexVertexEdgeMap_;
+  uint                edgeInd_ { 0 };
 };
 
 //------

@@ -46,13 +46,21 @@ class CGeomEdge3D {
 
   void moveBy(const CVector3D &v);
 
+  void scale(double s);
+
   CGeomFace3D *extrude(double d) const;
+
+  CGeomFace3D *bevel(double s);
+
+  CVector3D vector() const;
 
   CVector3D calcNormal() const;
 
   //---
 
   double distanceTo(const CPoint3D &p) const;
+
+  CPoint3D calcCenter() const;
 
  private:
   CGeomObject3D*    object_   { nullptr };

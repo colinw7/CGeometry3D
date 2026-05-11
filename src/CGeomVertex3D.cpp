@@ -97,3 +97,33 @@ invertZ()
 
   CGeomPoint3D::invertZ();
 }
+
+void
+CGeomVertex3D::
+flipX(double x)
+{
+  if (normal_)
+    normal_ = CVector3D(-normal_->x(), normal_->y(), normal_->z());
+
+  CGeomPoint3D::flipX(x);
+}
+
+void
+CGeomVertex3D::
+flipY(double y)
+{
+  if (normal_)
+    normal_ = CVector3D(normal_->x(), -normal_->y(), normal_->z());
+
+  CGeomPoint3D::flipY(y);
+}
+
+void
+CGeomVertex3D::
+flipZ(double z)
+{
+  if (normal_)
+    normal_ = CVector3D(normal_->x(), normal_->y(), -normal_->z());
+
+  CGeomPoint3D::flipZ(z);
+}

@@ -134,3 +134,24 @@ invertZ()
 {
   model_.z = -model_.z;
 }
+
+void
+CGeomPoint3D::
+flipX(double x)
+{
+  model_.x = 2*x - model_.x;
+}
+
+void
+CGeomPoint3D::
+flipY(double y)
+{
+  model_.y = 2*y - model_.y;
+}
+
+void
+CGeomPoint3D::
+flipZ(double z)
+{
+  model_.z = 2*z - model_.z;
+}

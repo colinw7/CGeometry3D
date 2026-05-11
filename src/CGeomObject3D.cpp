@@ -96,8 +96,9 @@ CGeomObject3D::
   for (auto *vertex : vertices_)
     delete vertex;
 
-  for (auto &pe : edgeFaces_)
-    delete pe.first;
+  for (auto &pe1 : vertexVertexEdgeMap_)
+    for (auto &pe2 : pe1.second)
+      delete pe2.second;
 
   // TODO: delete (or detach) children
 }
@@ -2961,6 +2962,78 @@ invertZ()
     child->invertZ();
 }
 
+void
+CGeomObject3D::
+flipX(double x)
+{
+  for (auto *face : faces_) {
+    if (face->getNormalSet()) {
+      auto n = face->getNormal();
+      n.scaleX(-1);
+      face->setNormal(n);
+    }
+  }
+
+#if 0
+  for (auto *line : lines_)
+    line->flipX(x);
+#endif
+
+  for (auto *vertex : vertices_)
+    vertex->flipX(x);
+
+  for (auto *child : children_)
+    child->flipX(x);
+}
+
+void
+CGeomObject3D::
+flipY(double y)
+{
+  for (auto *face : faces_) {
+    if (face->getNormalSet()) {
+      auto n = face->getNormal();
+      n.scaleY(-1);
+      face->setNormal(n);
+    }
+  }
+
+#if 0
+  for (auto *line : lines_)
+    line->flipY(y);
+#endif
+
+  for (auto *vertex : vertices_)
+    vertex->flipY(y);
+
+  for (auto *child : children_)
+    child->flipY(y);
+}
+
+void
+CGeomObject3D::
+flipZ(double z)
+{
+  for (auto *face : faces_) {
+    if (face->getNormalSet()) {
+      auto n = face->getNormal();
+      n.scaleZ(-1);
+      face->setNormal(n);
+    }
+  }
+
+#if 0
+  for (auto *line : lines_)
+    line->flipZ(z);
+#endif
+
+  for (auto *vertex : vertices_)
+    vertex->flipZ(z);
+
+  for (auto *child : children_)
+    child->flipZ(z);
+}
+
 //---
 
 bool
@@ -3179,14 +3252,10 @@ getEdges() const
   if (! edgesValid_) {
     auto *th = const_cast<CGeomObject3D *>(this);
 
-    for (auto &pe : th->edgeFaces_)
-      delete pe.first;
-
     th->edges_    .clear();
     th->edgeFaces_.clear();
 
-    uint edgeInd { 0 };
-
+    // add edges to faces
     for (auto *face : th->faces_) {
       const auto &vertices = face->getVertices();
 
@@ -3195,30 +3264,15 @@ getEdges() const
       size_t i1 = nv - 1;
 
       for (size_t i2 = 0; i2 < nv; i1 = i2++) {
-        CGeomEdge3D tempEdge(vertices[i1], vertices[i2]);
+        auto *edge = getVertexVertexEdge(vertices[i1], vertices[i2]);
 
-        bool found = false;
+        if (! edge)
+          edge = th->addVertexVertexEdge(vertices[i1], vertices[i2]);
 
-        auto pe = th->edgeFaces_.begin();
+        auto pe = th->edgeFaces_.find(edge);
 
-        while (pe != th->edgeFaces_.end()) {
-          auto *edge1 = (*pe).first;
-
-          if (edge1->cmp(tempEdge) == 0) {
-            found = true;
-            break;
-          }
-
-          ++pe;
-        }
-
-        if (! found) {
-          auto *edge = CGeometry3DInst->createEdge3D(th, vertices[i1], vertices[i2]);
-
-          edge->setInd(edgeInd++);
-
+        if (pe == th->edgeFaces_.end())
           pe = th->edgeFaces_.insert(pe, EdgeFaces::value_type(edge, FaceList()));
-        }
 
         (*pe).second.push_back(face);
       }
@@ -3254,7 +3308,7 @@ getEdgeP(uint edgeId) const
 
 CGeomObject3D::EdgeList
 CGeomObject3D::
-getFaceEdges(CGeomFace3D *face) const
+getFaceEdges(const CGeomFace3D *face) const
 {
   (void) getEdges();
 
@@ -3276,6 +3330,77 @@ getFaceEdges(CGeomFace3D *face) const
 
   return edges;
 }
+
+CGeomObject3D::FaceList
+CGeomObject3D::
+getEdgeFaces(const CGeomEdge3D *edge) const
+{
+  FaceList faces;
+
+  (void) getEdges();
+
+  auto pe = edgeFaces_.find(const_cast<CGeomEdge3D *>(edge));
+
+  if (pe != edgeFaces_.end())
+    faces = (*pe).second;
+
+  return faces;
+}
+
+std::vector<CGeomFace3D *>
+CGeomObject3D::
+getVertexFaces(const CGeomVertex3D *v) const
+{
+  std::set<CGeomFace3D *> faceSet;
+
+  for (auto &face : faces_) {
+    if (! face->hasVertex(v->getInd()))
+      continue;
+
+    faceSet.insert(face);
+  }
+
+  std::vector<CGeomFace3D *> faces;
+
+  for (auto *face : faceSet)
+    faces.push_back(face);
+
+  return faces;
+}
+
+CGeomEdge3D *
+CGeomObject3D::
+getVertexVertexEdge(uint v1, uint v2) const
+{
+  if (v1 < v2) std::swap(v1, v2);
+
+  auto p1 = vertexVertexEdgeMap_.find(v1);
+  if (p1 == vertexVertexEdgeMap_.end())
+    return nullptr;
+
+  auto p2 = (*p1).second.find(v2);
+  if (p2 == (*p1).second.end())
+    return nullptr;
+
+  return (*p2).second;
+}
+
+CGeomEdge3D *
+CGeomObject3D::
+addVertexVertexEdge(uint v1, uint v2)
+{
+  if (v1 < v2) std::swap(v1, v2);
+
+  auto *edge = CGeometry3DInst->createEdge3D(this, v1, v2);
+
+  edge->setInd(++edgeInd_);
+
+  vertexVertexEdgeMap_[v1][v2] = edge;
+
+  return edge;
+}
+
+//---
 
 uint
 CGeomObject3D::
@@ -3312,7 +3437,7 @@ void
 CGeomObject3D::
 removeMergedVertex(uint oldInd, uint newInd)
 {
-  for (auto &face : faces_) {
+  for (auto *face : faces_) {
     auto b1 = face->hasVertex(oldInd);
     if (! b1) continue;
 
@@ -3385,4 +3510,63 @@ separateEdge(const CGeomEdge3D *edge) const
   pscene_->addObject(newObject);
 
   return newObject;
+}
+
+std::vector<CGeomObject3D *>
+CGeomObject3D::
+mirror(MirrorDir dir, const CPoint3D &c) const
+{
+  std::vector<CGeomObject3D *> objects;
+
+  objects.push_back(const_cast<CGeomObject3D *>(this));
+
+  if (uint(dir) & uint(MirrorDir::X)) {
+    std::vector<CGeomObject3D *> objects1;
+
+    for (auto *object : objects) {
+      objects1.push_back(object);
+
+      auto *object1 = object->dup();
+
+      object1->flipX(c.x);
+
+      objects1.push_back(object1);
+    }
+
+    std::swap(objects, objects1);
+  }
+
+  if (uint(dir) & uint(MirrorDir::Y)) {
+    std::vector<CGeomObject3D *> objects1;
+
+    for (auto *object : objects) {
+      objects1.push_back(object);
+
+      auto *object1 = object->dup();
+
+      object1->flipY(c.y);
+
+      objects1.push_back(object1);
+    }
+
+    std::swap(objects, objects1);
+  }
+
+  if (uint(dir) & uint(MirrorDir::Z)) {
+    std::vector<CGeomObject3D *> objects1;
+
+    for (auto *object : objects) {
+      objects1.push_back(object);
+
+      auto *object1 = object->dup();
+
+      object1->flipZ(c.z);
+
+      objects1.push_back(object1);
+    }
+
+    std::swap(objects, objects1);
+  }
+
+  return objects;
 }
