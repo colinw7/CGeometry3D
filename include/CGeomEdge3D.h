@@ -2,6 +2,7 @@
 #define CGeomEdge3D_H
 
 #include <CVector3D.h>
+#include <CLine3D.h>
 
 #include <sys/types.h>
 
@@ -9,6 +10,9 @@ class CGeomObject3D;
 class CGeomFace3D;
 
 class CGeomEdge3D {
+ public:
+  using Inds = std::vector<uint>;
+
  public:
   CGeomEdge3D();
 
@@ -28,7 +32,14 @@ class CGeomEdge3D {
   uint getEnd() const { return vertices_[1]; }
   void setEnd(uint v2) { vertices_[1] = v2; }
 
-  std::vector<uint> getVertices() const { return vertices_; }
+  const Inds &getVertices() const { return vertices_; }
+
+  bool hasVertex(uint v) const { return (v == vertices_[0] || v == vertices_[1]); }
+
+  uint getOtherVertex(uint v) const {
+    if (v == vertices_[0]) return vertices_[1];
+    else                   return vertices_[0];
+  }
 
   //---
 
@@ -52,7 +63,15 @@ class CGeomEdge3D {
 
   CGeomFace3D *bevel(double s);
 
+  std::vector<Inds> loopCut(uint n) const;
+
+  bool isEdgeInds(uint ind1, uint ind2) const;
+
+  CLine3D   modelLine() const;
   CVector3D vector() const;
+
+  CPoint3D modelStart() const;
+  CPoint3D modelEnd() const;
 
   CVector3D calcNormal() const;
 
@@ -60,14 +79,17 @@ class CGeomEdge3D {
 
   double distanceTo(const CPoint3D &p) const;
 
-  CPoint3D calcCenter() const;
+  CPoint3D calcModelCenter() const;
+  CPoint3D calcProjectedCenter() const;
+
+  CPoint3D modelLinePoint(double f) const;
 
  private:
-  CGeomObject3D*    object_   { nullptr };
-  uint              ind_      { 0 };
-  std::vector<uint> vertices_;
-  bool              selected_ { false };
-  bool              visible_  { true };
+  CGeomObject3D* object_   { nullptr };
+  uint           ind_      { 0 };
+  Inds           vertices_;
+  bool           selected_ { false };
+  bool           visible_  { true };
 };
 
 #endif

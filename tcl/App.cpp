@@ -15,39 +15,6 @@
 
 #include <CSolidNoise.h>
 
-int
-main(int argc, char **argv)
-{
-  auto *app = new CTclGeometry3D::App;
-
-  std::vector<std::string> filenames;
-
-  for (int i = 1; i < argc; ++i) {
-    if (argv[i][0] == '-') {
-      auto arg = std::string(&argv[i][1]);
-
-      if (arg == "h") {
-        std::cout << "CTclGeometry3D\n";
-        exit(0);
-      }
-      else {
-        std::cerr << "Invalid arg '" << argv[i] << "'\n";
-        exit(1);
-      }
-    }
-    else
-      filenames.push_back(argv[i]);
-  }
-
-  for (auto &filename : filenames) {
-    app->execFile(filename);
-  }
-
-  return 0;
-}
-
-//---
-
 namespace CTclGeometry3D {
 
 bool stringToInteger(const std::string &str, int &i) {
@@ -60,17 +27,6 @@ bool stringToInteger(const std::string &str, int &i) {
   }
 }
 
-#if 0
-int stringToInteger(const std::string &str) {
-  try {
-    return std::stoi(str);
-  }
-  catch (...) {
-    return 0;
-  }
-}
-#endif
-
 bool stringToReal(const std::string &str, double &r) {
   try {
     r = std::stod(str);
@@ -80,17 +36,6 @@ bool stringToReal(const std::string &str, double &r) {
     return false;
   }
 }
-
-#if 0
-double stringToReal(const std::string &str) {
-  try {
-    return std::stod(str);
-  }
-  catch (...) {
-    return 0.0;
-  }
-}
-#endif
 
 //---
 
@@ -291,6 +236,17 @@ CTCL_DCL_OBJECT_PROC(App, readObj, readObjProc, this)
 App::
 App()
 {
+  scene_ = CGeometry3DInst->createScene3D();
+
+  //---
+
+  initTcl();
+}
+
+void
+App::
+initTcl()
+{
   tcl_ = new CTcl;
 
   tcl_->createAlias("echo", "puts");
@@ -344,10 +300,6 @@ App()
   tcl_->createObjCommand("writeObj", writeObjProc, this);
 
   CTCL_OBJECT_PROC(tcl_, readObj, App, this)
-
-  //---
-
-  scene_ = CGeometry3DInst->createScene3D();
 }
 
 int

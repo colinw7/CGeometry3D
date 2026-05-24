@@ -26,7 +26,7 @@ class CGeomNodeData {
   bool isValid() const { return valid_; }
   void setValid(bool b) { valid_ = b; }
 
-  bool isSelected() const { return selected_; }
+  bool getSelected() const { return selected_; }
   void setSelected(bool b) { selected_ = b; }
 
   int ind() const { return ind_; }

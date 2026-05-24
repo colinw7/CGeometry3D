@@ -660,6 +660,24 @@ addFace(CGeomFace3D *face)
   return ind;
 }
 
+void
+CGeomObject3D::
+removeFace(CGeomFace3D *face)
+{
+  face->setObject(nullptr);
+
+  FaceList faces;
+
+  for (auto *face1 : faces_) {
+    if (face1 != face)
+      faces.push_back(face1);
+  }
+
+  std::swap(faces_, faces);
+
+  edgesValid_ = false;
+}
+
 uint
 CGeomObject3D::
 addFaceSubFace(uint faceNum, const std::vector<uint> &vertices)
@@ -677,6 +695,47 @@ addFaceSubLine(uint faceNum, uint start, uint end)
 
   return face->addSubLine(start, end);
 }
+
+//---
+
+void
+CGeomObject3D::
+removeVertex(CGeomVertex3D *vertex)
+{
+  auto vind = vertex->getInd();
+
+  vertex->setObject(nullptr);
+
+  VertexList vertices;
+
+  for (auto *vertex1 : vertices_) {
+    if (vertex1 != vertex)
+      vertices.push_back(vertex1);
+    else
+      vertices.push_back(nullptr);
+  }
+
+  std::swap(vertices_, vertices);
+
+  // TODO: allow degenerate faces
+  for (auto *face1 : faces_) {
+    // TODO: fast check ?
+    if (face1->hasVertex(vind))
+    face1->removeVertex(vind);
+  }
+
+#if 0
+  // TODO: allow degenerate lines
+  for (auto *line1 : lines_) {
+    // TODO: fast check ?
+    line1->removeVertex(vind);
+  }
+#endif
+
+  edgesValid_ = false;
+}
+
+//---
 
 CGeomObject3D::Group &
 CGeomObject3D::
@@ -2808,6 +2867,16 @@ rotateModelX(double dx)
 
 void
 CGeomObject3D::
+rotateModel(double angle, const CVector3D &axis)
+{
+  CMatrix3D m;
+  m.setRotation(angle, axis);
+
+  transform(m, /*hier*/false);
+}
+
+void
+CGeomObject3D::
 resizeModel(double factor)
 {
   CMatrix3D m;
@@ -3347,6 +3416,29 @@ getEdgeFaces(const CGeomEdge3D *edge) const
   return faces;
 }
 
+std::vector<CGeomEdge3D *>
+CGeomObject3D::
+getVertexEdges(const CGeomVertex3D *v) const
+{
+  std::set<CGeomEdge3D *> edgeSet;
+
+  (void) getEdges();
+
+  for (auto &edge : edges_) {
+    if (! edge->hasVertex(v->getInd()))
+      continue;
+
+    edgeSet.insert(edge);
+  }
+
+  std::vector<CGeomEdge3D *> edges;
+
+  for (auto *edge : edgeSet)
+    edges.push_back(edge);
+
+  return edges;
+}
+
 std::vector<CGeomFace3D *>
 CGeomObject3D::
 getVertexFaces(const CGeomVertex3D *v) const
@@ -3569,4 +3661,208 @@ mirror(MirrorDir dir, const CPoint3D &c) const
   }
 
   return objects;
+}
+
+bool
+CGeomObject3D::
+scaleFaces(const std::vector<CGeomFace3D *> &faces, const CPoint3D &c, const CVector3D &s)
+{
+  // get unique vertices
+  std::set<uint> vertices;
+
+  for (auto *face : faces) {
+    for (const auto &iv : face->getVertices())
+      vertices.insert(iv);
+  }
+
+  // scale by distance to center
+  for (const auto &iv : vertices) {
+    auto *v = getVertexP(iv);
+
+    auto pv = v->getModel();
+
+    auto n1 = CVector3D(c, pv);
+
+    pv = c + s*n1;
+
+    v->setModel(pv);
+  }
+
+  return true;
+}
+
+// duplicate face and move along normal
+bool
+CGeomObject3D::
+extrudeFaces(const std::vector<CGeomFace3D *> &faces, double d)
+{
+  // unique set of vertices for all faces
+  std::set<uint> vertices;
+
+  for (auto *face : faces) {
+    for (const auto &iv : face->getVertices())
+      vertices.insert(iv);
+  }
+
+  //---
+
+  // add new vertices for extruded faces
+  std::map<uint, uint> newInds;
+
+  for (auto &ind : vertices) {
+    auto *v = getVertexP(ind);
+
+    auto newInd = addVertex(v->getModel());
+
+    newInds[ind] = newInd;
+  }
+
+  //---
+
+  for (auto *face : faces) {
+    const auto &fvertices = face->getVertices();
+
+    // get face normal
+    CVector3D normal;
+
+    if (face->getNormalSet())
+      normal = face->getNormal();
+    else
+      face->calcModelNormal(normal);
+
+    // move new vertices along face normal
+    std::vector<uint> faceInds;
+
+    for (auto &ind : fvertices) {
+      auto newInd = newInds[ind];
+
+      auto *v = getVertexP(newInd);
+
+      v->setModel(v->getModel() + d*normal);
+
+      faceInds.push_back(newInd);
+    }
+
+    // add new extruded face
+    auto *topFace = face->dup();
+    topFace->setVertices(faceInds);
+    addFace(topFace);
+
+    topFace->setNormal(normal);
+  }
+
+  //---
+
+  // add side faces
+  for (auto *face : faces) {
+    const auto &fvertices = face->getVertices();
+
+    auto nv = fvertices.size();
+
+    uint i1 = uint(nv - 1);
+
+    for (uint i2 = 0; i2 < nv; i1 = i2++) {
+      std::vector<uint> inds1;
+
+      inds1.push_back(fvertices[i1]);
+      inds1.push_back(fvertices[i2]);
+      inds1.push_back(newInds [fvertices[i1]]);
+      inds1.push_back(newInds [fvertices[i2]]);
+
+      auto *face2 = face->dup();
+      face2->setVertices(inds1);
+      addFace(face2);
+
+      CVector3D normal2;
+      face2->calcModelNormal(normal2);
+
+      face2->setNormal(normal2);
+    }
+  }
+
+  return true;
+}
+
+bool
+CGeomObject3D::
+circularizeFaces(const std::vector<CGeomFace3D *> &faces)
+{
+  // get faces associated with each vertex and unique set of vertices for all faces
+  std::map<uint, std::set<CGeomFace3D *>> vertexFaces;
+  std::set<uint>                          vertices;
+
+  for (auto *face : faces) {
+    for (const auto &iv : face->getVertices()) {
+      vertexFaces[iv].insert(face);
+
+      vertices.insert(iv);
+    }
+  }
+
+  CGeomVertex3D *center = nullptr;
+
+  for (const auto &pv : vertexFaces) {
+    if (pv.second.size() == faces.size()) {
+      center = getVertexP(pv.first);
+      break;
+    }
+  }
+
+  if (! center || vertices.size() < 2)
+    return false;
+
+  auto pc = center->getModel();
+
+  double d = 0.0;
+
+  for (const auto &iv : vertices) {
+    if (iv == center->getInd())
+      continue;
+
+    auto *v = getVertexP(iv);
+
+    auto pv = v->getModel();
+
+    d += pc.distanceTo(pv);
+  }
+
+  d /= double(vertices.size() - 1);
+
+  for (const auto &iv : vertices) {
+    if (iv == center->getInd())
+      continue;
+
+    auto *v = getVertexP(iv);
+
+    auto pv = v->getModel();
+
+    auto n1 = CVector3D(pc, pv).normalized();
+
+    pv = pc + d*n1;
+
+    v->setModel(pv);
+  }
+
+  return true;
+}
+
+CGeomFace3D *
+CGeomObject3D::
+fillVertices(const std::vector<CGeomVertex3D *> &vertices)
+{
+  std::set<uint> vinds;
+
+  for (auto *vertex : vertices)
+    vinds.insert(vertex->getInd());
+
+  VertexIList vertices1;
+
+  for (auto &vind : vinds)
+    vertices1.push_back(vind);
+
+  auto faceId = addFace(vertices1);
+
+  auto *face = getFaceP(faceId);
+
+  return face;
 }

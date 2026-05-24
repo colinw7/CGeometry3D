@@ -39,6 +39,14 @@ class CGeomFace3D {
     VISIBLE   = (1L<<3)
   };
 
+  struct VertexData {
+    VertexList    vertices;
+    bool          hasNormals       { false };
+    bool          hasTexturePoints { false };
+    Normals       normals;
+    TexturePoints texturePoints;
+  };
+
  public:
   explicit CGeomFace3D(CGeomObject3D *pobject=nullptr);
   CGeomFace3D(CGeomObject3D *pobject, const VertexList &vertices);
@@ -50,6 +58,10 @@ class CGeomFace3D {
   virtual ~CGeomFace3D() { }
 
   virtual CGeomFace3D *dup() const;
+
+  //---
+
+  CGeomFace3D *duplicate() const;
 
   //---
 
@@ -79,6 +91,11 @@ class CGeomFace3D {
 
   void setFlags  (uint flags) { flags_ |=  flags; }
   void unsetFlags(uint flags) { flags_ &= ~flags; }
+
+  //---
+
+  const std::string &name() const { return name_; }
+  void setName(const std::string &s) { name_ = s; }
 
   //---
 
@@ -160,7 +177,7 @@ class CGeomFace3D {
 
   //---
 
-  uint addSubFace(const std::vector<uint> &vertices);
+  uint addSubFace(const VertexList &vertices);
   uint addSubFace(CGeomFace3D *face);
 
   uint addSubLine(uint start, uint end);
@@ -243,6 +260,8 @@ class CGeomFace3D {
 
   //---
 
+  void getVertexData(VertexData &vertexData) const;
+
   const VertexList &getVertices() const { return vertices_; }
 
   virtual void setVertices(const VertexList &vertices) { vertices_ = vertices; }
@@ -265,11 +284,15 @@ class CGeomFace3D {
 
   CVector3D edgeVector(const CGeomEdge3D *edge) const;
 
+  CPoint3D edgeStart(const CGeomEdge3D *edge) const;
+  CPoint3D edgeEnd  (const CGeomEdge3D *edge) const;
+
   //---
 
   void getModelBBox(CBBox3D &bbox) const;
 
   double distanceTo(const CPoint3D &p) const;
+  double distanceToCenter(const CPoint3D &p) const;
 
   //---
 
@@ -304,11 +327,11 @@ class CGeomFace3D {
 
   //---
 
-  CPolygonOrientation orientation() const;
-  CPolygonOrientation orientationI(uint i1) const;
+  CPolygonOrientation getProjectedOrientation() const;
+  CPolygonOrientation getProjectedOrientationI(uint i1) const;
 
-  CPolygonOrientation modelOrientation() const;
-  CPolygonOrientation modelOrientationI(uint i1) const;
+  CPolygonOrientation getModelOrientation() const;
+  CPolygonOrientation getModelOrientationI(uint i1) const;
 
   bool checkModelOrientation() const;
 
@@ -317,6 +340,8 @@ class CGeomFace3D {
   void moveBy(const CVector3D &v);
 
   void scale(double sx, double sy, double sz);
+  void scale(const CVector3D &s);
+  void centerScale(const CPoint3D &c, const CVector3D &s);
 
   void rotateModelX(double a);
   void rotateModelY(double a);
@@ -328,11 +353,21 @@ class CGeomFace3D {
 
   void divideCenter();
 
-  CPoint3D calcCenter() const;
+  CPoint3D calcModelCenter    () const;
+  CPoint3D calcProjectedCenter() const;
 
-  CGeomFace3D *extrude(double d);
+  //---
+
+  struct ExtrudeData {
+    CGeomFace3D*               topFace { nullptr };
+    std::vector<CGeomFace3D *> sideFaces;
+  };
+
+  ExtrudeData extrude(double d);
 
   void extrudeMove(double d);
+
+  //---
 
   CGeomFace3D *loopCut();
 
@@ -345,6 +380,14 @@ class CGeomFace3D {
 
   FaceList bevel(double d);
   FaceList inset(double d);
+
+  FaceList subdivide(uint n);
+
+  //---
+
+  bool isProjectedInside(const CPoint2D &p) const;
+
+  bool fixNormal();
 
  private:
   void init();
@@ -364,6 +407,8 @@ class CGeomFace3D {
   uint groupId_ { 0 }; // parent group id
 
   uint flags_ { LIGHTED }; // state flags
+
+  std::string name_; // name
 
   // geometry
 

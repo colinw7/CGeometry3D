@@ -28,6 +28,8 @@ class App {
   int execFile(const std::string &filename);
 
  private:
+  void initTcl();
+
   static int addObjectProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int addVertexProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int addFaceProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
@@ -84,8 +86,8 @@ class App {
   int readObjProc(const std::vector<std::string> &args);
 
  private:
-  CTcl*         tcl_   { nullptr };
   CGeomScene3D* scene_ { nullptr };
+  CTcl*         tcl_   { nullptr };
 
   CPoint3D cursor_ { 0, 0, 0 };
 };

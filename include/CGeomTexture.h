@@ -147,7 +147,7 @@ class CGeomTexture {
   const std::string &fileName() const { return filename_; }
   void setFilename(const std::string &s) { filename_ = s; }
 
-  bool isSelected() const { return selected_; }
+  bool getSelected() const { return selected_; }
   void setSelected(bool b) { selected_ = b; }
 
   //---

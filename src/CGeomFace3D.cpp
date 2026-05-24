@@ -3,8 +3,10 @@
 #include <CGeomZBuffer.h>
 #include <CGeomLight3D.h>
 #include <CGeomUtil3D.h>
-#include <CMathRound.h>
+
 #include <CPlane3D.h>
+#include <CPolygon2D.h>
+#include <CMathRound.h>
 
 CGeomFace3D::
 CGeomFace3D(CGeomObject3D *pobject) :
@@ -92,6 +94,29 @@ CGeomFace3D::
 dup() const
 {
   return new CGeomFace3D(*this);
+}
+
+//---
+
+CGeomFace3D *
+CGeomFace3D::
+duplicate() const
+{
+  auto *face1 = this->dup();
+
+  auto nv = vertices_.size();
+
+  for (uint i = 0; i < nv; ++i) {
+    auto *v = pobject_->getVertexP(vertices_[i]);
+
+    auto *v1 = v->dup();
+
+    pobject_->addVertex(v1);
+
+    face1->vertices_[i] = v1->getInd();
+  }
+
+  return face1;
 }
 
 //---
@@ -322,7 +347,7 @@ addVertex(uint ind)
 
 uint
 CGeomFace3D::
-addSubFace(const std::vector<uint> &vertices)
+addSubFace(const VertexList &vertices)
 {
   auto *face = CGeometry3DInst->createFace3D(pobject_, vertices);
 
@@ -400,6 +425,20 @@ setSubLineColor(uint ind, const CRGBA &rgba)
 
 //---
 
+void
+CGeomFace3D::
+getVertexData(VertexData &data) const
+{
+  data.hasNormals       = hasVertexNormals();
+  data.hasTexturePoints = hasVertexTexturePoints();
+
+  data.vertices      = getVertices();
+  data.normals       = getVertexNormals();
+  data.texturePoints = getTexturePoints();
+}
+
+//---
+
 bool
 CGeomFace3D::
 edgesValid() const
@@ -414,11 +453,27 @@ getEdges() const
   auto *th = const_cast<CGeomFace3D *>(this);
 
   // TODO: cache ?
-  th->edges_ = pobject_->getFaceEdges(th);
+  auto edges = pobject_->getFaceEdges(th);
+
+  th->edges_.clear();
+
+  auto n = vertices_.size();
+
+  for (uint i1 = 0; i1 < n; ++i1) {
+    auto i2 = i1 + 1; if (i2 >= n) i2 = 0;
+
+    for (auto *edge : edges) {
+      if (edge->isEdgeInds(vertices_[i1], vertices_[i2])) {
+        th->edges_.push_back(edge);
+        break;
+      }
+    }
+  }
 
   return th->edges_;
 }
 
+// vector perp to edge along face
 CVector3D
 CGeomFace3D::
 edgeVector(const CGeomEdge3D *edge) const
@@ -428,15 +483,57 @@ edgeVector(const CGeomEdge3D *edge) const
 
   auto v = n.crossProduct(edge->vector());
 
-  auto p1 = edge->calcCenter() + v*0.001;
-  auto p2 = edge->calcCenter() - v*0.001;
+  auto p1 = edge->calcModelCenter() + v*0.001;
+  auto p2 = edge->calcModelCenter() - v*0.001;
 
-  auto c = calcCenter();
+  auto c = calcModelCenter();
 
-  if (c.distanceTo(p2) < c.distanceTo(p1))
+  if (c.distanceTo(p1) > c.distanceTo(p2))
     v = -v;
 
   return v;
+}
+
+CPoint3D
+CGeomFace3D::
+edgeStart(const CGeomEdge3D *edge) const
+{
+  CPoint3D p;
+
+  auto n = vertices_.size();
+
+  for (uint i1 = 0; i1 < n; ++i1) {
+    auto i2 = i1 + 1; if (i2 >= n) i2 = 0;
+
+    if (edge->isEdgeInds(vertices_[i1], vertices_[i2])) {
+      p = pobject_->getVertex(vertices_[i1]).getModel();
+
+      break;
+    }
+  }
+
+  return p;
+}
+
+CPoint3D
+CGeomFace3D::
+edgeEnd(const CGeomEdge3D *edge) const
+{
+  CPoint3D p;
+
+  auto n = vertices_.size();
+
+  for (uint i1 = 0; i1 < n; ++i1) {
+    auto i2 = i1 + 1; if (i2 >= n) i2 = 0;
+
+    if (edge->isEdgeInds(vertices_[i1], vertices_[i2])) {
+      p = pobject_->getVertex(vertices_[i2]).getModel();
+
+      break;
+    }
+  }
+
+  return p;
 }
 
 //---
@@ -468,7 +565,7 @@ distanceTo(const CPoint3D &p) const
 
   if      (points.size() == 1)
     dist = p.distanceTo(points[0]);
-  else if (points.size() == 1) {
+  else if (points.size() == 2) {
     CLine3D line(points[0], points[1]);
 
     if (! line.pointDistance(p, &dist))
@@ -481,7 +578,16 @@ distanceTo(const CPoint3D &p) const
       dist = 1E50;
   }
 
-  return dist;
+  return std::abs(dist);
+}
+
+double
+CGeomFace3D::
+distanceToCenter(const CPoint3D &p) const
+{
+  auto c = calcModelCenter();
+
+  return p.distanceTo(c);
 }
 
 //---
@@ -906,14 +1012,14 @@ interpMaskPoint(int i1, int i2, double d, double i)
 
 CPolygonOrientation
 CGeomFace3D::
-orientation() const
+getProjectedOrientation() const
 {
-  return orientationI(0);
+  return getProjectedOrientationI(0);
 }
 
 CPolygonOrientation
 CGeomFace3D::
-orientationI(uint i1) const
+getProjectedOrientationI(uint i1) const
 {
   auto nv = vertices_.size();
 
@@ -931,14 +1037,14 @@ orientationI(uint i1) const
 
 CPolygonOrientation
 CGeomFace3D::
-modelOrientation() const
+getModelOrientation() const
 {
-  return modelOrientationI(0);
+  return getModelOrientationI(0);
 }
 
 CPolygonOrientation
 CGeomFace3D::
-modelOrientationI(uint i1) const
+getModelOrientationI(uint i1) const
 {
   CVector3D n;
   calcModelNormal(n);
@@ -972,10 +1078,10 @@ checkModelOrientation() const
 {
   auto nv = vertices_.size();
 
-  auto orient = modelOrientationI(0);
+  auto orient = getModelOrientationI(0);
 
   for (uint i = 1; i < nv; ++i) {
-    auto orient1 = modelOrientationI(i);
+    auto orient1 = getModelOrientationI(i);
 
     if (orient1 != orient)
       return false;
@@ -999,10 +1105,22 @@ void
 CGeomFace3D::
 scale(double sx, double sy, double sz)
 {
-  CVector3D s(sx, sy, sz);
+  scale(CVector3D(sx, sy, sz));
+}
 
-  auto c = calcCenter();
+void
+CGeomFace3D::
+scale(const CVector3D &s)
+{
+  auto c = calcModelCenter();
 
+  centerScale(c, s);
+}
+
+void
+CGeomFace3D::
+centerScale(const CPoint3D &c, const CVector3D &s)
+{
   for (auto &vertex : vertices_) {
     auto &v1 = pobject_->getVertex(vertex);
 
@@ -1021,7 +1139,7 @@ rotateModelX(double dx)
   CMatrix3D m;
   m.setRotation(CMathGen::X_AXIS_3D, dx);
 
-  auto c = calcCenter();
+  auto c = calcModelCenter();
 
   for (auto &vertex : vertices_) {
     auto &v1 = pobject_->getVertex(vertex);
@@ -1041,7 +1159,7 @@ rotateModelY(double dy)
   CMatrix3D m;
   m.setRotation(CMathGen::Y_AXIS_3D, dy);
 
-  auto c = calcCenter();
+  auto c = calcModelCenter();
 
   for (auto &vertex : vertices_) {
     auto &v1 = pobject_->getVertex(vertex);
@@ -1061,7 +1179,7 @@ rotateModelZ(double dz)
   CMatrix3D m;
   m.setRotation(CMathGen::Z_AXIS_3D, dz);
 
-  auto c = calcCenter();
+  auto c = calcModelCenter();
 
   for (auto &vertex : vertices_) {
     auto &v1 = pobject_->getVertex(vertex);
@@ -1141,14 +1259,14 @@ CGeomFace3D::
 divideCenter()
 {
   // calc center
-  auto c = calcCenter();
+  auto c = calcModelCenter();
 
   pobject_->divideFace(this, c);
 }
 
 CPoint3D
 CGeomFace3D::
-calcCenter() const
+calcModelCenter() const
 {
   CPoint3D c;
 
@@ -1163,11 +1281,30 @@ calcCenter() const
   return c;
 }
 
+CPoint3D
+CGeomFace3D::
+calcProjectedCenter() const
+{
+  CPoint3D c;
+
+  for (auto &vertex : vertices_) {
+    auto &v = pobject_->getVertex(vertex);
+
+    c += v.getProjected();
+  }
+
+  c /= double(vertices_.size());
+
+  return c;
+}
+
 // duplicate face and move along normal
-CGeomFace3D *
+CGeomFace3D::ExtrudeData
 CGeomFace3D::
 extrude(double d)
 {
+  auto c = calcModelCenter();
+
   CVector3D normal;
 
   if (getNormalSet())
@@ -1176,7 +1313,7 @@ extrude(double d)
     calcModelNormal(normal);
 
   // add new vertices
-  std::vector<uint> inds;
+  VertexList inds;
 
   for (auto &vertex : vertices_) {
     auto &v = pobject_->getVertex(vertex);
@@ -1188,17 +1325,23 @@ extrude(double d)
     inds.push_back(ind);
   }
 
-  //(void) pobject_->addFace(inds);
-  auto *newFace = dup();
-  newFace->setVertices(inds);
-  pobject_->addFace(newFace);
+  ExtrudeData extrudeData;
 
+  // add new face
+  //(void) pobject_->addFace(inds);
+  extrudeData.topFace = dup();
+  extrudeData.topFace->setVertices(inds);
+  pobject_->addFace(extrudeData.topFace);
+
+  extrudeData.topFace->setNormal(normal);
+
+  // add side faces
   auto nv = vertices_.size();
 
   uint i1 = uint(nv - 1);
 
   for (uint i2 = 0; i2 < nv; i1 = i2++) {
-    std::vector<uint> inds1;
+    VertexList inds1;
 
     inds1.push_back(vertices_[i1]);
     inds1.push_back(vertices_[i2]);
@@ -1209,9 +1352,34 @@ extrude(double d)
     auto *face2 = dup();
     face2->setVertices(inds1);
     pobject_->addFace(face2);
+
+    CVector3D normal2;
+    face2->calcModelNormal(normal2);
+
+    auto c1 = face2->calcModelCenter();
+
+    auto p1 = c1 + normal2*0.001;
+    auto p2 = c1 - normal2*0.001;
+
+    if (c.distanceTo(p1) < c.distanceTo(p2)) {
+      inds1.clear();
+
+      inds1.push_back(vertices_[i2]);
+      inds1.push_back(vertices_[i1]);
+      inds1.push_back(inds     [i1]);
+      inds1.push_back(inds     [i2]);
+
+      face2->setVertices(inds1);
+
+      normal2 = -normal2;
+    }
+
+    face2->setNormal(normal2);
+
+    extrudeData.sideFaces.push_back(face2);
   }
 
-  return newFace;
+  return extrudeData;
 }
 
 // move face on normal
@@ -1256,7 +1424,7 @@ loopCut()
     auto v2 = pobject_->addVertex(p2);
 
     // build new vertices of left/right of split
-    std::vector<uint> vertices1, vertices2;
+    VertexList vertices1, vertices2;
 
     vertices1.push_back(vertices_[0]);
     vertices1.push_back(v1);
@@ -1369,13 +1537,13 @@ bevelInset(double dx, double dy)
   // get perp distance to face point to center
   auto d1 = std::sqrt(2.0)*dx;
 
-  auto c = calcCenter();
+  auto c = calcModelCenter();
 
   // get normal to move new point down
   CVector3D n;
   calcModelNormal(n);
 
-  std::vector<uint> vinds1;
+  VertexList vinds1;
 
   for (const auto &vind : vertices_) {
     auto *v = pobject_->getVertexP(vind);
@@ -1412,7 +1580,7 @@ bevelInset(double dx, double dy)
   for (uint iv = 0; iv < nv; ++iv) {
     auto iv1 = iv + 1; if (iv1 == nv) iv1 = 0;
 
-    std::vector<uint> vinds2;
+    VertexList vinds2;
 
     vinds2.push_back(oldVertices[iv ]);
     vinds2.push_back(oldVertices[iv1]);
@@ -1427,4 +1595,428 @@ bevelInset(double dx, double dy)
   }
 
   return faces;
+}
+
+CGeomFace3D::FaceList
+CGeomFace3D::
+subdivide(uint n)
+{
+  FaceList newFaces;
+  if (n < 1) return newFaces;
+
+  auto edges = getEdges();
+  if (edges.size() != 4) return newFaces;
+
+  auto nv = vertices_.size();
+
+  if      (n == 1) {
+    auto c = calcModelCenter();
+
+    auto vc = pobject_->addVertex(c);
+
+    std::map<CGeomEdge3D *, uint> edgeInd;
+
+    for (auto *edge : edges) {
+      auto c1 = edge->calcModelCenter();
+
+      auto v1 = pobject_->addVertex(c1);
+
+      edgeInd[edge] = v1;
+    }
+
+    for (uint iv1 = 0; iv1 < nv; ++iv1) {
+      auto iv2 = iv1 + 1; if (iv2 == nv) iv2 = 0;
+      auto iv3 = iv2 + 1; if (iv3 == nv) iv3 = 0;
+
+      VertexList vertices;
+
+      for (auto *edge : edges) {
+        if (edge->isEdgeInds(vertices_[iv1], vertices_[iv2])) {
+          vertices.push_back(edgeInd[edge]);
+          break;
+        }
+      }
+
+      vertices.push_back(vertices_[iv2]);
+
+      for (auto *edge : edges) {
+        if (edge->isEdgeInds(vertices_[iv2], vertices_[iv3])) {
+          vertices.push_back(edgeInd[edge]);
+          break;
+        }
+      }
+
+      vertices.push_back(vc);
+
+      assert(vertices.size() == 4);
+
+      auto faceId = pobject_->addFace(vertices);
+
+      newFaces.push_back(pobject_->getFaceP(faceId));
+    }
+
+    vertices_.clear();
+
+    pobject_->removeFace(this);
+  }
+  else if (n == 2) {
+    double f13 = 1.0/3.0;
+    double f23 = 2.0/3.0;
+
+    // create new edge points
+    std::map<CGeomEdge3D *, VertexList> edgeInds;
+
+    for (auto *edge : edges) {
+      auto pe1 = edgeStart(edge);
+      auto pe2 = edgeEnd  (edge);
+
+      auto c1 = pe1 + f13*(pe2 - pe1);
+      auto c2 = pe1 + f23*(pe2 - pe1);
+
+      auto v1 = pobject_->addVertex(c1);
+      auto v2 = pobject_->addVertex(c2);
+
+      edgeInds[edge].push_back(v1);
+      edgeInds[edge].push_back(v2);
+    }
+
+    //---
+
+    // add central square
+    VertexList cvertices;
+
+    {
+    // add edge points
+    std::vector<CPoint3D> cpoints;
+
+    for (auto *edge : edges) {
+      const auto &einds = edgeInds[edge];
+      assert(einds.size() == 2);
+
+      cpoints.push_back(pobject_->getVertexP(einds[0])->getModel());
+      cpoints.push_back(pobject_->getVertexP(einds[1])->getModel());
+    }
+
+    assert(cpoints.size() == 8);
+
+    // set square vertices
+    auto pc1 = cpoints[0] + f13*(cpoints[5] - cpoints[0]);
+    auto pc2 = cpoints[0] + f23*(cpoints[5] - cpoints[0]);
+    auto pc3 = cpoints[1] + f13*(cpoints[4] - cpoints[1]);
+    auto pc4 = cpoints[1] + f23*(cpoints[4] - cpoints[1]);
+
+    cvertices.push_back(pobject_->addVertex(pc1));
+    cvertices.push_back(pobject_->addVertex(pc3));
+    cvertices.push_back(pobject_->addVertex(pc4));
+    cvertices.push_back(pobject_->addVertex(pc2));
+
+    assert(cvertices.size() == 4);
+    }
+
+    //---
+
+    std::vector<VertexList> verticesArray;
+
+    for (uint iv1 = 0; iv1 < nv; ++iv1) {
+      auto iv2 = iv1 + 1; if (iv2 == nv) iv2 = 0;
+      auto iv3 = iv2 + 1; if (iv3 == nv) iv3 = 0;
+
+      CGeomEdge3D *edge1 = nullptr;
+      CGeomEdge3D *edge2 = nullptr;
+
+      VertexList vertices1;
+      VertexList vertices2;
+
+      for (auto *edge : edges) {
+        if (edge->isEdgeInds(vertices_[iv1], vertices_[iv2])) {
+          edge1 = edge;
+          break;
+        }
+      }
+
+      for (auto *edge : edges) {
+        if (edge->isEdgeInds(vertices_[iv2], vertices_[iv3])) {
+          edge2 = edge;
+          break;
+        }
+      }
+
+      const auto &inds1 = edgeInds[edge1];
+      assert(inds1.size() == 2);
+
+      const auto &inds2 = edgeInds[edge2];
+      assert(inds2.size() == 2);
+
+      vertices1.push_back(inds1[0]);
+      vertices1.push_back(inds1[1]);
+      vertices1.push_back(cvertices[iv2]);
+      vertices1.push_back(cvertices[iv1]);
+
+      vertices2.push_back(inds1[1]);
+      vertices2.push_back(vertices_[iv2]);
+      vertices2.push_back(inds2[0]);
+      vertices2.push_back(cvertices[iv2]);
+
+      assert(vertices1.size() == 4);
+      assert(vertices2.size() == 4);
+
+      verticesArray.push_back(vertices1);
+      verticesArray.push_back(vertices2);
+    }
+
+    //---
+
+    auto faceId = pobject_->addFace(cvertices);
+
+    newFaces.push_back(pobject_->getFaceP(faceId));
+
+    for (auto &vertices : verticesArray) {
+      auto faceId1 = pobject_->addFace(vertices);
+
+      newFaces.push_back(pobject_->getFaceP(faceId1));
+    }
+
+    //---
+
+    vertices_.clear();
+
+    pobject_->removeFace(this);
+  }
+  else {
+    // create new edge points
+    std::map<CGeomEdge3D *, VertexList> edgeInds;
+
+    for (auto *edge : edges) {
+      auto pe1 = edgeStart(edge);
+      auto pe2 = edgeEnd  (edge);
+
+      for (uint i = 0; i < n; ++i) {
+        auto f = double(i + 1)/double(n + 1);
+
+        auto c = pe1 + f*(pe2 - pe1);
+
+        auto v = pobject_->addVertex(c);
+
+        edgeInds[edge].push_back(v);
+      }
+    }
+
+    //---
+
+    // add central square
+    VertexList              cvertices;
+    std::vector<VertexList> cvertices1;
+    VertexList              ccvertices;
+
+    auto getCCVertex = [&](uint i) {
+      assert(i < ccvertices.size());
+      return ccvertices[i];
+    };
+
+    {
+    // add edge points
+    std::vector<CPoint3D> cpoints;
+
+    for (auto *edge : edges) {
+      const auto &einds = edgeInds[edge];
+
+      for (const auto &eind : einds)
+        cpoints.push_back(pobject_->getVertexP(eind)->getModel());
+    }
+
+    // create grid of interpolated center points
+    cvertices.resize(n*n);
+
+    auto getCVertex = [&](uint ix, uint iy) {
+      auto ii = ix + n*iy;
+      assert(ii < cvertices.size());
+      return cvertices[ii];
+    };
+
+    for (uint ix = 0; ix < n; ++ix) {
+      auto i1 = 3*n - 1 - ix;
+
+      for (uint iy = 0; iy < n; ++iy) {
+        auto f = double(iy + 1)/double(n + 1);
+
+        auto pc = cpoints[ix] + f*(cpoints[i1] - cpoints[ix]);
+
+        cvertices[ix + n*iy] = pobject_->addVertex(pc);
+      }
+    }
+
+    // create array of center square vertices
+    for (uint ix = 0; ix < n - 1; ++ix) {
+      for (uint iy = 0; iy < n - 1; ++iy) {
+        VertexList cvertices2;
+
+        cvertices2.push_back(getCVertex(ix    , iy    ));
+        cvertices2.push_back(getCVertex(ix + 1, iy    ));
+        cvertices2.push_back(getCVertex(ix + 1, iy + 1));
+        cvertices2.push_back(getCVertex(ix    , iy + 1));
+
+        cvertices1.push_back(cvertices2);
+      }
+    }
+
+    uint ix, iy;
+
+    for (ix = 0 ; ix < n; ++ix)
+      ccvertices.push_back(getCVertex(ix, 0));
+
+    for (iy = 1; iy < n - 1; ++iy)
+      ccvertices.push_back(getCVertex(n - 1, iy));
+
+    for (ix = 0 ; ix < n; ++ix)
+      ccvertices.push_back(getCVertex(n - 1 - ix, n - 1));
+
+    for (iy = 1; iy < n - 1; ++iy)
+      ccvertices.push_back(getCVertex(0, n - 1 - iy));
+    }
+
+    //---
+
+    std::vector<VertexList> verticesArray;
+
+    uint ic = 0;
+
+    for (uint iv1 = 0; iv1 < nv; ++iv1) {
+      auto iv2 = iv1 + 1; if (iv2 == nv) iv2 = 0;
+      auto iv3 = iv2 + 1; if (iv3 == nv) iv3 = 0;
+
+      // get current and next edge
+      CGeomEdge3D *edge1 = nullptr;
+      CGeomEdge3D *edge2 = nullptr;
+
+      for (auto *edge : edges) {
+        if (edge->isEdgeInds(vertices_[iv1], vertices_[iv2])) {
+          edge1 = edge;
+          break;
+        }
+      }
+
+      for (auto *edge : edges) {
+        if (edge->isEdgeInds(vertices_[iv2], vertices_[iv3])) {
+          edge2 = edge;
+          break;
+        }
+      }
+
+      const auto &inds1 = edgeInds[edge1];
+      const auto &inds2 = edgeInds[edge2];
+
+      for (uint ix = 0; ix < n - 1; ++ix) {
+        VertexList vertices1;
+
+        vertices1.push_back(inds1[ix    ]);
+        vertices1.push_back(inds1[ix + 1]);
+
+        auto ic1 = ic + ix;
+        auto ic2 = ic1 + 1; if (ic2 >= ccvertices.size()) ic2 = 0;
+
+        vertices1.push_back(getCCVertex(ic2));
+        vertices1.push_back(getCCVertex(ic1));
+
+        verticesArray.push_back(vertices1);
+      }
+
+      auto ic1 = ic + n - 1;
+      if (ic1 >= ccvertices.size()) ic1 = 0;
+
+      VertexList vertices2;
+
+      vertices2.push_back(inds1[n - 1]);
+      vertices2.push_back(vertices_[iv2]);
+      vertices2.push_back(inds2[0]);
+      vertices2.push_back(getCCVertex(ic1));
+
+      verticesArray.push_back(vertices2);
+
+      ic += n - 1;
+    }
+
+    //---
+
+#if 0
+    auto faceId = pobject_->addFace(ccvertices);
+
+    newFaces.push_back(pobject_->getFaceP(faceId));
+#endif
+
+    for (const auto &cvertices2 : cvertices1) {
+      auto faceId = pobject_->addFace(cvertices2);
+
+      newFaces.push_back(pobject_->getFaceP(faceId));
+    }
+
+    for (auto &vertices : verticesArray) {
+      auto faceId1 = pobject_->addFace(vertices);
+
+      newFaces.push_back(pobject_->getFaceP(faceId1));
+    }
+
+    //---
+
+    vertices_.clear();
+
+    pobject_->removeFace(this);
+  }
+
+  return newFaces;
+}
+
+//----
+
+bool
+CGeomFace3D::
+isProjectedInside(const CPoint2D &p) const
+{
+  CPolygon2D poly;
+
+  auto n = vertices_.size();
+
+  for (uint i = 0; i < n; ++i) {
+    auto *v = pobject_->getVertexP(vertices_[i]);
+
+    poly.addPoint(v->getProjected().toPoint2D());
+  }
+
+  return poly.insideConvex(p);
+}
+
+bool
+CGeomFace3D::
+fixNormal()
+{
+  CVector3D fn;
+  calcModelNormal(fn);
+
+  auto fc = calcModelCenter();
+  auto oc = pobject_->getModelCenter();
+
+  auto p1 = fc + 0.01*fn;
+  auto p2 = fc - 0.01*fn;
+
+  if (p1.distanceTo(oc) > p2.distanceTo(oc))
+    return false;
+
+  auto fn1 = -fn;
+
+  setNormal(fn1);
+
+  VertexList vertices;
+
+  auto n = vertices_.size();
+
+  vertices.resize(n);
+
+  for (uint i = 0; i < n; ++i)
+    vertices[n - 1 - i] = vertices_[i];
+
+  std::swap(vertices, vertices_);
+
+  //calcModelNormal(fn);
+  //assert(fn == fn1);
+
+  return true;
 }

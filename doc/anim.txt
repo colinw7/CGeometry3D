@@ -1,0 +1,14 @@
+Animation:
+  . named list of animation data (e.g. walk, run, ...) per joint
+  . animation data has range of interpolation ranges (e.g. 0 -> 0.5 -> 1.0)
+    to interpolation into rotation, translation, scale matrices
+  . i.e. given a current time, animation data returns a tranformation matrix interpolated
+    from the time position in the range (wrapped)
+  . default value for rotation, translation, scale comes from joint
+
+  . joint in skeleton/bone hierarchy. child joint inherits parent transform
+
+  . each joint has inverse bind matrix to transform from local coord to model coord.
+
+  . each model(mesh) vertex has associated joints and weights which affect its position
+

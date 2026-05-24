@@ -1,0 +1,8 @@
+. nearest object/face/edge/vertex to point
+
+. stable edges (same vertices). stable edge ind (map ind->vert), next ind is max
+
+. face names (for all shapes)
+
+. merge vertices
+. disolve faces

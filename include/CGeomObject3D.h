@@ -275,6 +275,8 @@ class CGeomObject3D {
   uint addFace(const VertexIList &vertices);
   uint addFace(CGeomFace3D *face);
 
+  void removeFace(CGeomFace3D *face);
+
   //---
 
   uint addFaceSubFace(uint face_num, const std::vector<uint> &vertices);
@@ -291,6 +293,8 @@ class CGeomObject3D {
 
   const CGeomVertex3D *getVertexP(uint i) const { return vertices_[i]; }
   CGeomVertex3D *getVertexP(uint i) { return vertices_[i]; }
+
+  void removeVertex(CGeomVertex3D *vertex);
 
   //---
 
@@ -562,6 +566,8 @@ class CGeomObject3D {
   virtual void rotateModelY(double dy);
   virtual void rotateModelZ(double dz);
 
+  void rotateModel(double angle, const CVector3D &axis);
+
   // scale
   virtual void resizeModel(double factor);
   virtual void resizeModelX(double dx);
@@ -724,7 +730,8 @@ class CGeomObject3D {
 
   FaceList getEdgeFaces(const CGeomEdge3D *edge) const;
 
-  std::vector<CGeomFace3D *> getVertexFaces(const CGeomVertex3D *v) const;
+  FaceList getVertexFaces(const CGeomVertex3D *v) const;
+  EdgeList getVertexEdges(const CGeomVertex3D *v) const;
 
   CGeomEdge3D *getVertexVertexEdge(uint v1, uint v2) const;
   CGeomEdge3D *addVertexVertexEdge(uint v1, uint v2);
@@ -745,6 +752,16 @@ class CGeomObject3D {
   //---
 
   std::vector<CGeomObject3D *> mirror(MirrorDir dir, const CPoint3D &c) const;
+
+  bool scaleFaces(const std::vector<CGeomFace3D *> &faces, const CPoint3D &c, const CVector3D &s);
+
+  bool extrudeFaces(const std::vector<CGeomFace3D *> &faces, double d);
+
+  bool circularizeFaces(const std::vector<CGeomFace3D *> &faces);
+
+  //---
+
+  CGeomFace3D *fillVertices(const std::vector<CGeomVertex3D *> &vertices);
 
  private:
   void validatePObject();

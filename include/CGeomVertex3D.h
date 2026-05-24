@@ -10,6 +10,7 @@
 #include <optional>
 
 class CGeomObject3D;
+class CGeomFace3D;
 class CGeomZBuffer;
 class CGeomCamera3D;
 
@@ -47,7 +48,7 @@ class CGeomVertex3D : public CGeomPoint3D {
 
   //---
 
-  bool isSelected() const { return (tag_ & SELECTED); }
+  bool getSelected() const { return (tag_ & SELECTED); }
 
   void setSelected(bool b) {
     if (b)
@@ -56,7 +57,7 @@ class CGeomVertex3D : public CGeomPoint3D {
       tag_ &= uint(~SELECTED);
   }
 
-  bool isVisible() const { return (tag_ & VISIBLE); }
+  bool getVisible() const { return (tag_ & VISIBLE); }
 
   void setVisible(bool b) {
     if (b)
@@ -107,6 +108,9 @@ class CGeomVertex3D : public CGeomPoint3D {
   void flipY(double);
   void flipZ(double);
 
+  //---
+
+  CGeomFace3D *bevel(double d);
 
   //---
 
