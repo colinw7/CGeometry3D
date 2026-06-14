@@ -5,6 +5,7 @@
 #include <Camera.h>
 #include <Texture.h>
 #include <GeomObject.h>
+#include <ParticleSystem.h>
 #include <Util.h>
 
 #include <CQGLBuffer.h>
@@ -72,6 +73,13 @@ Canvas::
 selectionShaderProgram()
 {
   return getShader("selection.vs", "selection.fs");
+}
+
+ShaderProgram *
+Canvas::
+particleShaderProgram()
+{
+  return getShader("particle.vs", "particle.fs");
 }
 
 //---
@@ -185,6 +193,8 @@ addScene()
       FaceData faceData;
 
       faceData.face = const_cast<CGeomFace3D *>(face);
+
+      faceData.orient = face->getProjectedOrientation();
 
       //---
 
@@ -464,6 +474,10 @@ addScene()
 
   //---
 
+  addParticles();
+
+  //---
+
   if (! bbox_.isSet()) {
     bbox_.add(CPoint3D(-1, -1, -1));
     bbox_.add(CPoint3D( 1,  1,  1));
@@ -471,11 +485,101 @@ addScene()
 
   //---
 
+  if (updateBBox_)
+    updateCamera();
+}
+
+void
+Canvas::
+updateCamera()
+{
   auto c = bbox_.getCenter();
   auto d = bbox_.getMaxSize();
 
   camera_->setOrigin(CVector3D(c));
   camera_->setDistance(std::sqrt(2.0)*d);
+}
+
+void
+Canvas::
+addParticles()
+{
+  auto *program = particleShaderProgram();
+
+  if (! particleData_.buffer)
+    particleData_.buffer = program->createBuffer();
+
+  auto *buffer = particleData_.buffer;
+
+  buffer->clearBuffers();
+
+  int pos = 0;
+
+  auto addPoint = [&](const CPoint3D &p, const QColor &c,
+                      const CVector3D &normal, const CPoint2D &pt) {
+    buffer->addPoint(p.x, p.y, p.z);
+    buffer->addNormal(normal.getX(), normal.getY(), normal.getZ());
+    buffer->addColor(c.redF(), c.greenF(), c.blueF());
+    buffer->addTexturePoint(pt.x, pt.y);
+  };
+
+  auto addRect = [&](const CPoint3D &p1, const CPoint3D &p2,
+                     const CPoint3D &p3, const CPoint3D &p4,
+                     const CRGBA &c, FaceData &faceData) {
+    auto color = RGBAToQColor(c);
+
+    faceData.pos = pos;
+    faceData.len = 4;
+
+    CVector3D diff1(p1, p2);
+    CVector3D diff2(p2, p3);
+    CVector3D diff3(p3, p4);
+    CVector3D diff4(p4, p1);
+
+    auto normal1 = diff4.crossProduct(diff1).normalized();
+    auto normal2 = diff1.crossProduct(diff2).normalized();
+    auto normal3 = diff2.crossProduct(diff3).normalized();
+    auto normal4 = diff3.crossProduct(diff4).normalized();
+
+    addPoint(p1, color, normal1, CPoint2D(0, 0));
+    addPoint(p2, color, normal2, CPoint2D(1, 0));
+
+    addPoint(p3, color, normal3, CPoint2D(1, 1));
+    addPoint(p4, color, normal4, CPoint2D(0, 1));
+
+    pos += 4;
+  };
+
+  particleData_.faceDatas.clear();
+
+  auto *psys = app_->particleSystem();
+
+  auto np = psys->numberOfParticles();
+
+  for (uint i = 0; i < np; ++i) {
+    auto *particle = psys->getParticle(i);
+    assert(particle);
+
+    auto *particle1 = dynamic_cast<Particle *>(particle);
+    assert(particle1);
+
+    const auto &color = particle1->color();
+
+    FaceData faceData;
+
+    addRect(CPoint3D(-0.5, -0.5, 0.0), CPoint3D( 0.5, -0.5, 0.0),
+            CPoint3D( 0.5,  0.5, 0.0), CPoint3D(-0.5,  0.5, 0.0),
+            color, faceData);
+
+    particleData_.faceDatas.push_back(faceData);
+
+    auto *p = particle->position();
+
+    if (updateBBox_)
+      bbox_.add(CPoint3D(p->x(), p->y(), p->z()));
+  }
+
+  buffer->load();
 }
 
 void
@@ -488,9 +592,15 @@ drawScene()
 
   //---
 
-  auto worldMatrix = camera_->perspectiveMatrix();
-  auto viewMatrix  = camera_->viewMatrix();
-  auto viewPos     = camera_->position();
+  CMatrix3DH worldMatrix;
+
+  if (isPerspective())
+    worldMatrix = camera_->perspectiveMatrix();
+  else
+    worldMatrix = camera_->orthoMatrix();
+
+  auto viewMatrix = camera_->viewMatrix();
+  auto viewPos    = camera_->position();
 
   // camera projection
   program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
@@ -668,6 +778,12 @@ drawScene()
 
       program->setUniformValue("transparency", float(1.0 - transparency));
 
+      if (isShowOrient())
+        program->setUniformValue("orientation",
+          (faceData.orient == CPolygonOrientation::CLOCKWISE ? 1.0f : -1.0f));
+      else
+        program->setUniformValue("orientation", 0.0f);
+
       //---
 
       program->setUniformValue("isLine", false);
@@ -796,6 +912,10 @@ drawScene()
   //---
 
   drawSelection();
+
+  //---
+
+  drawParticles();
 }
 
 void
@@ -875,8 +995,14 @@ drawSelection()
   //---
 
   // camera projection
-  auto projectionMatrix = camera_->worldMatrix();
-  program->setUniformValue("projection", CQGLUtil::toQMatrix(projectionMatrix));
+  CMatrix3DH worldMatrix;
+
+  if (isPerspective())
+    worldMatrix = camera_->perspectiveMatrix();
+  else
+    worldMatrix = camera_->orthoMatrix();
+
+  program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
 
   // camera/view transformation
   auto viewMatrix = camera_->viewMatrix();
@@ -919,6 +1045,123 @@ drawSelection()
   program->release();
 }
 
+void
+Canvas::
+drawParticles()
+{
+  if (! particleData_.buffer)
+    return;
+
+  auto *program = particleShaderProgram();
+
+  program->bind();
+
+  particleData_.buffer->bind();
+
+  //---
+
+  glPointSize(pointSize());
+
+  glDepthFunc(GL_LEQUAL);
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+  //---
+
+  // camera projection
+  CMatrix3DH worldMatrix;
+
+  if (isPerspective())
+    worldMatrix = camera_->perspectiveMatrix();
+  else
+    worldMatrix = camera_->orthoMatrix();
+
+  program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
+
+  // camera/view transformation
+  auto viewMatrix = camera_->viewMatrix();
+  program->setUniformValue("view", CQGLUtil::toQMatrix(viewMatrix));
+
+  // model matrix
+  auto modelMatrix = CMatrix3DH::identity();
+  program->setUniformValue("model", CQGLUtil::toQMatrix(modelMatrix));
+
+  //---
+
+  CQGLTexture *texture = nullptr;
+
+  program->setUniformValue("textureId", 0);
+
+  auto *psys = app_->particleSystem();
+
+  auto np = psys->numberOfParticles();
+
+  for (uint i = 0; i < np; ++i) {
+    auto *particle = psys->getParticle(i);
+    assert(particle);
+
+    if (particle->isDead())
+      continue;
+
+    auto *particle1 = dynamic_cast<Particle *>(particle);
+    assert(particle1);
+
+    if (particle1->texture()) {
+      auto *texture1 = getGLTexture(const_cast<Texture *>(particle1->texture()), /*add*/true);
+
+      if (texture1 != texture) {
+        texture = texture1;
+
+        glActiveTexture(GL_TEXTURE0);
+        texture->bind();
+      }
+
+      program->setUniformValue("useTexture", true);
+    }
+    else {
+      program->setUniformValue("useTexture", false);
+    }
+
+    auto *p = particle1->position();
+
+    CVector3D pos(p->x(), p->y(), p->z());
+
+    auto angle = particle1->angle();
+
+    const auto &tpos  = particle1->tpos();
+    const auto &tsize = particle1->tsize();
+
+    program->setUniformValue("position", vectorToQVector(pos));
+    program->setUniformValue("size"    , float(particle1->size()));
+    program->setUniformValue("alpha"   , float(particle1->alpha()));
+    program->setUniformValue("tpos"    , QVector2D(tpos.x, tpos.y));
+    program->setUniformValue("tsize"   , QVector2D(tsize.getWidth(), tsize.getHeight()));
+
+    auto modelMatrix = CMatrix3DH::rotation(CMathGen::Z_AXIS_3D, angle);
+    program->setUniformValue("model", CQGLUtil::toQMatrix(modelMatrix));
+
+    //---
+
+    const auto &faceData = particleData_.faceDatas[i];
+
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glDrawArrays(GL_TRIANGLE_FAN, faceData.pos, faceData.len);
+  }
+
+  //---
+
+  particleData_.buffer->unbind();
+
+  //---
+
+  program->release();
+
+  //---
+
+  glDisable(GL_BLEND);
+}
+
 //---
 
 void
@@ -934,9 +1177,24 @@ mousePressEvent(QMouseEvent *e)
   mouseData_.isControl = (e->modifiers() & Qt::ControlModifier);
 
   if (mouseData_.button == Qt::LeftButton) {
-    rubberBand_->setBounds(QPoint(mouseData_.press.x, mouseData_.press.y),
-                           QPoint(mouseData_.move .x, mouseData_.move .y));
-    rubberBand_->show();
+    if (editType() == EditType::SELECT) {
+      rubberBand_->setBounds(QPoint(mouseData_.press.x, mouseData_.press.y),
+                             QPoint(mouseData_.move .x, mouseData_.move .y));
+      rubberBand_->show();
+    }
+  }
+
+  if (editType() == EditType::TCL) {
+    std::vector<std::string> args;
+
+    args.push_back(std::to_string(e->x()));
+    args.push_back(std::to_string(e->y()));
+
+    auto argList = app_->tcl()->mergeList(args);
+
+    auto cmd = "mousePress " + argList;
+
+    app_->runTclCmd(cmd);
   }
 }
 
@@ -956,8 +1214,10 @@ mouseMoveEvent(QMouseEvent *e)
   auto dy = CMathUtil::sign(mouseData_.move.y - mouseData_.press.y);
 
   if      (mouseData_.button == Qt::LeftButton) {
-    rubberBand_->setBounds(QPoint(mouseData_.press.x, mouseData_.press.y),
-                           QPoint(mouseData_.move .x, mouseData_.move .y));
+    if (editType() == EditType::SELECT) {
+      rubberBand_->setBounds(QPoint(mouseData_.press.x, mouseData_.press.y),
+                             QPoint(mouseData_.move .x, mouseData_.move .y));
+    }
   }
   else if (mouseData_.button == Qt::MiddleButton) {
     auto da = M_PI/180.0;
@@ -1008,9 +1268,9 @@ mouseReleaseEvent(QMouseEvent *e)
         else if (selectType() == SelectType::POINT)
           selectVertexIn(mouseData_.press, mouseData_.move, flip);
       }
-    }
 
-    rubberBand_->hide();
+      rubberBand_->hide();
+    }
   }
 
   mouseData_.pressed = false;

@@ -108,8 +108,12 @@ paintEvent(QPaintEvent *)
   auto *canvas = app_->canvas();
   auto *camera = dynamic_cast<Camera *>(canvas->camera());
 
-  drawData_.projectionMatrix = camera->perspectiveMatrix();
-  drawData_.viewMatrix       = camera->viewMatrix();
+  if (canvas->isPerspective())
+    drawData_.worldMatrix = camera->perspectiveMatrix();
+  else
+    drawData_.worldMatrix = camera->orthoMatrix();
+
+  drawData_.viewMatrix = camera->viewMatrix();
 
   //---
 
@@ -254,7 +258,7 @@ drawModel()
       ypoints.push_back(CPoint2D(p.getZ(), p.getY())); // ZY
       zpoints.push_back(CPoint2D(p.getX(), p.getZ())); // XZ
 
-      auto p1 = drawData_.projectionMatrix*drawData_.viewMatrix*p;
+      auto p1 = drawData_.worldMatrix*drawData_.viewMatrix*p;
 
       ppoints.push_back(CPoint2D(p1.getX(), p1.getY()));
     }
@@ -399,8 +403,8 @@ drawLine(const CPoint3D &p1, const CPoint3D &p2, const QString &) const
   drawData_.painter->setClipRect(zview_.rect);
   drawData_.painter->drawLine(pz1.x, pz1.y, pz2.x, pz2.y);
 
-  auto pv1 = drawData_.projectionMatrix*drawData_.viewMatrix*p1;
-  auto pv2 = drawData_.projectionMatrix*drawData_.viewMatrix*p2;
+  auto pv1 = drawData_.worldMatrix*drawData_.viewMatrix*p1;
+  auto pv2 = drawData_.worldMatrix*drawData_.viewMatrix*p2;
 
   auto pp1 = windowToPixelP(CPoint2D(pv1.x, pv1.y));
   auto pp2 = windowToPixelP(CPoint2D(pv2.x, pv2.y));
@@ -473,7 +477,7 @@ drawPoint(const CPoint3D &p, const QString &text) const
   drawData_.painter->drawEllipse(QRectF(pz.x - s/2, pz.y - s/2, s, s));
   drawData_.painter->drawText(pz.x, pz.y, text);
 
-  auto pv = drawData_.projectionMatrix*drawData_.viewMatrix*p;
+  auto pv = drawData_.worldMatrix*drawData_.viewMatrix*p;
   auto pp = windowToPixelP(CPoint2D(pv.x, pv.y));
 
   drawData_.painter->setClipRect(pview_.rect);

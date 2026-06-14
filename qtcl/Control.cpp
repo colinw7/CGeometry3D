@@ -45,6 +45,8 @@ Control(App *app) :
 
   ui.endFrame();
 
+  modelData_.showOrientCheck = ui.addCheck("Orientation");
+
   ui.addStretch();
 
   ui.endTabPage();
@@ -173,6 +175,7 @@ connectSlots(bool b)
   connectCheckBox(modelData_.showWireframeCheck, SLOT(showWireframeSlot(int)));
   connectCheckBox(modelData_.showSolidCheck    , SLOT(showSolidSlot(int)));
   connectCheckBox(modelData_.showTexturedCheck , SLOT(showTexturedSlot(int)));
+  connectCheckBox(modelData_.showOrientCheck   , SLOT(showOrientSlot(int)));
 
   // Camera
   connectCheckBox(cameraData_.disableRollCheck, SLOT(disableRollSlot(int)));
@@ -231,6 +234,7 @@ updateWidgets()
   modelData_.showWireframeCheck->setChecked(canvas->isWireframe());
   modelData_.showSolidCheck    ->setChecked(canvas->isSolid());
   modelData_.showTexturedCheck ->setChecked(canvas->isTextured());
+  modelData_.showOrientCheck   ->setChecked(canvas->isShowOrient());
 
   // Camera
   cameraData_.disableRollCheck->setChecked(camera->isDisableRoll());
@@ -306,6 +310,17 @@ showTexturedSlot(int i)
   auto *canvas = app_->canvas();
 
   canvas->setTextured(i);
+
+  canvas->update();
+}
+
+void
+Control::
+showOrientSlot(int i)
+{
+  auto *canvas = app_->canvas();
+
+  canvas->setShowOrient(i);
 
   canvas->update();
 }
@@ -428,7 +443,7 @@ zOriginSlot(double r)
 {
   UpdateScope updateScope(this);
 
-  auto o = camera()->origin(); o.setY(r);
+  auto o = camera()->origin(); o.setZ(r);
 
   camera()->setOrigin(o);
 }
@@ -461,7 +476,7 @@ zPosSlot(double r)
 {
   UpdateScope updateScope(this);
 
-  auto p = camera()->position(); p.setY(r);
+  auto p = camera()->position(); p.setZ(r);
 
   camera()->setPosition(p);
 }

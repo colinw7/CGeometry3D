@@ -35,6 +35,8 @@ class Toolbar : public QFrame {
   void editModeSlot(int);
 #endif
 
+  void pauseSlot(bool);
+
   void objectSelectSlot(bool);
   void faceSelectSlot(bool);
   void edgeSelectSlot(bool);
@@ -95,6 +97,14 @@ class Toolbar : public QFrame {
 #if 0
   ViewType viewType_ { ViewType::NONE };
 #endif
+
+  struct CanvasAnimData {
+    QFrame *frame { nullptr };
+
+    CQIconButton* pauseButton { nullptr };
+  };
+
+  CanvasAnimData canvasAnimData_;
 
   struct CanvasSelectData {
     App::SelectType selectType { App::SelectType::FACE };

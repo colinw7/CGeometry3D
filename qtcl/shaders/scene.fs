@@ -38,6 +38,7 @@ uniform bool isWireframe;
 uniform bool isLine;
 
 uniform float transparency;
+uniform float orientation;
 
 uniform vec3  selectColor;
 uniform vec3  wireframeColor;
@@ -134,6 +135,12 @@ void main() {
   if (! isWireframe) {
     if (! isSelected) {
       FragColor = vec4(result, transparency);
+
+      if        (orientation == 1) {
+        FragColor = vec4(1, 0, 0, 1);
+      } else if (orientation == -1) {
+        FragColor = vec4(0, 1, 0, 1);
+      }
     } else {
       vec3 selectColor1 = mix(result, selectColor, 0.4);
 

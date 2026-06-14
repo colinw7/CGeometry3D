@@ -101,7 +101,7 @@ class Camera : public QObject, public CGLCameraIFace {
   CMatrix3DH viewMatrix() const override;
 
   double distance() const { return distance_; }
-  void setDistance(double r) { distance_ = r; stateChanged(); }
+  void setDistance(double r) { if (distance_ != r) { distance_ = r; stateChanged(); } }
 
   void stateChanged() override { orientationValid_ = false; Q_EMIT stateChangedSignal(); }
 

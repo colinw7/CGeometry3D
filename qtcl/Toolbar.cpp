@@ -28,6 +28,13 @@ Toolbar(App *app) :
 
   //---
 
+  canvasAnimData_.frame = ui.startFrame(/*horizontal*/true);
+
+  canvasAnimData_.pauseButton =
+    ui.addIconCheckButton("pause", "PAUSE", "Pause");
+
+  //---
+
   canvasSelectData_.frame = ui.startFrame(/*horizontal*/true);
 
 #if 0
@@ -209,6 +216,9 @@ connectSlots(bool b)
 #endif
 
   CQUtil::connectDisconnect(b,
+    canvasAnimData_.pauseButton, SIGNAL(toggled(bool)), this, SLOT(pauseSlot(bool)));
+
+  CQUtil::connectDisconnect(b,
     canvasSelectData_.faceSelectButton, SIGNAL(toggled(bool)), this, SLOT(faceSelectSlot(bool)));
   CQUtil::connectDisconnect(b,
     canvasSelectData_.edgeSelectButton, SIGNAL(toggled(bool)), this, SLOT(edgeSelectSlot(bool)));
@@ -278,6 +288,13 @@ editModeSlot(int s)
   updateWidgets();
 }
 #endif
+
+void
+Toolbar::
+pauseSlot(bool b)
+{
+  app_->setRunning(! b);
+}
 
 void
 Toolbar::

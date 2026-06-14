@@ -1,4 +1,6 @@
 #include <Camera.h>
+#include <App.h>
+#include <Canvas.h>
 
 #include <cmath>
 
@@ -198,7 +200,7 @@ void
 Camera::
 updateOrientationI()
 {
-  orientationValid_ = false;
+  orientationValid_ = true;
 
   //---
 
@@ -266,6 +268,7 @@ updateOrientationI()
 
   position_ = origin_ - front_*distance_;
 
+  calcOrthoMatrix();
   calcPerspectiveMatrix();
 
   calcViewMatrix();
@@ -300,7 +303,20 @@ void
 Camera::
 calcOrthoMatrix()
 {
-  orthoMatrix_ = CMatrix3DH::ortho(-1, 1, -1, 1, near(), far());
+#if 0
+  auto r = distance_/2.0;
+
+  orthoMatrix_ = CMatrix3DH::ortho(-r, r, -r, r, near(), far());
+#else
+  auto *canvas = app_->canvas();
+
+  if (canvas) {
+    const auto &bbox = canvas->bbox();
+
+    orthoMatrix_ = CMatrix3DH::ortho(bbox.getXMin(), bbox.getXMax(), bbox.getYMin(), bbox.getYMax(),
+                                     near(), far());
+  }
+#endif
 }
 
 CMatrix3DH

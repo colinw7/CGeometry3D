@@ -463,8 +463,14 @@ render(Canvas *canvas)
     auto *camera = canvas->camera();
 
     // camera projection
-    auto projectionMatrix = camera->worldMatrix();
-    program->setUniformValue("projection", CQGLUtil::toQMatrix(projectionMatrix));
+    CMatrix3DH worldMatrix;
+
+    if (canvas->isPerspective())
+      worldMatrix = camera->perspectiveMatrix();
+    else
+      worldMatrix = camera->orthoMatrix();
+
+    program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
 
     // camera/view transformation
     auto viewMatrix = camera->viewMatrix();

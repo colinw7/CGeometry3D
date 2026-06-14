@@ -194,6 +194,8 @@ addScene()
 
       faceData.face = const_cast<CGeomFace3D *>(face);
 
+      faceData.orient = face->getProjectedOrientation();
+
       //---
 
       auto *faceMaterial = faceData.face->getMaterialP();
@@ -483,6 +485,14 @@ addScene()
 
   //---
 
+  if (updateBBox_)
+    updateCamera();
+}
+
+void
+Canvas::
+updateCamera()
+{
   auto c = bbox_.getCenter();
   auto d = bbox_.getMaxSize();
 
@@ -582,9 +592,15 @@ drawScene()
 
   //---
 
-  auto worldMatrix = camera_->perspectiveMatrix();
-  auto viewMatrix  = camera_->viewMatrix();
-  auto viewPos     = camera_->position();
+  CMatrix3DH worldMatrix;
+
+  if (isPerspective())
+    worldMatrix = camera_->perspectiveMatrix();
+  else
+    worldMatrix = camera_->orthoMatrix();
+
+  auto viewMatrix = camera_->viewMatrix();
+  auto viewPos    = camera_->position();
 
   // camera projection
   program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
@@ -761,6 +777,12 @@ drawScene()
       program->setUniformValue("shininess", float(faceData.shininess));
 
       program->setUniformValue("transparency", float(1.0 - transparency));
+
+      if (isShowOrient())
+        program->setUniformValue("orientation",
+          (faceData.orient == CPolygonOrientation::CLOCKWISE ? 1.0f : -1.0f));
+      else
+        program->setUniformValue("orientation", 0.0f);
 
       //---
 
@@ -973,8 +995,14 @@ drawSelection()
   //---
 
   // camera projection
-  auto projectionMatrix = camera_->worldMatrix();
-  program->setUniformValue("projection", CQGLUtil::toQMatrix(projectionMatrix));
+  CMatrix3DH worldMatrix;
+
+  if (isPerspective())
+    worldMatrix = camera_->perspectiveMatrix();
+  else
+    worldMatrix = camera_->orthoMatrix();
+
+  program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
 
   // camera/view transformation
   auto viewMatrix = camera_->viewMatrix();
@@ -987,7 +1015,7 @@ drawSelection()
   //---
 
   if (selectionData_.vertexIndex > selectionData_.lineIndex) {
-    glLineWidth(4);
+    glLineWidth(8);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
@@ -1041,8 +1069,14 @@ drawParticles()
   //---
 
   // camera projection
-  auto projectionMatrix = camera_->worldMatrix();
-  program->setUniformValue("projection", CQGLUtil::toQMatrix(projectionMatrix));
+  CMatrix3DH worldMatrix;
+
+  if (isPerspective())
+    worldMatrix = camera_->perspectiveMatrix();
+  else
+    worldMatrix = camera_->orthoMatrix();
+
+  program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
 
   // camera/view transformation
   auto viewMatrix = camera_->viewMatrix();
@@ -1143,9 +1177,11 @@ mousePressEvent(QMouseEvent *e)
   mouseData_.isControl = (e->modifiers() & Qt::ControlModifier);
 
   if (mouseData_.button == Qt::LeftButton) {
-    rubberBand_->setBounds(QPoint(mouseData_.press.x, mouseData_.press.y),
-                           QPoint(mouseData_.move .x, mouseData_.move .y));
-    rubberBand_->show();
+    if (editType() == EditType::SELECT) {
+      rubberBand_->setBounds(QPoint(mouseData_.press.x, mouseData_.press.y),
+                             QPoint(mouseData_.move .x, mouseData_.move .y));
+      rubberBand_->show();
+    }
   }
 
   if (editType() == EditType::TCL) {
@@ -1178,8 +1214,10 @@ mouseMoveEvent(QMouseEvent *e)
   auto dy = CMathUtil::sign(mouseData_.move.y - mouseData_.press.y);
 
   if      (mouseData_.button == Qt::LeftButton) {
-    rubberBand_->setBounds(QPoint(mouseData_.press.x, mouseData_.press.y),
-                           QPoint(mouseData_.move .x, mouseData_.move .y));
+    if (editType() == EditType::SELECT) {
+      rubberBand_->setBounds(QPoint(mouseData_.press.x, mouseData_.press.y),
+                             QPoint(mouseData_.move .x, mouseData_.move .y));
+    }
   }
   else if (mouseData_.button == Qt::MiddleButton) {
     auto da = M_PI/180.0;
@@ -1230,9 +1268,9 @@ mouseReleaseEvent(QMouseEvent *e)
         else if (selectType() == SelectType::POINT)
           selectVertexIn(mouseData_.press, mouseData_.move, flip);
       }
-    }
 
-    rubberBand_->hide();
+      rubberBand_->hide();
+    }
   }
 
   mouseData_.pressed = false;

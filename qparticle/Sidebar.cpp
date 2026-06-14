@@ -37,6 +37,7 @@ Sidebar(App *app) :
 //cursorButton_ = addIconCheckButton("cursor", "CURSOR", "Cursor");
   cameraButton_ = addIconCheckButton("camera", "CAMERA", "Camera");
 //lightButton_  = addIconCheckButton("light" , "LIGHT" , "Light" );
+  tclButton_    = addIconCheckButton("tcl"   , "TCL"   , "Tcl"   );
 
 #if 0
   moveButton_   = addIconCheckButton("move"  , "MOVE"  , "Move"  );
@@ -81,6 +82,8 @@ connectSlots(bool b)
   CQUtil::connectDisconnect(b,
     lightButton_, SIGNAL(toggled(bool)), this, SLOT(lightSlot(bool)));
 #endif
+  CQUtil::connectDisconnect(b,
+    tclButton_, SIGNAL(toggled(bool)), this, SLOT(tclSlot(bool)));
 
 #if 0
   CQUtil::connectDisconnect(b,
@@ -178,6 +181,17 @@ lightSlot(bool state)
 }
 #endif
 
+void
+Sidebar::
+tclSlot(bool state)
+{
+  editType_ = (state ? EditType::TCL : EditType::SELECT);
+
+  updateEditType();
+
+  updateButtonState();
+}
+
 #if 0
 void
 Sidebar::
@@ -232,6 +246,7 @@ updateButtonState()
 //cursorButton_->setChecked(editType_ == EditType::CURSOR);
   cameraButton_->setChecked(editType_ == EditType::CAMERA);
 //lightButton_ ->setChecked(editType_ == EditType::LIGHT);
+  tclButton_   ->setChecked(editType_ == EditType::TCL);
 
 #if 0
   moveButton_  ->setChecked(editType_ == EditType::MOVE);

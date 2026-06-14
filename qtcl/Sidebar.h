@@ -30,6 +30,7 @@ class Sidebar : public QFrame {
 //void cursorSlot(bool state);
   void cameraSlot(bool state);
 //void lightSlot (bool state);
+  void tclSlot   (bool state);
 
 #if 0
   void moveSlot  (bool state);
@@ -61,6 +62,8 @@ class Sidebar : public QFrame {
 //CQIconButton* cursorButton_ { nullptr };
   CQIconButton* cameraButton_ { nullptr };
 //CQIconButton* lightButton_  { nullptr };
+  CQIconButton* tclButton_    { nullptr };
+
 #if 0
   CQIconButton* moveButton_   { nullptr };
   CQIconButton* rotateButton_ { nullptr };

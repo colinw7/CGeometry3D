@@ -41,6 +41,7 @@ class Control : public QFrame {
   void showWireframeSlot(int);
   void showSolidSlot(int);
   void showTexturedSlot(int);
+  void showOrientSlot(int);
 
   // Camera
   void disableRollSlot(int);
@@ -91,6 +92,7 @@ class Control : public QFrame {
     QCheckBox* showWireframeCheck { nullptr };
     QCheckBox* showSolidCheck     { nullptr };
     QCheckBox* showTexturedCheck  { nullptr };
+    QCheckBox* showOrientCheck    { nullptr };
   };
 
   ModelData modelData_;

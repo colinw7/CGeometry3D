@@ -16,6 +16,10 @@ class CGeomEdge3D;
 class CGeomLine3D;
 class CGeomVertex3D;
 
+class CPSysParticle;
+class CPSysSpring;
+class CPSysAttraction;
+
 class CTcl;
 
 class QTimer;
@@ -28,6 +32,8 @@ class Control;
 class Toolbar;
 class Sidebar;
 class Status;
+
+class ParticleSystem;
 
 class App : public QFrame {
   Q_OBJECT
@@ -103,6 +109,8 @@ class App : public QFrame {
     double value_ { 0 };
   };
 
+  using AnimDatas = std::vector<AnimData *>;
+
  public:
   App();
 
@@ -136,9 +144,26 @@ class App : public QFrame {
 
   //---
 
+  ParticleSystem *particleSystem() const { return psys_; }
+
+  //---
+
+  bool isRunning() const { return running_; }
+  void setRunning(bool b) { running_ = b; }
+
+  //---
+
   int execFile(const std::string &filename);
 
-  bool loadModel(const QString &fileName, CGeom3DType format);
+  //---
+
+  struct LoadData {
+    CGeomObject3D* topObj { nullptr };
+  };
+
+  bool loadModel(const std::string &fileName, CGeom3DType format, LoadData &loadData);
+
+  //---
 
   void setVar(const std::string &name, double value);
   void setVar(const std::string &name, const std::string &value);
@@ -163,10 +188,8 @@ class App : public QFrame {
   static int addCubeProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int addCylinderProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int addSphereProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-//static int addTerrainProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
+  static int addTerrainProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
 
-  static int getAppValueProc     (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int setAppValueProc     (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int getObjectValueProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int setObjectValueProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int getFaceValueProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
@@ -197,6 +220,13 @@ class App : public QFrame {
   static int deleteFacesProc   (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int deleteVerticesProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
 
+  static int vectorProc   (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
+  static int setVectorProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
+
+  bool decodeParticle  (const std::string &arg, CPSysParticle* &particle) const;
+  bool decodeSpring    (const std::string &arg, CPSysSpring* &particle) const;
+  bool decodeAttraction(const std::string &arg, CPSysAttraction* &particle) const;
+
   bool decodeObject  (const std::string &arg, CGeomObject3D* &object) const;
   bool decodeFaces   (const std::string &arg, std::vector<CGeomFace3D *> &faces) const;
   bool decodeFaces   (const std::vector<std::string> &args,
@@ -217,11 +247,27 @@ class App : public QFrame {
   CGeomVertex3D *getNearestVertex(CGeomObject3D *, const CPoint3D &) const;
   CGeomVertex3D *getNearestVertex(CGeomFace3D *, const CPoint3D &) const;
 
+  bool stringToPoint (const std::string &str, CPoint2D &p) const;
   bool stringToPoint (const std::string &str, CPoint3D &p) const;
   bool stringToVector(const std::string &str, CVector3D &v) const;
 
  public:
   using StringList = std::vector<std::string>;
+
+  int getAppValueProc(const StringList &);
+  int setAppValueProc(const StringList &);
+
+  int addParticleProc     (const StringList &);
+  int getParticleValueProc(const StringList &);
+  int setParticleValueProc(const StringList &);
+
+  int addSpringProc     (const StringList &);
+  int getSpringValueProc(const StringList &);
+  int setSpringValueProc(const StringList &);
+
+  int addAttractionProc     (const StringList &);
+  int getAttractionValueProc(const StringList &);
+  int setAttractionValueProc(const StringList &);
 
   int getObjectPropertyProc(const StringList &);
   int setObjectPropertyProc(const StringList &);
@@ -234,14 +280,16 @@ class App : public QFrame {
   int readModelProc(const StringList &);
   int writeObjProc (const StringList &);
 
+  int getVectorProc(const std::vector<Tcl_Obj *> &objs);
+
   int calcVectorProc(const StringList &);
 
  private Q_SLOTS:
   void timerSlot();
 
- private:
-  using AnimDatas = std::vector<AnimData *>;
+  void tick(bool update=true);
 
+ private:
   QString buildDir_;
 
   // object data
@@ -258,7 +306,11 @@ class App : public QFrame {
 
   CPoint3D cursor_ { 0, 0, 0 };
 
+  ParticleSystem *psys_ { nullptr };
+
   QTimer* timer_ { nullptr };
+
+  bool running_ { true };
 
   AnimDatas animDatas_;
 };

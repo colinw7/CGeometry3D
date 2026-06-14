@@ -179,7 +179,7 @@ class Overview : public QFrame {
   struct DrawData {
     QPainter* painter { nullptr };
 
-    CMatrix3DH projectionMatrix;
+    CMatrix3DH worldMatrix;
     CMatrix3DH viewMatrix;
     Faces      faces;
     CBBox3D    bbox;

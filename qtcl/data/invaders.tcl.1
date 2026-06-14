@@ -1,0 +1,45 @@
+set invader1 [readModel "data/invader1.obj"]
+set invader2 [readModel "data/invader2.obj"]
+set invader3 [readModel "data/invader3.obj"]
+set invader4 [readModel "data/invader4.obj"]
+
+set w 16
+set h 8
+
+setObjectValue $invader1 translate [list [expr {-2*$w}] 0 0]
+setObjectValue $invader2 translate [list            -$w 0 0]
+setObjectValue $invader3 translate [list             $w 0 0]
+setObjectValue $invader4 translate [list [expr { 2*$w}] 0 0]
+
+setAppValue camera_distance 32
+
+proc addAlien { $ix $iy } {
+  if       {$iy == 0} {
+    set invader [readModel "data/invader1.obj"]
+  } elseif {$iy == 1} {
+    set invader [readModel "data/invader2.obj"]
+  } elseif {$iy == 2} {
+    set invader [readModel "data/invader3.obj"]
+  } elseif {$iy == 3 || $iy == 4} {
+    set invader [readModel "data/invader3.obj"]
+  }
+
+  set x [expr {($ix - 5)*$::w}]
+  set y [expr {$iy*$::h}]
+
+  setObjectValue $invader1 translate [list $x $y 0]
+}
+
+for {set iy 0} {$iy < 5} {incr iy} {
+  for {set ix 0} {$ix < 11} {incr ix} {
+    addAlien $ix $iy
+  }
+} 
+
+proc keyPress { args } {
+  set key   [lindex $args 0]
+  set ctrl  [lindex $args 1]
+  set shift [lindex $args 2]
+  
+  echo "keyPress ($key) ($ctrl) ($shift)"
+}

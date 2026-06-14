@@ -22,7 +22,6 @@ namespace CQTclModel3DView {
 
 class App;
 class Camera;
-class FaceData;
 class ShaderProgram;
 class Texture;
 
@@ -43,10 +42,18 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   int ind() const { return ind_; }
   void setInd(int i) { ind_ = i; }
 
+  //---
+
   Camera *camera() const { return camera_; }
+
+  bool isPerspective() const { return perspective_; }
+  void setPerspective(bool b) { perspective_ = b; }
+
+  //---
 
   ShaderProgram *sceneShaderProgram();
   ShaderProgram *selectionShaderProgram();
+  ShaderProgram *particleShaderProgram();
 
   //---
 
@@ -85,6 +92,9 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
 
   double lineWidth() const { return lineWidth_; }
   void setLineWidth(double r) { lineWidth_ = r; update(); }
+
+  bool isShowOrient() const { return showOrient_; }
+  void setShowOrient(bool b) { showOrient_ = b; update(); }
 
   //---
 
@@ -146,6 +156,13 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
 
   //---
 
+  const CBBox3D &bbox() const { return bbox_; }
+  void setBBox(const CBBox3D &v) { bbox_ = v; updateCamera(); updateBBox_ = false; }
+
+  void updateCamera();
+
+  //---
+
   void initializeGL() override;
 
   void resizeGL(int, int) override;
@@ -172,6 +189,9 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   void drawScene();
 
   void drawSelection();
+
+  void addParticles();
+  void drawParticles();
 
   //---
 
@@ -238,7 +258,10 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
 
   int ind_ { 0 };
 
+  // camera
   Camera* camera_ { nullptr };
+
+  bool perspective_ { true };
 
   // state
   int pixelWidth_  { 2000 };
@@ -253,8 +276,9 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   bool frontFace_   { false };
   bool polygonLine_ { false };
 
-  double pointSize_ { 4.0 };
-  double lineWidth_ { 2.0 };
+  double pointSize_  { 4.0 };
+  double lineWidth_  { 2.0 };
+  bool   showOrient_ { false };
 
   // lighting
   CRGBA  ambientColor_     { CRGBA::white() };
@@ -302,6 +326,15 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   };
 
   SelectionData selectionData_;
+
+  //---
+
+  struct ParticleData {
+    CQGLBuffer*           buffer { nullptr };
+    std::vector<FaceData> faceDatas;
+  };
+
+  ParticleData particleData_;
 
   //---
 

@@ -428,7 +428,7 @@ zOriginSlot(double r)
 {
   UpdateScope updateScope(this);
 
-  auto o = camera()->origin(); o.setY(r);
+  auto o = camera()->origin(); o.setZ(r);
 
   camera()->setOrigin(o);
 }
@@ -461,7 +461,7 @@ zPosSlot(double r)
 {
   UpdateScope updateScope(this);
 
-  auto p = camera()->position(); p.setY(r);
+  auto p = camera()->position(); p.setZ(r);
 
   camera()->setPosition(p);
 }

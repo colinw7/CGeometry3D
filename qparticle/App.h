@@ -52,6 +52,67 @@ class App : public QFrame {
     TCL
   };
 
+#if 0
+  class AnimData {
+   public:
+    AnimData(App *app, const std::string &proc) :
+     app_(app), proc_(proc) {
+    }
+
+    virtual ~AnimData() { }
+
+    bool isActive() const { return active_; }
+    void setActive(bool b) { active_ = b; }
+
+    bool isRepeat() const { return repeat_; }
+    void setRepeat(bool b) { repeat_ = b; }
+
+    virtual void tick() = 0;
+
+   protected:
+    App*        app_    { nullptr };
+    std::string proc_;
+    bool        active_ { false };
+    bool        repeat_ { false };
+  };
+
+  class AnimRealData : public AnimData {
+   public:
+    AnimRealData(App *app, double start, double end, double delta, const std::string &proc) :
+     AnimData(app, proc), start_(start), end_(end), delta_(delta) {
+      value_ = start_;
+    }
+
+    void tick() override {
+      if (value_ >= end_) {
+        if (! repeat_) {
+          active_ = false;
+          return;
+        }
+
+        value_ = start_;
+      }
+      else {
+        value_ += delta_;
+      }
+
+      app_->setVar("_value", value_);
+
+      //std::cerr << "Value: " << value_ << " Proc: " << proc_ << "\n";
+
+      app_->runTclCmd(proc_);
+    }
+
+   private:
+    double start_ { 0 };
+    double end_   { 10 };
+    double delta_ { 1 };
+    double value_ { 0 };
+  };
+
+  using AnimDatas = std::vector<AnimData *>;
+#endif
+
  public:
   App();
 
@@ -96,7 +157,15 @@ class App : public QFrame {
 
   int execFile(const std::string &filename);
 
-  bool loadModel(const QString &fileName, CGeom3DType format);
+  //---
+
+  struct LoadData {
+    CGeomObject3D* topObj { nullptr };
+  };
+
+  bool loadModel(const std::string &fileName, CGeom3DType format, LoadData &loadData);
+
+  //---
 
   void setVar(const std::string &name, double value);
   void setVar(const std::string &name, const std::string &value);
@@ -121,6 +190,9 @@ class App : public QFrame {
   static int addCubeProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int addCylinderProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int addSphereProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
+#if 0
+  static int addTerrainProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
+#endif
 
   static int getObjectValueProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
   static int setObjectValueProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
@@ -207,7 +279,12 @@ class App : public QFrame {
   int scaleFacesProc      (const StringList &);
   int circularizeFacesProc(const StringList &);
 
+#if 0
+  int animateRealProc(const StringList &);
+#endif
+
   int readModelProc(const StringList &);
+  int writeObjProc (const StringList &);
 
   int getVectorProc(const std::vector<Tcl_Obj *> &objs);
 
@@ -215,6 +292,8 @@ class App : public QFrame {
 
  private Q_SLOTS:
   void timerSlot();
+
+  void tick(bool update=true);
 
  private:
   QString buildDir_;
@@ -238,6 +317,10 @@ class App : public QFrame {
   QTimer* timer_ { nullptr };
 
   bool running_ { true };
+
+#if 0
+  AnimDatas animDatas_;
+#endif
 };
 
 }

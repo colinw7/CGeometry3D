@@ -15,9 +15,13 @@ App.cpp \
 Canvas.cpp \
 Overview.cpp \
 Control.cpp \
+Toolbar.cpp \
+Sidebar.cpp \
 Status.cpp \
 Camera.cpp \
 ShaderProgram.cpp \
+ParticleSystem.cpp \
+Font.cpp \
 CQGLTexture.cpp \
 
 HEADERS += \
@@ -26,9 +30,13 @@ App.h \
 Canvas.h \
 Overview.h \
 Control.h \
+Toolbar.h \
+Sidebar.h \
 Status.h \
 Camera.h \
 ShaderProgram.h \
+ParticleSystem.h \
+Font.h \
 CQGLTexture.h \
 
 INCLUDEPATH += \
