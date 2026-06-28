@@ -54,7 +54,7 @@ init()
 
 bool
 Font::
-setFontName(const QString &name)
+setFontName(const std::string &name)
 {
   name_ = name;
 
@@ -79,11 +79,11 @@ updateFontData()
   //---
 
   // get true type font data
-  auto path = canvas_->app()->buildDir() + "/fonts/" + name_;
+  auto path = canvas_->app()->buildDir().toStdString() + "/fonts/" + name_;
 
   std::vector<uint8_t> fontData;
 
-  if (! readFile(path.toLatin1().constData(), fontData))
+  if (! readFile(path.c_str(), fontData))
     return false;
 
   auto atlasData = std::make_unique<uint8_t[]>(fontData_->atlasWidth*fontData_->atlasHeight);
@@ -201,7 +201,7 @@ createFontTexture(uint *texture, int w, int h, uchar *data)
 
   //---
 
-  #if 0
+#if 0
   // dump font to png
   auto src = CImageNoSrc();
 
@@ -334,7 +334,7 @@ textureId() const
 //---
 
 Text::
-Text(const QString &text) :
+Text(const std::string &text) :
  text_(text)
 {
 }
@@ -355,7 +355,7 @@ updateText()
   double f = 1.0/font_->size();
 
   for (const auto &c : text_) {
-    const auto glyphInfo = font_->makeGlyphInfo(c.toLatin1(), offsetX, offsetY);
+    const auto glyphInfo = font_->makeGlyphInfo(c, offsetX, offsetY);
 
     offsetX = glyphInfo.offsetX;
     offsetY = glyphInfo.offsetY;
@@ -375,7 +375,7 @@ updateText()
       buffer_->addTexturePoint(glyphInfo.uvs[i].x(), glyphInfo.uvs[i].y());
 
       // color
-      buffer_->addColor(color().r, color().g, color().b);
+      buffer_->addColor(color().getRed(), color().getGreen(), color().getBlue());
 
       bbox_.add(pos.point());
     };
@@ -457,19 +457,13 @@ render(Canvas *canvas)
 
   CVector3D up, right;
 
-  program->setUniformValue("billboard", font_->isBillboard());
+  program->setUniformValue("billboard", isBillboard());
 
   if (! isOverlay()) {
     auto *camera = canvas->camera();
 
     // camera projection
-    CMatrix3DH worldMatrix;
-
-    if (canvas->isPerspective())
-      worldMatrix = camera->perspectiveMatrix();
-    else
-      worldMatrix = camera->orthoMatrix();
-
+    auto worldMatrix = canvas->calcWorldMatrix();
     program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
 
     // camera/view transformation
@@ -504,14 +498,14 @@ render(Canvas *canvas)
 
   auto pos = position().vector();
 
-  if      (align_ & Qt::AlignHCenter)
+  if      (halign_ == HAlign::CENTER)
     pos -= (size()*bbox_.getXSize()/2.0)*right;
-  else if (align_ & Qt::AlignRight)
+  else if (halign_ == HAlign::RIGHT)
     pos -= (size()*bbox_.getXSize())*right;
 
-  if      (align_ & Qt::AlignVCenter)
+  if      (valign_ == VAlign::CENTER)
     pos += (size()*bbox_.getYSize()/2.0)*up;
-  else if (align_ & Qt::AlignBottom)
+  else if (valign_ == VAlign::BOTTOM)
     pos += (size()*bbox_.getYSize())*up;
 
   // model matrix
@@ -551,7 +545,7 @@ getModelMatrix() const
 {
   auto modelMatrix = CMatrix3DH::identity();
 
-  if (! font_->isBillboard()) {
+  if (! isBillboard()) {
     modelMatrix.translated(position().x(), position().y(), position().z());
 
     modelMatrix.rotated(angle().x(), CVector3D(1.0, 0.0, 0.0));

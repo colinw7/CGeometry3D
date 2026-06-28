@@ -4,6 +4,8 @@
 #include <CRGBA.h>
 #include <CGLVector3D.h>
 
+#include <QVector3D>
+
 namespace {
 
 inline CGLVector3D ColorToVector(const CRGBA &c) {

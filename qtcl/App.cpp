@@ -9,6 +9,7 @@
 #include <Texture.h>
 #include <ParticleSystem.h>
 #include <Camera.h>
+#include <Font.h>
 #include <Util.h>
 
 #include <CImportObj.h>
@@ -24,15 +25,24 @@
 #include <CGeomSphere3D.h>
 #include <CGeomPlane3D.h>
 
-#include <QVBoxLayout>
-#include <QTimer>
-
 #include <CTclUtil.h>
 #include <CTclObj.h>
 
 #include <CRGBName.h>
 
 #include <CSolidNoise.h>
+
+#include <CQMetaEdit.h>
+#include <CQAppOptions.h>
+
+#ifdef CQ_PERF_GRAPH
+#include <CQPerfGraph.h>
+#endif
+
+#include <QVBoxLayout>
+#include <QTimer>
+
+//---
 
 #include <svg/pause_svg.h>
 
@@ -74,6 +84,8 @@
 #include <svg/visible_svg.h>
 #endif
 
+//---
+
 #define Q(x) #x
 #define QUOTE(x) Q(x)
 
@@ -105,10 +117,15 @@ bool objToReal(const Tcl_Obj *obj, double &r) {
   return stringToReal(CTclUtil::stringFromObj(obj), r);
 }
 
-bool stringToBool(const std::string &str, bool &b) {
+std::string toLower(const std::string &str) {
   std::string str1;
   for (auto &c : str)
     str1 += (isupper(c) ? tolower(c) : c);
+  return str1;
+}
+
+bool stringToBool(const std::string &str, bool &b) {
+  auto str1 = toLower(str);
 
   bool rc = true;
   if      (str1 == "yes" || str1 == "true"  || str1 == "1")
@@ -373,6 +390,26 @@ bool decodeObjectLineId(const std::string &id, int &objId, int &lineId) {
   return true;
 }
 
+std::string encodeTextId(uint textId) {
+  return "T:" + std::to_string(textId);
+}
+
+bool decodeTextId(const std::string &id, int &textId) {
+  if (id == "null") { textId = -1; return true; }
+
+  if (id.size() < 3 || id.substr(0, 2) != "T:")
+    return false;
+
+  if (! stringToInteger(id.substr(2), textId))
+    return false;
+
+  return true;
+}
+
+std::string encodeText(const Text *text) {
+  return encodeTextId(text->id());
+}
+
 int tclErrorMsg(const std::string &msg) {
   std::cerr << msg << "\n";
   return TCL_ERROR;
@@ -463,24 +500,79 @@ namespace CQTclModel3DView {
 CTCL_DCL_OBJECT_PROC(App, getAppValue, getAppValueProc, this)
 CTCL_DCL_OBJECT_PROC(App, setAppValue, setAppValueProc, this)
 
-CTCL_DCL_OBJECT_PROC(App, addParticle       , addParticleProc       , this)
-CTCL_DCL_OBJECT_PROC(App, getParticleValue  , getParticleValueProc  , this)
-CTCL_DCL_OBJECT_PROC(App, setParticleValue  , setParticleValueProc  , this)
-CTCL_DCL_OBJECT_PROC(App, addSpring         , addSpringProc         , this)
-CTCL_DCL_OBJECT_PROC(App, getSpringValue    , getSpringValueProc    , this)
-CTCL_DCL_OBJECT_PROC(App, setSpringValue    , setSpringValueProc    , this)
-CTCL_DCL_OBJECT_PROC(App, addAttraction     , addAttractionProc     , this)
-CTCL_DCL_OBJECT_PROC(App, getAttractionValue, getAttractionValueProc, this)
-CTCL_DCL_OBJECT_PROC(App, setAttractionValue, setAttractionValueProc, this)
+CTCL_DCL_OBJECT_PROC (App, addShader     , addShaderProc     , this)
+CTCL_DCL_OBJECT_PROC (App, setShaderValue, setShaderValueProc, this)
 
+CTCL_DCL_OBJECT_PROC (App, addViewport     , addViewportProc     , this)
+CTCL_DCL_OBJECT_PROC (App, setViewportValue, setViewportValueProc, this)
+
+CTCL_DCL_OBJECT_PROC (App, addParticle       , addParticleProc       , this)
+CTCL_DCL_OBJECT_PROC (App, getParticleValue  , getParticleValueProc  , this)
+CTCL_DCL_TCL_OBJ_PROC(App, setParticleValue  , setParticleValueProc  , this)
+CTCL_DCL_OBJECT_PROC (App, addSpring         , addSpringProc         , this)
+CTCL_DCL_OBJECT_PROC (App, getSpringValue    , getSpringValueProc    , this)
+CTCL_DCL_OBJECT_PROC (App, setSpringValue    , setSpringValueProc    , this)
+CTCL_DCL_OBJECT_PROC (App, addAttraction     , addAttractionProc     , this)
+CTCL_DCL_OBJECT_PROC (App, getAttractionValue, getAttractionValueProc, this)
+CTCL_DCL_OBJECT_PROC (App, setAttractionValue, setAttractionValueProc, this)
+
+CTCL_DCL_OBJECT_PROC(App, addObject  , addObjectProc  , this)
+CTCL_DCL_OBJECT_PROC(App, addVertex  , addVertexProc  , this)
+CTCL_DCL_OBJECT_PROC(App, addFace    , addFaceProc    , this)
+CTCL_DCL_OBJECT_PROC(App, addLine    , addLineProc    , this)
+CTCL_DCL_OBJECT_PROC(App, addMaterial, addMaterialProc, this)
+CTCL_DCL_OBJECT_PROC(App, addTexture , addTextureProc , this)
+CTCL_DCL_OBJECT_PROC(App, addText    , addTextProc    , this)
+
+CTCL_DCL_OBJECT_PROC(App, addPlane   , addPlaneProc   , this)
+CTCL_DCL_OBJECT_PROC(App, addCube    , addCubeProc    , this)
+CTCL_DCL_OBJECT_PROC(App, addCone    , addConeProc    , this)
+CTCL_DCL_OBJECT_PROC(App, addCylinder, addCylinderProc, this)
+CTCL_DCL_OBJECT_PROC(App, addSphere  , addSphereProc  , this)
+CTCL_DCL_OBJECT_PROC(App, addTerrain , addTerrainProc , this)
+
+CTCL_DCL_OBJECT_PROC(App, getObjectValue   , getObjectValueProc   , this)
+CTCL_DCL_OBJECT_PROC(App, setObjectValue   , setObjectValueProc   , this)
+CTCL_DCL_OBJECT_PROC(App, getFaceValue     , getFaceValueProc     , this)
+CTCL_DCL_OBJECT_PROC(App, setFaceValue     , setFaceValueProc     , this)
+CTCL_DCL_OBJECT_PROC(App, getLineValue     , getLineValueProc     , this)
+CTCL_DCL_OBJECT_PROC(App, setLineValue     , setLineValueProc     , this)
+CTCL_DCL_OBJECT_PROC(App, getEdgeValue     , getEdgeValueProc     , this)
+CTCL_DCL_OBJECT_PROC(App, setEdgeValue     , setEdgeValueProc     , this)
+CTCL_DCL_OBJECT_PROC(App, getVertexValue   , getVertexValueProc   , this)
+CTCL_DCL_OBJECT_PROC(App, setVertexValue   , setVertexValueProc   , this)
+CTCL_DCL_OBJECT_PROC(App, setMaterialValue , setMaterialValueProc , this)
+CTCL_DCL_OBJECT_PROC(App, getTextValue     , getTextValueProc     , this)
+CTCL_DCL_OBJECT_PROC(App, setTextValue     , setTextValueProc     , this)
 CTCL_DCL_OBJECT_PROC(App, getObjectProperty, getObjectPropertyProc, this)
 CTCL_DCL_OBJECT_PROC(App, setObjectProperty, setObjectPropertyProc, this)
-CTCL_DCL_OBJECT_PROC(App, animateReal      , animateRealProc      , this)
-CTCL_DCL_OBJECT_PROC(App, readModel        , readModelProc        , this)
-CTCL_DCL_OBJECT_PROC(App, writeObj         , writeObjProc         , this)
-CTCL_DCL_OBJECT_PROC(App, calcVector       , calcVectorProc       , this)
 
-CTCL_DCL_TCL_OBJ_PROC(App, get_vector, getVectorProc, this)
+CTCL_DCL_OBJECT_PROC(App, intersectObjects, intersectObjectsProc, this)
+CTCL_DCL_OBJECT_PROC(App, inverseObject   , inverseObjectProc   , this)
+CTCL_DCL_OBJECT_PROC(App, unionObjects    , unionObjectsProc    , this)
+CTCL_DCL_OBJECT_PROC(App, subtractObjects , subtractObjectsProc , this)
+
+CTCL_DCL_OBJECT_PROC(App, extrudeFaces, extrudeFacesProc, this)
+CTCL_DCL_OBJECT_PROC(App, extrudeEdges, extrudeEdgesProc, this)
+CTCL_DCL_OBJECT_PROC(App, mergeEdge   , mergeEdgeProc   , this)
+CTCL_DCL_OBJECT_PROC(App, separateFace, separateFaceProc, this)
+CTCL_DCL_OBJECT_PROC(App, separateEdge, separateEdgeProc, this)
+CTCL_DCL_OBJECT_PROC(App, mirrorObject, mirrorObjectProc, this)
+CTCL_DCL_OBJECT_PROC(App, fillVertices, fillVerticesProc, this)
+
+CTCL_DCL_OBJECT_PROC(App, deleteObjects , deleteObjectsProc , this)
+CTCL_DCL_OBJECT_PROC(App, deleteFaces   , deleteFacesProc   , this)
+CTCL_DCL_OBJECT_PROC(App, deleteVertices, deleteVerticesProc, this)
+
+CTCL_DCL_OBJECT_PROC(App, animateReal, animateRealProc, this)
+
+CTCL_DCL_OBJECT_PROC(App, readModel, readModelProc, this)
+CTCL_DCL_OBJECT_PROC(App, writeObj , writeObjProc , this)
+
+CTCL_DCL_OBJECT_PROC (App, vector    , vectorProc    , this)
+CTCL_DCL_TCL_OBJ_PROC(App, get_vector, getVectorProc , this)
+CTCL_DCL_TCL_OBJ_PROC(App, set_vector, setVectorProc , this)
+CTCL_DCL_OBJECT_PROC (App, calcVector, calcVectorProc, this)
 
 App::
 App()
@@ -546,6 +638,8 @@ App()
 
   //---
 
+  canvas_->setFocus();
+
   timer_->start(100);
 }
 
@@ -599,13 +693,18 @@ loadModel(const std::string &fileName, CGeom3DType format, LoadData &loadData)
 
       if (! object->parent())
         parentObj->addChild(object);
+
+      object->setInd(CGeometry3DInst->nextObjectId());
     }
 
     loadData.topObj = parentObj;
   }
   else {
-    for (auto *object : scene->getObjects())
+    for (auto *object : scene->getObjects()) {
       scene_->addObject(object);
+
+      object->setInd(CGeometry3DInst->nextObjectId());
+    }
   }
 
   for (auto *material : scene->getMaterials()) {
@@ -636,65 +735,81 @@ initTcl()
   CTCL_OBJECT_PROC(tcl_, getAppValue, App, this);
   CTCL_OBJECT_PROC(tcl_, setAppValue, App, this);
 
-  CTCL_OBJECT_PROC(tcl_, addParticle       , App, this);
-  CTCL_OBJECT_PROC(tcl_, getParticleValue  , App, this);
-  CTCL_OBJECT_PROC(tcl_, setParticleValue  , App, this);
-  CTCL_OBJECT_PROC(tcl_, addSpring         , App, this);
-  CTCL_OBJECT_PROC(tcl_, getSpringValue    , App, this);
-  CTCL_OBJECT_PROC(tcl_, setSpringValue    , App, this);
-  CTCL_OBJECT_PROC(tcl_, addAttraction     , App, this);
-  CTCL_OBJECT_PROC(tcl_, getAttractionValue, App, this);
-  CTCL_OBJECT_PROC(tcl_, setAttractionValue, App, this);
+  CTCL_OBJECT_PROC(tcl_, addShader     , App, this);
+  CTCL_OBJECT_PROC(tcl_, setShaderValue, App, this);
+
+  CTCL_OBJECT_PROC(tcl_, addViewport     , App, this);
+  CTCL_OBJECT_PROC(tcl_, setViewportValue, App, this);
+
+  //---
+
+  // particles
+  CTCL_OBJECT_PROC (tcl_, addParticle       , App, this);
+  CTCL_OBJECT_PROC (tcl_, getParticleValue  , App, this);
+  CTCL_TCL_OBJ_PROC(tcl_, setParticleValue  , App, this);
+  CTCL_OBJECT_PROC (tcl_, addSpring         , App, this);
+  CTCL_OBJECT_PROC (tcl_, getSpringValue    , App, this);
+  CTCL_OBJECT_PROC (tcl_, setSpringValue    , App, this);
+  CTCL_OBJECT_PROC (tcl_, addAttraction     , App, this);
+  CTCL_OBJECT_PROC (tcl_, getAttractionValue, App, this);
+  CTCL_OBJECT_PROC (tcl_, setAttractionValue, App, this);
 
   //---
 
   // add primitives
-  tcl_->createObjCommand("addObject"  , addObjectProc  , this);
-  tcl_->createObjCommand("addVertex"  , addVertexProc  , this);
-  tcl_->createObjCommand("addFace"    , addFaceProc    , this);
-  tcl_->createObjCommand("addLine"    , addLineProc    , this);
-  tcl_->createObjCommand("addMaterial", addMaterialProc, this);
-  tcl_->createObjCommand("addTexture" , addTextureProc , this);
+  CTCL_OBJECT_PROC(tcl_, addObject  , App, this);
+  CTCL_OBJECT_PROC(tcl_, addVertex  , App, this);
+  CTCL_OBJECT_PROC(tcl_, addFace    , App, this);
+  CTCL_OBJECT_PROC(tcl_, addLine    , App, this);
+  CTCL_OBJECT_PROC(tcl_, addMaterial, App, this);
+  CTCL_OBJECT_PROC(tcl_, addTexture , App, this);
+  CTCL_OBJECT_PROC(tcl_, addText    , App, this);
 
   // add shapes
-  tcl_->createObjCommand("addPlane"   , addPlaneProc   , this);
-  tcl_->createObjCommand("addCube"    , addCubeProc    , this);
-  tcl_->createObjCommand("addCone"    , addConeProc    , this);
-  tcl_->createObjCommand("addCylinder", addCylinderProc, this);
-  tcl_->createObjCommand("addSphere"  , addSphereProc  , this);
-  tcl_->createObjCommand("addTerrain" , addTerrainProc , this);
+  CTCL_OBJECT_PROC(tcl_, addPlane   , App, this)
+  CTCL_OBJECT_PROC(tcl_, addCube    , App, this)
+  CTCL_OBJECT_PROC(tcl_, addCone    , App, this)
+  CTCL_OBJECT_PROC(tcl_, addCylinder, App, this)
+  CTCL_OBJECT_PROC(tcl_, addSphere  , App, this)
+  CTCL_OBJECT_PROC(tcl_, addTerrain , App, this)
 
   // get/set primitive data
-  tcl_->createObjCommand("getObjectValue"  , getObjectValueProc  , this);
-  tcl_->createObjCommand("setObjectValue"  , setObjectValueProc  , this);
-  tcl_->createObjCommand("getFaceValue"    , getFaceValueProc    , this);
-  tcl_->createObjCommand("setFaceValue"    , setFaceValueProc    , this);
-  tcl_->createObjCommand("getEdgeValue"    , getEdgeValueProc    , this);
-  tcl_->createObjCommand("setEdgeValue"    , setEdgeValueProc    , this);
-  tcl_->createObjCommand("getVertexValue"  , getVertexValueProc  , this);
-  tcl_->createObjCommand("setVertexValue"  , setVertexValueProc  , this);
-  tcl_->createObjCommand("setMaterialValue", setMaterialValueProc, this);
+  CTCL_OBJECT_PROC(tcl_, getObjectValue, App, this);
+  CTCL_OBJECT_PROC(tcl_, setObjectValue, App, this);
+  CTCL_OBJECT_PROC(tcl_, getFaceValue  , App, this);
+  CTCL_OBJECT_PROC(tcl_, setFaceValue  , App, this);
+  CTCL_OBJECT_PROC(tcl_, getLineValue  , App, this);
+  CTCL_OBJECT_PROC(tcl_, setLineValue  , App, this);
+  CTCL_OBJECT_PROC(tcl_, getEdgeValue  , App, this);
+  CTCL_OBJECT_PROC(tcl_, setEdgeValue  , App, this);
+  CTCL_OBJECT_PROC(tcl_, getVertexValue, App, this);
+  CTCL_OBJECT_PROC(tcl_, setVertexValue, App, this);
+
+  CTCL_OBJECT_PROC(tcl_, setMaterialValue, App, this);
+
+  CTCL_OBJECT_PROC(tcl_, getTextValue, App, this);
+  CTCL_OBJECT_PROC(tcl_, setTextValue, App, this);
 
   CTCL_OBJECT_PROC(tcl_, getObjectProperty, App, this);
   CTCL_OBJECT_PROC(tcl_, setObjectProperty, App, this);
 
   // operate on primitives
-  tcl_->createObjCommand("intersectObjects", intersectObjectsProc, this);
-  tcl_->createObjCommand("inverseObject"   , inverseObjectProc   , this);
-  tcl_->createObjCommand("unionObjects"    , unionObjectsProc    , this);
-  tcl_->createObjCommand("subtractObjects" , subtractObjectsProc , this);
+  CTCL_OBJECT_PROC(tcl_, intersectObjects, App, this);
+  CTCL_OBJECT_PROC(tcl_, inverseObject   , App, this);
+  CTCL_OBJECT_PROC(tcl_, unionObjects    , App, this);
+  CTCL_OBJECT_PROC(tcl_, subtractObjects , App, this);
 
-  tcl_->createObjCommand("extrudeFaces", extrudeFacesProc, this);
-  tcl_->createObjCommand("extrudeEdges", extrudeEdgesProc, this);
-  tcl_->createObjCommand("mergeEdge"   , mergeEdgeProc   , this);
-  tcl_->createObjCommand("separateFace", separateFaceProc, this);
-  tcl_->createObjCommand("separateEdge", separateEdgeProc, this);
-  tcl_->createObjCommand("mirrorObject", mirrorObjectProc, this);
-  tcl_->createObjCommand("fillVertices", fillVerticesProc, this);
+  CTCL_OBJECT_PROC(tcl_, extrudeFaces, App, this);
+  CTCL_OBJECT_PROC(tcl_, extrudeEdges, App, this);
+  CTCL_OBJECT_PROC(tcl_, mergeEdge   , App, this);
+  CTCL_OBJECT_PROC(tcl_, separateFace, App, this);
+  CTCL_OBJECT_PROC(tcl_, separateEdge, App, this);
+  CTCL_OBJECT_PROC(tcl_, mirrorObject, App, this);
+  CTCL_OBJECT_PROC(tcl_, fillVertices, App, this);
 
-  tcl_->createObjCommand("deleteObjects" , deleteObjectsProc , this);
-  tcl_->createObjCommand("deleteFaces"   , deleteFacesProc   , this);
-  tcl_->createObjCommand("deleteVertices", deleteVerticesProc, this);
+  CTCL_OBJECT_PROC(tcl_, deleteObjects , App, this);
+  CTCL_OBJECT_PROC(tcl_, deleteFaces   , App, this);
+  CTCL_OBJECT_PROC(tcl_, deleteVertices, App, this);
 
   // animate
   CTCL_OBJECT_PROC(tcl_, animateReal, App, this);
@@ -704,13 +819,10 @@ initTcl()
   CTCL_OBJECT_PROC(tcl_, writeObj , App, this)
 
   // vector
+  CTCL_OBJECT_PROC (tcl_, vector    , App, this);
   CTCL_TCL_OBJ_PROC(tcl_, get_vector, App, this);
-
-  tcl_->createObjCommand("vector"    , vectorProc   , this);
-//tcl_->createObjCommand("get_vector", getVectorProc, this);
-  tcl_->createObjCommand("set_vector", setVectorProc, this);
-
-  CTCL_OBJECT_PROC(tcl_, calcVector, App, this);
+  CTCL_TCL_OBJ_PROC(tcl_, set_vector, App, this);
+  CTCL_OBJECT_PROC (tcl_, calcVector, App, this);
 
   //---
 
@@ -746,7 +858,9 @@ getAppValueProc(const CTclUtil::StringList &args)
     if (args.size() < 2)
       return tclErrorMsg("Invalid args");
 
-    auto c = CRGBName::toRGBA(args[1]);
+    CRGBA c;
+    if (! stringToColor(args[1], c))
+      return tclErrorMsg("Invalid color");
 
     tcl_->setResult(colorToRealArray(c));
   }
@@ -803,6 +917,15 @@ getAppValueProc(const CTclUtil::StringList &args)
 
     tcl_->setResult(ids);
   }
+  else if (name == "running") {
+    tcl_->setResult(isRunning());
+  }
+  else if (name == "ticks") {
+    tcl_->setResult(int(ticks()));
+  }
+  else if (name == "viewport") {
+    tcl_->setResult(int(canvas()->currentViewport()));
+  }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
 
@@ -819,18 +942,18 @@ setAppValueProc(const CTclUtil::StringList &args)
   auto name = args[0];
 
   if      (name == "bg_color" || name == "bgColor") {
-    CPoint3D p;
-    if (! stringToPoint(args[1], p))
-      return tclErrorMsg("Invalid color '" + args[2] + "'");
+    CRGBA c;
+    if (! stringToColor(args[1], c))
+      return tclErrorMsg("Invalid color '" + args[1] + "'");
 
-    canvas_->setBgColor(RGBAToQColor(CRGBA(p.x, p.y, p.z)));
+    canvas()->setBgColor(RGBAToQColor(c));
   }
   else if (name == "point_size") {
     double size;
     if (! stringToReal(args[1], size))
       return tclErrorMsg("Invalid size '" + args[1] + "'");
 
-    canvas_->setPointSize(size);
+    canvas()->setPointSize(size);
   }
   else if (name == "cursor") {
     CPoint3D p;
@@ -854,60 +977,54 @@ setAppValueProc(const CTclUtil::StringList &args)
     psys_->setDrag(drag);
   }
   else if (name == "bbox") {
-    StringList strs;
-    tcl_->splitList(args[1], strs);
+    CBBox3D bbox;
 
-    if (strs.size() != 6)
+    if (! stringToBBox(args[1], bbox))
       return tclErrorMsg("Invalid bbox '" + args[1] + "'");
 
-    double x1, y1, z1, x2, y2, z2;
-    if (! stringToReal(strs[0], x1) || ! stringToReal(strs[1], y1) || ! stringToReal(strs[2], z1) ||
-        ! stringToReal(strs[3], x2) || ! stringToReal(strs[4], y2) || ! stringToReal(strs[5], z2))
-      return tclErrorMsg("Invalid size '" + args[1] + "'");
-
-    canvas_->setBBox(CBBox3D(CPoint3D(x1, y1, z1), CPoint3D(x2, y2, z2)));
+    canvas()->setBBox(bbox);
   }
   else if (name == "fixed_diffuse") {
     bool b;
     if (! stringToBool(args[1], b))
       return tclErrorMsg("Invalid bool");
 
-    canvas_->setFixedDiffuse(b);
+    canvas()->setFixedDiffuse(b);
   }
   else if (name == "fov") {
     double fov;
     if (! stringToReal(args[1], fov))
       return tclErrorMsg("Invalid fov '" + args[1] + "'");
 
-    canvas_->camera()->setFov(fov);
+    canvas()->camera()->setFov(fov);
   }
   else if (name == "pitch") {
     double pitch;
     if (! stringToReal(args[1], pitch))
       return tclErrorMsg("Invalid pitch '" + args[1] + "'");
 
-    canvas_->camera()->setPitch(degToRad(pitch));
+    canvas()->camera()->setPitch(degToRad(pitch));
   }
   else if (name == "yaw") {
     double yaw;
     if (! stringToReal(args[1], yaw))
       return tclErrorMsg("Invalid yaw '" + args[1] + "'");
 
-    canvas_->camera()->setYaw(degToRad(yaw));
+    canvas()->camera()->setYaw(degToRad(yaw));
   }
   else if (name == "roll") {
     double roll;
     if (! stringToReal(args[1], roll))
       return tclErrorMsg("Invalid roll '" + args[1] + "'");
 
-    canvas_->camera()->setRoll(degToRad(roll));
+    canvas()->camera()->setRoll(degToRad(roll));
   }
   else if (name == "camera_distance") {
     double distance;
     if (! stringToReal(args[1], distance))
       return tclErrorMsg("Invalid distance '" + args[1] + "'");
 
-    canvas_->camera()->setDistance(distance);
+    canvas()->camera()->setDistance(distance);
   }
 #if 0
   else if (name == "perspective") {
@@ -915,14 +1032,185 @@ setAppValueProc(const CTclUtil::StringList &args)
     if (! stringToBool(args[1], b))
       return tclErrorMsg("Invalid bool");
 
-    canvas_->setPerspective(b);
+    canvas()->setPerspective(b);
   }
 #endif
+  else if (name == "running") {
+    bool b;
+    if (! stringToBool(args[1], b))
+      return TCL_ERROR;
+
+    setRunning(b);
+  }
   else if (name == "tick") {
     tick(false);
   }
+  else if (name == "edit_type") {
+    auto astr = toLower(args[1]);
+    if      (astr == "tcl")
+      canvas()->setEditType(EditType::TCL);
+    else if (astr == "select")
+      canvas()->setEditType(EditType::SELECT);
+    else if (astr == "camera")
+      canvas()->setEditType(EditType::CAMERA);
+    else
+      return tclErrorMsg("Invalid edit type '" + args[1] + "'");
+  }
+  else if (name == "viewport") {
+    int v;
+    if (! stringToInteger(args[1], v))
+      return tclErrorMsg("Invalid integer '" + args[1] + "'");
+
+    canvas()->setCurrentViewport(v);
+  }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
+
+  return TCL_OK;
+}
+
+//---
+
+int
+App::
+addViewportProc(const CTclUtil::StringList &args)
+{
+  if (args.size() < 1)
+    return tclErrorMsg("Invalid args");
+
+  CBBox2D r;
+  if (! stringToRect(args[0], r))
+    return tclErrorMsg("Invalid rect '" + args[0] + "'");
+
+  auto id = canvas()->addViewport(r);
+
+  tcl_->setResult(id);
+
+  return TCL_OK;
+}
+
+int
+App::
+setViewportValueProc(const CTclUtil::StringList &args)
+{
+  if (args.size() < 3)
+    return tclErrorMsg("Invalid args");
+
+  auto id = args[0];
+
+  auto *viewportData = canvas()->getViewportData(id);
+  if (! viewportData)
+    return tclErrorMsg("Invalid viewport id");
+
+  auto name = args[1];
+
+  if      (name == "bg_color" || name == "bgColor") {
+    CRGBA c;
+    if (! stringToColor(args[2], c))
+      return tclErrorMsg("Invalid color '" + args[1] + "'");
+
+    viewportData->bgColor = RGBAToQColor(c);
+  }
+  else if (name == "bbox") {
+    CBBox3D bbox;
+
+    if (! stringToBBox(args[2], bbox))
+      return tclErrorMsg("Invalid bbox '" + args[1] + "'");
+
+    canvas()->setBBox(viewportData, bbox);
+  }
+  else if (name == "camera_distance") {
+    double distance;
+    if (! stringToReal(args[2], distance))
+      return tclErrorMsg("Invalid distance '" + args[1] + "'");
+
+    viewportData->camera->setDistance(distance);
+  }
+  else if (name == "clip") {
+    if (args.size() < 4)
+      return tclErrorMsg("Invalid args");
+
+    CVector3D n;
+    if (! stringToVector(args[2], n))
+      return tclErrorMsg("Invalid clip normal '" + args[2] + "'");
+
+    double d;
+    if (! stringToReal(args[3], d))
+      return tclErrorMsg("Invalid clip distance '" + args[3] + "'");
+
+    viewportData->clips.push_back(CPlane3D(n, d));
+  }
+  else {
+    return tclErrorMsg("Invalid value name");
+  }
+
+  return TCL_OK;
+}
+
+//---
+
+int
+App::
+addShaderProc(const CTclUtil::StringList &args)
+{
+  if (args.size() < 2)
+    return tclErrorMsg("Invalid args");
+
+  auto vs = args[0];
+
+  int i = 1;
+
+  std::string gs;
+
+  if (args.size() >= 3)
+    gs = args[i++];
+
+  auto fs = args[i];
+
+  std::string id;
+
+  if (gs != "")
+    id = canvas()->addShaderData(vs, gs, fs);
+  else
+    id = canvas()->addShaderData(vs, fs);
+
+  tcl_->setResult(id);
+
+  return TCL_OK;
+}
+
+int
+App::
+setShaderValueProc(const CTclUtil::StringList &args)
+{
+  if (args.size() < 3)
+    return tclErrorMsg("Invalid args");
+
+  auto id = args[0];
+
+  auto *shaderData = canvas()->getShaderData(id);
+  if (! shaderData)
+    return tclErrorMsg("Invalid Shader id");
+
+  auto name = args[1];
+
+  if      (name == "point") {
+    bool b;
+    if (! stringToBool(args[2], b))
+      return TCL_ERROR;
+
+    shaderData->point = b;
+  }
+  else if (name == "line_width") {
+    double w;
+    if (! stringToReal(args[2], w))
+      return tclErrorMsg("Invalid width");
+
+    shaderData->lineWidth = w;
+  }
+  else {
+    return tclErrorMsg("Invalid value name");
+  }
 
   return TCL_OK;
 }
@@ -943,11 +1231,25 @@ addParticleProc(const CTclUtil::StringList &args)
   double mass = 1.0;
 
   if (args.size() > 1) {
-    if (! stringToReal(args[0], mass))
+    if (! stringToReal(args[1], mass))
       return tclErrorMsg("Invalid mass");
   }
 
+  if (args.size() > 2) {
+    CGeomObject3D *object;
+
+    if (! decodeObject(args[2], object))
+      return tclErrorMsg("Invalid object id '" + args[2] + "'");
+
+    auto *object1 = dynamic_cast<GeomObject *>(object);
+    assert(object1);
+
+    psys_->setParticleObj(object1);
+  }
+
   auto *particle = psys_->makeParticle(mass, p.x, p.y, p.z);
+
+  psys_->setParticleObj(nullptr);
 
   tcl_->setResult(encodeParticle(particle));
 
@@ -968,61 +1270,75 @@ getParticleValueProc(const CTclUtil::StringList &args)
     return tclErrorMsg("Invalid particle id '" + args[0] + "'");
 
   auto *particle1 = dynamic_cast<Particle *>(particle);
-  assert(particle1);
 
   auto name = args[1];
 
   if      (name == "position") {
-    auto *position = particle1->position();
+    auto *position = particle->position();
 
     tcl_->setResult(pointToRealArray(CPoint3D(position->x(), position->y(), position->z())));
   }
   else if (name == "velocity") {
-    auto *velocity = particle1->velocity();
+    auto *velocity = particle->velocity();
 
     tcl_->setResult(pointToRealArray(CPoint3D(velocity->x(), velocity->y(), velocity->z())));
   }
   else if (name == "mass") {
-    auto mass = particle1->mass();
+    auto mass = particle->mass();
 
     tcl_->setResult(mass);
   }
   else if (name == "force") {
-    auto *force = particle1->force();
+    auto *force = particle->force();
 
     tcl_->setResult(pointToRealArray(CPoint3D(force->x(), force->y(), force->z())));
   }
   else if (name == "age") {
-    auto age = particle1->age();
+    auto age = particle->age();
 
     tcl_->setResult(age);
   }
   else if (name == "color") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     const auto &color = particle1->color();
 
     tcl_->setResult(colorToRealArray(color));
   }
   else if (name == "dead") {
-    auto dead = particle1->isDead();
+    auto dead = particle->isDead();
 
     tcl_->setResult(dead);
   }
   else if (name == "size") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     auto size = particle1->size();
 
     tcl_->setResult(size);
   }
   else if (name == "alpha") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     auto alpha = particle1->alpha();
 
     tcl_->setResult(alpha);
   }
   else if (name == "angle") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     auto angle = 180.0*particle1->angle()/M_PI;
 
     tcl_->setResult(angle);
   }
   else if (name == "meta") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     const auto &meta = particle1->meta();
 
     tcl_->setResult(meta);
@@ -1035,77 +1351,78 @@ getParticleValueProc(const CTclUtil::StringList &args)
 
 int
 App::
-setParticleValueProc(const CTclUtil::StringList &args)
+setParticleValueProc(const std::vector<Tcl_Obj *> &objs)
 {
-  if (args.size() < 3)
+  if (objs.size() < 3)
     return tclErrorMsg("Invalid args");
 
   CPSysParticle *particle;
-  if (! decodeParticle(args[0], particle))
-    return tclErrorMsg("Invalid particle id '" + args[0] + "'");
+  if (! decodeParticle(objs[0], particle))
+    return TCL_ERROR;
 
   auto *particle1 = dynamic_cast<Particle *>(particle);
-  assert(particle1);
 
-  auto name = args[1];
+  auto name = CTclUtil::stringFromObj(objs[1]);
 
   if      (name == "position") {
     CPoint3D p;
-    if (! stringToPoint(args[2], p))
-      return tclErrorMsg("Invalid point '" + args[2] + "'");
+    if (! decodePoint(objs[2], p))
+      return TCL_ERROR;
 
-    particle1->setPosition(p.x, p.y, p.z);
+    particle->setPosition(p.x, p.y, p.z);
   }
   else if (name == "velocity") {
     CPoint3D p;
-    if (! stringToPoint(args[2], p))
-      return tclErrorMsg("Invalid point '" + args[2] + "'");
+    if (! decodePoint(objs[2], p))
+      return TCL_ERROR;
 
-    particle1->setVelocity(p.x, p.y, p.z);
+    particle->setVelocity(p.x, p.y, p.z);
   }
   else if (name == "mass") {
     double mass;
-    if (! stringToReal(args[2], mass))
-      return tclErrorMsg("Invalid mass '" + args[2] + "'");
+    if (! decodeReal(objs[2], mass))
+      return TCL_ERROR;
 
-    particle1->setMass(mass);
+    particle->setMass(mass);
   }
   else if (name == "force") {
     CPoint3D p;
-    if (! stringToPoint(args[2], p))
-      return tclErrorMsg("Invalid point '" + args[2] + "'");
+    if (! decodePoint(objs[2], p))
+      return TCL_ERROR;
 
-    particle1->setForce(p.x, p.y, p.z);
+    particle->setForce(p.x, p.y, p.z);
   }
   else if (name == "age") {
     double age;
-    if (! stringToReal(args[2], age))
-      return tclErrorMsg("Invalid age '" + args[2] + "'");
+    if (! decodeReal(objs[2], age))
+      return TCL_ERROR;
 
-    particle1->setAge(age);
+    particle->setAge(age);
   }
   else if (name == "color") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     CPoint3D p;
-    if (! stringToPoint(args[2], p))
-      return tclErrorMsg("Invalid point '" + args[2] + "'");
+    if (! decodePoint(objs[2], p))
+      return TCL_ERROR;
 
     particle1->setColor(CRGBA(p.x, p.y, p.z));
   }
   else if (name == "dead") {
     bool dead;
-    if (! stringToBool(args[2], dead))
-      return tclErrorMsg("Invalid bool");
+    if (! decodeBool(objs[2], dead))
+      return TCL_ERROR;
 
-    particle1->setDead(dead);
+    particle->setDead(dead);
   }
   else if (name == "texture") {
-    int textureId;
-    if (! decodeTextureId(args[2], textureId))
-      return tclErrorMsg("Invalid texture id '" + args[2] + "'");
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
 
-    auto *texture = scene_->getTextureById(textureId);
-    if (! texture)
-      return tclErrorMsg("Invalid texture id " + std::to_string(textureId));
+    CGeomTexture* texture;
+    if (! decodeTexture(objs[2], texture))
+      return TCL_ERROR;
 
     auto *texture1 = dynamic_cast<Texture *>(texture);
     assert(texture1);
@@ -1113,42 +1430,70 @@ setParticleValueProc(const CTclUtil::StringList &args)
     particle1->setTexture(texture1);
   }
   else if (name == "size") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     double size;
-    if (! stringToReal(args[2], size))
-      return tclErrorMsg("Invalid size '" + args[2] + "'");
+    if (! decodeReal(objs[2], size))
+      return TCL_ERROR;
 
     particle1->setSize(size);
   }
   else if (name == "alpha") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     double alpha;
-    if (! stringToReal(args[2], alpha))
-      return tclErrorMsg("Invalid alpha '" + args[2] + "'");
+    if (! decodeReal(objs[2], alpha))
+      return TCL_ERROR;
 
     particle1->setAlpha(alpha);
   }
   else if (name == "angle") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     double angle;
-    if (! stringToReal(args[2], angle))
-      return tclErrorMsg("Invalid angle '" + args[2] + "'");
+    if (! decodeReal(objs[2], angle))
+      return TCL_ERROR;
 
     particle1->setAngle(M_PI*angle/180.0);
   }
   else if (name == "tpos") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     CPoint2D tpos;
-    if (! stringToPoint(args[2], tpos))
-      return tclErrorMsg("Invalid texture pos '" + args[2] + "'");
+    if (! decodePoint(objs[2], tpos))
+      return TCL_ERROR;
 
     particle1->setTPos(tpos);
   }
   else if (name == "tsize") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
     CPoint2D tsize;
-    if (! stringToPoint(args[2], tsize))
-      return tclErrorMsg("Invalid texture pos '" + args[2] + "'");
+    if (! decodePoint(objs[2], tsize))
+      return TCL_ERROR;
 
     particle1->setTSize(CSize2D(tsize.x, tsize.y));
   }
+  else if (name == "shader") {
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
+    auto id = CTclUtil::stringFromObj(objs[2]);
+
+    particle1->setShader(id);
+  }
   else if (name == "meta") {
-    particle1->setMeta(args[2]);
+    if (! particle1)
+      return tclErrorMsg("Invalid particle");
+
+    auto value = CTclUtil::stringFromObj(objs[2]);
+
+    particle1->setMeta(value);
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
@@ -1353,76 +1698,61 @@ setAttractionValueProc(const CTclUtil::StringList &args)
 
 int
 App::
-addObjectProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addObjectProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addObjectProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 0)
     return tclErrorMsg("Invalid args");
 
-  auto name = "object." + std::to_string(app->scene_->getObjects().size() + 1);
+  auto name = "object." + std::to_string(scene()->getObjects().size() + 1);
 
-  auto *object = CGeometry3DInst->createObject3D(app->scene_, name);
+  auto *object = CGeometry3DInst->createObject3D(scene(), name);
 
-  app->scene_->addObject(object);
+  scene()->addObject(object);
 
-  app->tcl()->setResult(encodeObject(object));
+  tcl()->setResult(encodeObject(object));
 
-  app->canvas()->updateScene(/*updateBBox*/false);
+  canvas()->updateScene(/*updateBBox*/false);
 
   return TCL_OK;
 }
 
 int
 App::
-addVertexProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addVertexProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addVertexProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
     return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
-  if (! app->decodeObject(args[0], object))
+  if (! decodeObject(args[0], object))
     return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   CPoint3D p;
-  if (! app->stringToPoint(args[1], p))
+  if (! stringToPoint(args[1], p))
     return tclErrorMsg("Invalid point '" + args[1] + "'");
 
   auto vind = object->addVertex(p);
 
-  app->tcl()->setResult(encodeObjectVertexId(object, vind));
+  tcl()->setResult(encodeObjectVertexId(object, vind));
 
-  app->canvas()->updateScene(/*updateBBox*/false);
+  canvas()->updateScene(/*updateBBox*/false);
 
   return TCL_OK;
 }
 
 int
 App::
-addFaceProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addFaceProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addFaceProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
     return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
-  if (! app->decodeObject(args[0], object))
+  if (! decodeObject(args[0], object))
     return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   StringList strs;
-  app->tcl()->splitList(args[1], strs);
+  tcl()->splitList(args[1], strs);
 
   std::vector<uint> vertices;
 
@@ -1439,31 +1769,26 @@ addFaceProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * c
 
   auto faceId = object->addFace(vertices);
 
-  app->tcl()->setResult(encodeObjectFaceId(object->getInd(), faceId));
+  tcl()->setResult(encodeObjectFaceId(object->getInd(), faceId));
 
-  app->canvas()->updateScene(/*updateBBox*/false);
+  canvas()->updateScene(/*updateBBox*/false);
 
   return TCL_OK;
 }
 
 int
 App::
-addLineProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addLineProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addFaceProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
     return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
-  if (! app->decodeObject(args[0], object))
+  if (! decodeObject(args[0], object))
     return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   StringList strs;
-  app->tcl()->splitList(args[1], strs);
+  tcl()->splitList(args[1], strs);
 
   std::vector<uint> vertices;
 
@@ -1480,22 +1805,17 @@ addLineProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * c
 
   auto lineId = object->addLine(vertices[0], vertices[1]);
 
-  app->tcl()->setResult(encodeObjectLineId(object->getInd(), lineId));
+  tcl()->setResult(encodeObjectLineId(object->getInd(), lineId));
 
-  app->canvas()->updateScene(/*updateBBox*/false);
+  canvas()->updateScene(/*updateBBox*/false);
 
   return TCL_OK;
 }
 
 int
 App::
-addMaterialProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addMaterialProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addMaterialProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
@@ -1505,22 +1825,17 @@ addMaterialProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
 
   material->setName(name);
 
-  app->scene_->addMaterial(material);
+  scene_->addMaterial(material);
 
-  app->tcl()->setResult(encodeMaterial(material));
+  tcl()->setResult(encodeMaterial(material));
 
   return TCL_OK;
 }
 
 int
 App::
-addTextureProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addTextureProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addTextureProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
@@ -1532,23 +1847,54 @@ addTextureProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj 
 
   texture->setFilename(name);
 
-  app->scene_->addTexture(texture);
+  scene_->addTexture(texture);
 
-  app->tcl()->setResult(encodeTexture(texture));
+  tcl()->setResult(encodeTexture(texture));
 
   return TCL_OK;
 }
 
 int
 App::
-addPlaneProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addTextProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addPlaneProc\n";
+  if (args.size() != 3)
+    return tclErrorMsg("Invalid args");
 
-  auto *app = reinterpret_cast<App *>(clientData);
+  auto str = args[0];
 
-  auto args = CTclUtil::getObjArgs(objc, objv);
+  CPoint3D p;
+  if (! stringToPoint(args[1], p))
+    return tclErrorMsg("Invalid point '" + args[1] + "'");
 
+  double size;
+  if (! stringToReal(args[2], size))
+    return tclErrorMsg("Invalid size '" + args[2] + "'");
+
+  auto *font = canvas()->font();
+
+  auto *text = new Text(str);
+
+  text->setId(canvas()->texts().size() + 1);
+  text->setFont(font);
+  text->setColor(CRGBA::white());
+  text->setPosition(CGLVector3D(p.x, p.y, p.z));
+  text->setSize(size);
+  text->setOverlay(false);
+
+  canvas()->addText(text);
+
+  text->updateText();
+
+  tcl()->setResult(encodeText(text));
+
+  return TCL_OK;
+}
+
+int
+App::
+addPlaneProc(const CTclUtil::StringList &args)
+{
   double w = 1.0;
   double h = 1.0;
 
@@ -1565,35 +1911,29 @@ addPlaneProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * 
   else if (! args.empty())
     return tclErrorMsg("Invalid args");
 
-  auto c = app->cursor();
+  auto c = cursor();
 
-  auto n = app->scene_->getObjects().size();
+  auto n = scene_->getObjects().size();
   auto name = "plane." + std::to_string(n + 1);
 
-  //auto *plane = new CGeomPlane3D(app->scene_, name, c, w, h);
-  auto *plane = CGeometry3DInst->createObject3D(app->scene_, name);
+  //auto *plane = new CGeomPlane3D(scene_, name, c, w, h);
+  auto *plane = CGeometry3DInst->createObject3D(scene_, name);
 
   CGeomPlane3D::addGeometry(plane, c, w, h);
 
   plane->setInd(CGeometry3DInst->nextObjectId());
 
-  app->scene_->addObject(plane);
+  scene_->addObject(plane);
 
-  app->tcl()->setResult(encodeObject(plane));
+  tcl()->setResult(encodeObject(plane));
 
   return TCL_OK;
 }
 
 int
 App::
-addCubeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addCubeProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addCubeProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
-
   double r = 1.0;
 
   if      (args.size() == 1) {
@@ -1603,35 +1943,29 @@ addCubeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * c
   else if (! args.empty())
     return tclErrorMsg("Invalid args");
 
-  auto c = app->cursor();
+  auto c = cursor();
 
-  auto n = app->scene_->getObjects().size();
+  auto n = scene_->getObjects().size();
   auto name = "cube." + std::to_string(n + 1);
 
-//auto *cube = new CGeomCube3D(app->scene_, name, c, r);
-  auto *cube = CGeometry3DInst->createObject3D(app->scene_, name);
+//auto *cube = new CGeomCube3D(scene_, name, c, r);
+  auto *cube = CGeometry3DInst->createObject3D(scene_, name);
 
   CGeomCube3D::addGeometry(cube, c, r);
 
   cube->setInd(CGeometry3DInst->nextObjectId());
 
-  app->scene_->addObject(cube);
+  scene_->addObject(cube);
 
-  app->tcl()->setResult(encodeObject(cube));
+  tcl()->setResult(encodeObject(cube));
 
   return TCL_OK;
 }
 
 int
 App::
-addConeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addConeProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addConeProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
-
   double w = 1.0;
   double h = 1.0;
 
@@ -1648,35 +1982,29 @@ addConeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * c
   else if (! args.empty())
     return tclErrorMsg("Invalid args");
 
-  auto c = app->cursor();
+  auto c = cursor();
 
-  auto n = app->scene_->getObjects().size();
+  auto n = scene_->getObjects().size();
   auto name = "cone." + std::to_string(n + 1);
 
-  //auto *cone = new CGeomCone3D(app->scene_, name, c, w, h);
-  auto *cone = CGeometry3DInst->createObject3D(app->scene_, name);
+  //auto *cone = new CGeomCone3D(scene_, name, c, w, h);
+  auto *cone = CGeometry3DInst->createObject3D(scene_, name);
 
   CGeomCone3D::addGeometry(cone, c, w, h);
 
   cone->setInd(CGeometry3DInst->nextObjectId());
 
-  app->scene_->addObject(cone);
+  scene_->addObject(cone);
 
-  app->tcl()->setResult(encodeObject(cone));
+  tcl()->setResult(encodeObject(cone));
 
   return TCL_OK;
 }
 
 int
 App::
-addCylinderProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addCylinderProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addCylinderProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
-
   double w = 1.0;
   double h = 1.0;
 
@@ -1693,35 +2021,29 @@ addCylinderProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
   else if (! args.empty())
     return tclErrorMsg("Invalid args");
 
-  auto c = app->cursor();
+  auto c = cursor();
 
-  auto n = app->scene_->getObjects().size();
+  auto n = scene_->getObjects().size();
   auto name = "cylinder." + std::to_string(n + 1);
 
-  //auto *cylinder = new CGeomCylinder3D(app->scene_, name, c, w, h);
-  auto *cylinder = CGeometry3DInst->createObject3D(app->scene_, name);
+  //auto *cylinder = new CGeomCylinder3D(scene_, name, c, w, h);
+  auto *cylinder = CGeometry3DInst->createObject3D(scene_, name);
 
   CGeomCylinder3D::addGeometry(cylinder, c, w, h);
 
   cylinder->setInd(CGeometry3DInst->nextObjectId());
 
-  app->scene_->addObject(cylinder);
+  scene_->addObject(cylinder);
 
-  app->tcl()->setResult(encodeObject(cylinder));
+  tcl()->setResult(encodeObject(cylinder));
 
   return TCL_OK;
 }
 
 int
 App::
-addSphereProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addSphereProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addSphereProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
-
   double r = 1.0;
 
   if      (args.size() == 1) {
@@ -1731,13 +2053,13 @@ addSphereProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj *
   else if (! args.empty())
     return tclErrorMsg("Invalid args");
 
-  auto c = app->cursor();
+  auto c = cursor();
 
-  auto n = app->scene_->getObjects().size();
+  auto n = scene_->getObjects().size();
   auto name = "sphere." + std::to_string(n + 1);
 
-  //auto *sphere = new CGeomSphere3D(app->scene_, name, c, r);
-  auto *sphere = CGeometry3DInst->createObject3D(app->scene_, name);
+  //auto *sphere = new CGeomSphere3D(scene_, name, c, r);
+  auto *sphere = CGeometry3DInst->createObject3D(scene_, name);
 
   CGeomSphere3D::addGeometry(sphere, c, r);
 
@@ -1746,22 +2068,17 @@ addSphereProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj *
   CGeomSphere3D::addTexturePoints(sphere);
   CGeomSphere3D::addNormals(sphere, 1.0);
 
-  app->scene_->addObject(sphere);
+  scene_->addObject(sphere);
 
-  app->tcl()->setResult(encodeObject(sphere));
+  tcl()->setResult(encodeObject(sphere));
 
   return TCL_OK;
 }
 
 int
 App::
-addTerrainProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+addTerrainProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "addTerrainProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 3)
     return tclErrorMsg("Invalid args");
 
@@ -1805,9 +2122,9 @@ addTerrainProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj 
 
   auto name = "terrain." + std::to_string(n + 1);
 
-  auto *object = CGeometry3DInst->createObject3D(app->scene_, name);
+  auto *object = CGeometry3DInst->createObject3D(scene_, name);
 
-  app->scene_->addObject(object);
+  scene_->addObject(object);
 
   //---
 
@@ -1938,37 +2255,32 @@ addTerrainProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj 
 
   //---
 
-  app->tcl()->setResult(encodeObject(object));
+  tcl()->setResult(encodeObject(object));
 
   return TCL_OK;
 }
 
 int
 App::
-getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+getObjectValueProc(const StringList &args)
 {
-  //std::cerr << "getObjectValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
     return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
-  if (! app->decodeObject(args[0], object))
+  if (! decodeObject(args[0], object))
     return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   auto name = args[1];
 
   if      (name == "name") {
-    app->tcl()->setResult(object->getName());
+    tcl()->setResult(object->getName());
   }
   else if (name == "selected") {
-    app->tcl()->setResult(object->getSelected());
+    tcl()->setResult(object->getSelected());
   }
   else if (name == "visible") {
-    app->tcl()->setResult(object->getVisible());
+    tcl()->setResult(object->getVisible());
   }
   else if (name == "faces") {
     const auto &faces = object->getFaces();
@@ -1981,7 +2293,7 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
       faceIds1.push_back(faceId1);
     }
 
-    app->tcl()->setResult(faceIds1);
+    tcl()->setResult(faceIds1);
   }
   else if (name == "edges") {
     const auto &edges = object->getEdges();
@@ -1994,7 +2306,7 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
       edgeIds1.push_back(edgeId1);
     }
 
-    app->tcl()->setResult(edgeIds1);
+    tcl()->setResult(edgeIds1);
   }
   else if (name == "vertices") {
     const auto &vertices = object->getVertices();
@@ -2009,51 +2321,51 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
       vertices1.push_back(vertexId1);
     }
 
-    app->tcl()->setResult(vertices1);
+    tcl()->setResult(vertices1);
   }
   else if (name == "nearest_face") {
     if (args.size() < 2)
       return tclErrorMsg("Invalid args");
 
     CPoint3D p;
-    if (! app->stringToPoint(args[2], p))
+    if (! stringToPoint(args[2], p))
       return tclErrorMsg("Invalid point '" + args[2] + "'");
 
-    auto *face = app->getNearestFace(object, p);
+    auto *face = getNearestFace(object, p);
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "named_face") {
     if (args.size() < 2)
       return tclErrorMsg("Invalid args");
 
-    auto *face = app->getNamedFace(object, args[2]);
+    auto *face = getNamedFace(object, args[2]);
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "nearest_edge") {
     if (args.size() < 2)
       return tclErrorMsg("Invalid args");
 
     CPoint3D p;
-    if (! app->stringToPoint(args[2], p))
+    if (! stringToPoint(args[2], p))
       return tclErrorMsg("Invalid point '" + args[2] + "'");
 
-    auto *edge = app->getNearestEdge(object, p);
+    auto *edge = getNearestEdge(object, p);
 
-    app->tcl()->setResult(encodeEdge(edge));
+    tcl()->setResult(encodeEdge(edge));
   }
   else if (name == "nearest_vertex") {
     if (args.size() < 2)
       return tclErrorMsg("Invalid args");
 
     CPoint3D p;
-    if (! app->stringToPoint(args[2], p))
+    if (! stringToPoint(args[2], p))
       return tclErrorMsg("Invalid point '" + args[2] + "'");
 
-    auto *vertex = app->getNearestVertex(object, p);
+    auto *vertex = getNearestVertex(object, p);
 
-    app->tcl()->setResult(encodeVertex(vertex));
+    tcl()->setResult(encodeVertex(vertex));
   }
   else if (name == "selected_faces") {
     const auto &faces = object->getFaces();
@@ -2069,7 +2381,7 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
       faceIds1.push_back(faceId1);
     }
 
-    app->tcl()->setResult(faceIds1);
+    tcl()->setResult(faceIds1);
   }
   else if (name == "selected_vertices") {
     const auto &vertices = object->getVertices();
@@ -2085,22 +2397,52 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
       vertexIds1.push_back(vertexId1);
     }
 
-    app->tcl()->setResult(vertexIds1);
+    tcl()->setResult(vertexIds1);
   }
   else if (name == "bbox") {
     CBBox3D bbox;
     object->getModelBBox(bbox);
 
-    app->tcl()->setResult(bboxToRealArrays(bbox));
+    tcl()->setResult(bboxToRealArrays(bbox));
+  }
+  else if (name == "center") {
+    auto c = object->getModelCenter();
+
+    tcl()->setResult(pointToRealArray(c));
   }
   else if (name == "ref_object") {
     auto *object1 = object->createRef();
 
     object1->setInd(CGeometry3DInst->nextObjectId());
 
-    app->scene()->addObject(object1);
+    scene_->addObject(object1);
 
-    app->tcl()->setResult(encodeObject(object1));
+    auto children = object1->hierChildren();
+
+    for (auto *child : children) {
+      child->setInd(CGeometry3DInst->nextObjectId());
+
+      scene_->addObject(child);
+    }
+
+    scene()->addObject(object1);
+
+    tcl()->setResult(encodeObject(object1));
+  }
+  else if (name == "child") {
+    if (args.size() < 3)
+      return tclErrorMsg("Invalid args");
+
+    auto *child = object->getChildOfName(args[2]);
+
+    tcl()->setResult(encodeObject(child));
+  }
+  else if (name == "meta") {
+    auto *object1 = dynamic_cast<GeomObject *>(object);
+
+    auto meta = (object1 ? object1->meta() : "");
+
+    tcl()->setResult(meta);
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
@@ -2110,18 +2452,13 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
 
 int
 App::
-setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+setObjectValueProc(const StringList &args)
 {
-  //std::cerr << "setObjectValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 3)
     return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
-  if (! app->decodeObject(args[0], object))
+  if (! decodeObject(args[0], object))
     return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   auto name = args[1];
@@ -2144,19 +2481,15 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
     object->setVisible(visible);
   }
   else if (name == "material") {
-    int materialId;
-    if (! decodeMaterialId(args[2], materialId))
+    CGeomMaterial *material;
+    if (! decodeMaterial(args[2], material))
       return tclErrorMsg("Invalid material id '" + args[2] + "'");
-
-    auto *material = app->scene_->getMaterialById(materialId);
-    if (! material)
-      return tclErrorMsg("Invalid material id " + std::to_string(materialId));
 
     object->setMaterialP(material);
   }
   else if (name == "translate") {
     StringList strs;
-    app->tcl()->splitList(args[2], strs);
+    tcl()->splitList(args[2], strs);
 
     double tx, ty, tz;
 
@@ -2188,11 +2521,11 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
     else
       object->translate(tx, ty, tz, /*hier*/true);
 
-    app->canvas()->updateScene(/*updateBBox*/false);
+    canvas()->updateScene(/*updateBBox*/false);
   }
   else if (name == "scale") {
     StringList strs;
-    app->tcl()->splitList(args[2], strs);
+    tcl()->splitList(args[2], strs);
 
     double sx, sy, sz;
 
@@ -2214,14 +2547,14 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
 
     object->scale(sx, sy, sz, /*hier*/true);
 
-    app->canvas()->updateScene(/*updateBBox*/false);
+    canvas()->updateScene(/*updateBBox*/false);
   }
   else if (name == "rotate") {
     if (args.size() < 4)
       return tclErrorMsg("Invalid rotate value");
 
     CVector3D v;
-    if (! app->stringToVector(args[2], v))
+    if (! stringToVector(args[2], v))
       return tclErrorMsg("Invalid rotate vector '" + args[2] + "'");
 
     double a;
@@ -2230,11 +2563,36 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
 
     object->rotateModel(degToRad(a), v, /*hier*/true);
 
-    app->canvas()->updateScene(/*updateBBox*/false);
+    canvas()->updateScene(/*updateBBox*/false);
+  }
+  else if (name == "rotate_at") {
+    if (args.size() < 5)
+      return tclErrorMsg("Invalid rotate_at value");
+
+    CVector3D v;
+    if (! stringToVector(args[2], v))
+      return tclErrorMsg("Invalid rotate_at vector '" + args[2] + "'");
+
+    CPoint3D o;
+    if (! stringToPoint(args[3], o))
+      return tclErrorMsg("Invalid rotate_at point '" + args[3] + "'");
+
+    double a;
+    if (! stringToReal(args[4], a))
+      return tclErrorMsg("Invalid rotate angle '" + args[4] + "'");
+
+    CMatrix3D m1, m2, m3;
+    m1.setTranslation(o);
+    m2.setRotation(a, v);
+    m3.setTranslation(-o);
+
+    object->transform(m1*m2*m3, /*hier*/true);
+
+    canvas()->updateScene(/*updateBBox*/false);
   }
   else if (name == "rotate_xyz") {
     StringList strs;
-    app->tcl()->splitList(args[2], strs);
+    tcl()->splitList(args[2], strs);
 
     double ax, ay, az;
 
@@ -2258,28 +2616,29 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
     object->rotateModelY(degToRad(ay));
     object->rotateModelZ(degToRad(az));
   }
+  else if (name == "meta") {
+    auto *object1 = dynamic_cast<GeomObject *>(object);
+
+    if (object1)
+      object1->setMeta(args[2]);
+  }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
 
-  app->tcl()->setResult(encodeObject(object));
+  tcl()->setResult(encodeObject(object));
 
   return TCL_OK;
 }
 
 int
 App::
-getFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+getFaceValueProc(const StringList &args)
 {
-  //std::cerr << "getFaceValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
     return tclErrorMsg("Invalid args");
 
   CGeomFace3D *face;
-  if (! app->decodeFace(args[0], face))
+  if (! decodeFace(args[0], face))
     return tclErrorMsg("Invalid face id '" + args[0] + "'");
 
   auto *object = face->getObject();
@@ -2287,38 +2646,38 @@ getFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
   auto name = args[1];
 
   if      (name == "ind") {
-    app->tcl()->setResult(int(face->getInd()));
+    tcl()->setResult(int(face->getInd()));
   }
   else if (name == "name") {
-    app->tcl()->setResult(face->name());
+    tcl()->setResult(face->name());
   }
   else if (name == "color") {
     auto color = face->getColor();
 
-    app->tcl()->setResult(color.stringEncode());
+    tcl()->setResult(color.stringEncode());
   }
   else if (name == "center") {
     auto center = face->calcModelCenter();
 
-    app->tcl()->setResult(pointToRealArray(center));
+    tcl()->setResult(pointToRealArray(center));
   }
   else if (name == "normal") {
     CVector3D normal;
     face->calcModelNormal(normal);
 
-    app->tcl()->setResult(pointToRealArray(normal.point()));
+    tcl()->setResult(pointToRealArray(normal.point()));
   }
   else if (name == "edge_vector") {
     if (args.size() < 3)
       return tclErrorMsg("Invalid args");
 
     CGeomEdge3D *edge;
-    if (! app->decodeEdge(args[2], edge))
+    if (! decodeEdge(args[2], edge))
       return tclErrorMsg("Invalid edge id '" + args[2] + "'");
 
     auto v = face->edgeVector(edge);
 
-    app->tcl()->setResult(pointToRealArray(v.point()));
+    tcl()->setResult(pointToRealArray(v.point()));
   }
   else if (name == "vertices") {
     const auto &vertexIds = face->getVertices();
@@ -2331,19 +2690,19 @@ getFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       vertices1.push_back(vertexId1);
     }
 
-    app->tcl()->setResult(vertices1);
+    tcl()->setResult(vertices1);
   }
   else if (name == "nearest_vertex") {
     if (args.size() < 2)
       return tclErrorMsg("Invalid args");
 
     CPoint3D p;
-    if (! app->stringToPoint(args[2], p))
+    if (! stringToPoint(args[2], p))
       return tclErrorMsg("Invalid point '" + args[2] + "'");
 
-    auto *vertex = app->getNearestVertex(face, p);
+    auto *vertex = getNearestVertex(face, p);
 
-    app->tcl()->setResult(encodeVertex(vertex));
+    tcl()->setResult(encodeVertex(vertex));
   }
   else if (name == "edges") {
     const auto &edges = face->getEdges();
@@ -2356,25 +2715,25 @@ getFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       edges1.push_back(edgeId1);
     }
 
-    app->tcl()->setResult(edges1);
+    tcl()->setResult(edges1);
   }
   else if (name == "nearest_edge") {
     if (args.size() < 2)
       return tclErrorMsg("Invalid args");
 
     CPoint3D p;
-    if (! app->stringToPoint(args[2], p))
+    if (! stringToPoint(args[2], p))
       return tclErrorMsg("Invalid point '" + args[2] + "'");
 
-    auto *edge = app->getNearestEdge(face, p);
+    auto *edge = getNearestEdge(face, p);
 
-    app->tcl()->setResult(encodeEdge(edge));
+    tcl()->setResult(encodeEdge(edge));
   }
   else if (name == "bbox") {
     CBBox3D bbox;
     face->getModelBBox(bbox);
 
-    app->tcl()->setResult(bboxToRealArrays(bbox));
+    tcl()->setResult(bboxToRealArrays(bbox));
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
@@ -2384,18 +2743,13 @@ getFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
 int
 App::
-setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+setFaceValueProc(const StringList &args)
 {
-  //std::cerr << "setFaceValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 3)
     return tclErrorMsg("Invalid args");
 
   CGeomFace3D *face;
-  if (! app->decodeFace(args[0], face))
+  if (! decodeFace(args[0], face))
     return tclErrorMsg("Invalid face id '" + args[0] + "'");
 
   auto name = args[1];
@@ -2407,44 +2761,44 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
     face->setSelected(selected);
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "color") {
     if (args.size() != 3)
       return tclErrorMsg("Invalid args");
 
-    face->setColor(CRGBName::toRGBA(args[2]));
+    CRGBA c;
+    if (! stringToColor(args[2], c))
+      return tclErrorMsg("Invalid color");
 
-    app->tcl()->setResult(encodeFace(face));
+    face->setColor(c);
+
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "normal") {
     if (args.size() != 3)
       return tclErrorMsg("Invalid args");
 
     CPoint3D p;
-    if (! app->stringToPoint(args[2], p))
+    if (! stringToPoint(args[2], p))
       return tclErrorMsg("Invalid point '" + args[2] + "'");
 
     face->setNormal(CVector3D(p));
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "material") {
-    int materialId;
-    if (! decodeMaterialId(args[2], materialId))
+    CGeomMaterial *material;
+    if (! decodeMaterial(args[2], material))
       return tclErrorMsg("Invalid material id '" + args[2] + "'");
-
-    auto *material = app->scene_->getMaterialById(materialId);
-    if (! material)
-      return tclErrorMsg("Invalid material id " + std::to_string(materialId));
 
     face->setMaterialP(material);
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "translate") {
     StringList strs;
-    app->tcl()->splitList(args[2], strs);
+    tcl()->splitList(args[2], strs);
 
     double tx, ty, tz;
 
@@ -2466,11 +2820,11 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
     face->moveBy(CVector3D(tx, ty, tz));
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "scale") {
     StringList strs;
-    app->tcl()->splitList(args[2], strs);
+    tcl()->splitList(args[2], strs);
 
     double sx, sy, sz;
 
@@ -2492,18 +2846,18 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
     face->scale(sx, sy, sz);
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "center_scale") {
     if (args.size() < 4)
       return tclErrorMsg("Invalid args");
 
     CVector3D c;
-    if (! app->stringToVector(args[2], c))
+    if (! stringToVector(args[2], c))
       return tclErrorMsg("Invalid center '" + args[2] + "'");
 
     StringList strs;
-    app->tcl()->splitList(args[3], strs);
+    tcl()->splitList(args[3], strs);
 
     double sx, sy, sz;
 
@@ -2525,11 +2879,11 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
     face->centerScale(c.point(), CVector3D(sx, sy, sz));
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "rotate_xyz") {
     StringList strs;
-    app->tcl()->splitList(args[2], strs);
+    tcl()->splitList(args[2], strs);
 
     double ax, ay, az;
 
@@ -2553,7 +2907,7 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
     face->rotateModelY(degToRad(ay));
     face->rotateModelZ(degToRad(az));
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "bevel") {
     double d;
@@ -2562,7 +2916,7 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
     face->bevel(d);
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "inset") {
     double d;
@@ -2571,7 +2925,7 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
     face->inset(d);
 
-    app->tcl()->setResult(encodeFace(face));
+    tcl()->setResult(encodeFace(face));
   }
   else if (name == "subdivide") {
     int n;
@@ -2588,18 +2942,13 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
 int
 App::
-getEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+getEdgeValueProc(const StringList &args)
 {
-  //std::cerr << "getEdgeValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
     return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
-  if (! app->decodeEdge(args[0], edge))
+  if (! decodeEdge(args[0], edge))
     return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   auto name = args[1];
@@ -2607,12 +2956,12 @@ getEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
   if      (name == "start") {
     auto start = edge->getStart();
 
-    app->tcl()->setResult(encodeObjectVertexId(edge->getObject(), start));
+    tcl()->setResult(encodeObjectVertexId(edge->getObject(), start));
   }
   else if (name == "end") {
     auto end = edge->getEnd();
 
-    app->tcl()->setResult(encodeObjectVertexId(edge->getObject(), end));
+    tcl()->setResult(encodeObjectVertexId(edge->getObject(), end));
   }
   else if (name == "vertices") {
     const auto &vertexIds = edge->getVertices();
@@ -2625,12 +2974,12 @@ getEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       vertices1.push_back(vertexId1);
     }
 
-    app->tcl()->setResult(vertices1);
+    tcl()->setResult(vertices1);
   }
   else if (name == "normal") {
     auto normal = edge->calcNormal();
 
-    app->tcl()->setResult(pointToRealArray(normal.point()));
+    tcl()->setResult(pointToRealArray(normal.point()));
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
@@ -2640,18 +2989,13 @@ getEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
 int
 App::
-setEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+setEdgeValueProc(const StringList &args)
 {
-  //std::cerr << "setEdgeValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
     return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
-  if (! app->decodeEdge(args[0], edge))
+  if (! decodeEdge(args[0], edge))
     return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   auto name = args[1];
@@ -2668,10 +3012,10 @@ setEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       return tclErrorMsg("Invalid args");
 
     StringList strs;
-    app->tcl()->splitList(args[2], strs);
+    tcl()->splitList(args[2], strs);
 
     CVector3D d;
-    if (! app->stringToVector(args[2], d))
+    if (! stringToVector(args[2], d))
       return tclErrorMsg("Invalid delta '" + args[2] + "'");
 
     edge->moveBy(d);
@@ -2717,7 +3061,7 @@ setEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       ids.push_back(ids1);
     }
 
-    app->tcl()->setResult(ids);
+    tcl()->setResult(ids);
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
@@ -2727,18 +3071,13 @@ setEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
 int
 App::
-getLineValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+getLineValueProc(const StringList &args)
 {
-  //std::cerr << "getLineValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
     return tclErrorMsg("Invalid args");
 
   CGeomLine3D *line;
-  if (! app->decodeLine(args[0], line))
+  if (! decodeLine(args[0], line))
     return tclErrorMsg("Invalid line id '" + args[0] + "'");
 
   auto name = args[1];
@@ -2746,12 +3085,12 @@ getLineValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
   if      (name == "start") {
     auto start = line->getStartInd();
 
-    app->tcl()->setResult(encodeObjectVertexId(line->getObject(), start));
+    tcl()->setResult(encodeObjectVertexId(line->getObject(), start));
   }
   else if (name == "end") {
     auto end = line->getEndInd();
 
-    app->tcl()->setResult(encodeObjectVertexId(line->getObject(), end));
+    tcl()->setResult(encodeObjectVertexId(line->getObject(), end));
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
@@ -2761,18 +3100,13 @@ getLineValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
 int
 App::
-setLineValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+setLineValueProc(const StringList &args)
 {
-  //std::cerr << "setLineValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
     return tclErrorMsg("Invalid args");
 
   CGeomLine3D *line;
-  if (! app->decodeLine(args[0], line))
+  if (! decodeLine(args[0], line))
     return tclErrorMsg("Invalid line id '" + args[0] + "'");
 
   auto name = args[1];
@@ -2788,7 +3122,11 @@ setLineValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
     if (args.size() != 3)
       return tclErrorMsg("Invalid args");
 
-    line->setColor(CRGBName::toRGBA(args[2]));
+    CRGBA c;
+    if (! stringToColor(args[2], c))
+      return tclErrorMsg("Invalid color");
+
+    line->setColor(c);
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
@@ -2798,18 +3136,13 @@ setLineValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
 int
 App::
-getVertexValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+getVertexValueProc(const StringList &args)
 {
-  //std::cerr << "getVertexValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
     return tclErrorMsg("Invalid args");
 
   CGeomVertex3D *vertex;
-  if (! app->decodeVertex(args[0], vertex))
+  if (! decodeVertex(args[0], vertex))
     return tclErrorMsg("Invalid vertex id '" + args[0] + "'");
 
   auto name = args[1];
@@ -2817,7 +3150,7 @@ getVertexValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
   if      (name == "model") {
     auto p = vertex->getModel();
 
-    app->tcl()->setResult(pointToRealArray(p));
+    tcl()->setResult(pointToRealArray(p));
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
@@ -2827,18 +3160,13 @@ getVertexValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
 
 int
 App::
-setVertexValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+setVertexValueProc(const StringList &args)
 {
-  //std::cerr << "setVertexValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 3)
     return tclErrorMsg("Invalid args");
 
   CGeomVertex3D *vertex;
-  if (! app->decodeVertex(args[0], vertex))
+  if (! decodeVertex(args[0], vertex))
     return tclErrorMsg("Invalid vertex id '" + args[0] + "'");
 
   auto name = args[1];
@@ -2852,7 +3180,7 @@ setVertexValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
   }
   else if (name == "model") {
     CPoint3D p;
-    if (! app->stringToPoint(args[2], p))
+    if (! stringToPoint(args[2], p))
       return tclErrorMsg("Invalid point '" + args[2] + "'");
 
     vertex->setModel(p);
@@ -2872,23 +3200,14 @@ setVertexValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
 
 int
 App::
-setMaterialValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+setMaterialValueProc(const StringList &args)
 {
-  //std::cerr << "setMaterialValueProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 3)
     return tclErrorMsg("Invalid args");
 
-  int materialId;
-  if (! decodeMaterialId(args[0], materialId))
-    return tclErrorMsg("Invalid material id '" + args[2] + "'");
-
-  auto *material = app->scene_->getMaterialById(materialId);
-  if (! material)
-    return tclErrorMsg("Invalid material id " + std::to_string(materialId));
+  CGeomMaterial *material;
+  if (! decodeMaterial(args[0], material))
+    return tclErrorMsg("Invalid material id '" + args[0] + "'");
 
   auto name = args[1];
 
@@ -2896,23 +3215,197 @@ setMaterialValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tc
     if (args.size() != 3)
       return tclErrorMsg("Invalid args");
 
-    material->setDiffuse(CRGBName::toRGBA(args[2]));
+    CRGBA c;
+    if (! stringToColor(args[2], c))
+      return tclErrorMsg("Invalid color");
+
+    material->setDiffuse(c);
   }
   else if (name == "texture" || name == "diffuse_texture") {
-    int textureId;
-    if (! decodeTextureId(args[2], textureId))
+    CGeomTexture* texture;
+    if (! decodeTexture(args[2], texture))
       return tclErrorMsg("Invalid texture id '" + args[2] + "'");
-
-    auto *texture = app->scene_->getTextureById(textureId);
-    if (! texture)
-      return tclErrorMsg("Invalid texture id " + std::to_string(textureId));
 
     material->setDiffuseTexture(texture);
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
 
-  app->tcl()->setResult(encodeMaterial(material));
+  tcl()->setResult(encodeMaterial(material));
+
+  return TCL_OK;
+}
+
+int
+App::
+getTextValueProc(const StringList &args)
+{
+  if (args.size() < 2)
+    return tclErrorMsg("Invalid args");
+
+  Text *text;
+  if (! decodeText(args[0], text))
+    return tclErrorMsg("Invalid text id '" + args[0] + "'");
+
+  auto name = args[1];
+
+  if      (name == "text") {
+    tcl()->setResult(text->text());
+  }
+  else if (name == "position") {
+    auto pos = text->position();
+
+    tcl_->setResult(pointToRealArray(CPoint3D(pos.x(), pos.y(), pos.z())));
+  }
+  else if (name == "angle") {
+    auto angle = text->angle();
+
+    tcl_->setResult(pointToRealArray(CPoint3D(angle.x(), angle.y(), angle.z())));
+  }
+  else if (name == "size") {
+    auto size = text->size();
+
+    tcl_->setResult(size);
+  }
+  else if (name == "color") {
+    auto c = text->color();
+
+    tcl_->setResult(colorToRealArray(c));
+  }
+  else if (name == "overlay") {
+    auto b = text->isOverlay();
+
+    tcl_->setResult(b);
+  }
+  else if (name == "billboard") {
+    auto b = text->isBillboard();
+
+    tcl_->setResult(b);
+  }
+  else if (name == "viewport") {
+    auto v = text->viewport();
+
+    tcl_->setResult(v);
+  }
+  else if (name == "visible") {
+    auto b = text->isVisible();
+
+    tcl_->setResult(b);
+  }
+  else if (name == "halign") {
+    auto a = text->halign();
+    if      (a == Text::HAlign::LEFT  ) tcl_->setResult("left");
+    else if (a == Text::HAlign::RIGHT ) tcl_->setResult("right");
+    else if (a == Text::HAlign::CENTER) tcl_->setResult("center");
+  }
+  else if (name == "valign") {
+    auto a = text->valign();
+    if      (a == Text::VAlign::BOTTOM) tcl_->setResult("bottom");
+    else if (a == Text::VAlign::TOP   ) tcl_->setResult("top");
+    else if (a == Text::VAlign::CENTER) tcl_->setResult("center");
+  }
+  else
+    return tclErrorMsg("Invalid value name '" + name + "'");
+
+  return TCL_OK;
+}
+
+int
+App::
+setTextValueProc(const StringList &args)
+{
+  if (args.size() < 3)
+    return tclErrorMsg("Invalid args");
+
+  Text *text;
+  if (! decodeText(args[0], text))
+    return tclErrorMsg("Invalid text id '" + args[0] + "'");
+
+  auto name = args[1];
+
+  if      (name == "text") {
+    text->setText(args[2]);
+  }
+  else if (name == "position") {
+    CPoint3D p;
+    if (! stringToPoint(args[2], p))
+      return tclErrorMsg("Invalid point '" + args[2] + "'");
+
+    text->setPosition(CGLVector3D(p.x, p.y, p.z));
+  }
+  else if (name == "angle") {
+    CPoint3D p;
+    if (! stringToPoint(args[2], p))
+      return tclErrorMsg("Invalid point '" + args[2] + "'");
+
+    text->setAngle(CGLVector3D(p.x, p.y, p.z));
+  }
+  else if (name == "size") {
+    double size;
+    if (! stringToReal(args[2], size))
+      return tclErrorMsg("Invalid size '" + args[2] + "'");
+
+    text->setSize(size);
+  }
+  else if (name == "color") {
+    CRGBA c;
+    if (! stringToColor(args[2], c))
+      return tclErrorMsg("Invalid color");
+
+    text->setColor(c);
+  }
+  else if (name == "overlay") {
+    bool b;
+    if (! stringToBool(args[2], b))
+      return tclErrorMsg("Invalid bool");
+
+    text->setOverlay(b);
+  }
+  else if (name == "billboard") {
+    bool b;
+    if (! stringToBool(args[2], b))
+      return tclErrorMsg("Invalid bool");
+
+    text->setBillboard(b);
+  }
+  else if (name == "viewport") {
+    int v;
+    if (! stringToInteger(args[2], v))
+      return tclErrorMsg("Invalid bool");
+
+    text->setViewport(v);
+  }
+  else if (name == "visible") {
+    bool b;
+    if (! stringToBool(args[2], b))
+      return tclErrorMsg("Invalid bool");
+
+    text->setVisible(b);
+  }
+  else if (name == "halign") {
+    auto astr = toLower(args[2]);
+    if      (astr == "l" || astr == "left")
+      text->setHAlign(Text::HAlign::LEFT);
+    else if (astr == "r" || astr == "right")
+      text->setHAlign(Text::HAlign::RIGHT);
+    else if (astr == "c" || astr == "center")
+      text->setHAlign(Text::HAlign::CENTER);
+    else
+      return tclErrorMsg("Invalid align '" + args[2] + "'");
+  }
+  else if (name == "valign") {
+    auto astr = toLower(args[2]);
+    if      (astr == "b" || astr == "bottom")
+      text->setVAlign(Text::VAlign::BOTTOM);
+    else if (astr == "t" || astr == "top")
+      text->setVAlign(Text::VAlign::TOP);
+    else if (astr == "c" || astr == "center")
+      text->setVAlign(Text::VAlign::CENTER);
+    else
+      return tclErrorMsg("Invalid align '" + args[2] + "'");
+  }
+  else
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   return TCL_OK;
 }
@@ -2967,152 +3460,127 @@ setObjectPropertyProc(const CTclUtil::StringList &args)
 
 int
 App::
-intersectObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+intersectObjectsProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "intersectObjects\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   StringList strs;
-  app->tcl()->splitList(args[0], strs);
+  tcl()->splitList(args[0], strs);
 
   std::vector<CGeomObject3D *> objects;
 
   for (const auto &str : strs) {
     CGeomObject3D *object;
-    if (! app->decodeObject(str, object))
+    if (! decodeObject(str, object))
       return tclErrorMsg("Invalid object id '" + str + "'");
 
     objects.push_back(object);
   }
 
-  auto *object = app->scene_->intersectObjects(objects);
+  auto *object = scene()->intersectObjects(objects);
 
-  app->scene_->addObject(object);
+  scene()->addObject(object);
 
-  app->tcl()->setResult(encodeObject(object));
+  tcl()->setResult(encodeObject(object));
 
   return TCL_OK;
 }
 
 int
 App::
-inverseObjectProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+inverseObjectProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "inverseObject\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
-  if (! app->decodeObject(args[0], object))
+  if (! decodeObject(args[0], object))
     return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
-  auto *object1 = app->scene_->inverseObject(object);
+  auto *object1 = scene_->inverseObject(object);
 
-  app->scene_->addObject(object1);
+  scene_->addObject(object1);
 
-  app->tcl()->setResult(encodeObject(object1));
+  tcl()->setResult(encodeObject(object1));
 
   return TCL_OK;
 }
 
 int
 App::
-unionObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+unionObjectsProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "unionObjectsProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   StringList strs;
-  app->tcl()->splitList(args[0], strs);
+  tcl()->splitList(args[0], strs);
 
   std::vector<CGeomObject3D *> objects;
 
   for (const auto &str : strs) {
     CGeomObject3D *object;
-    if (! app->decodeObject(str, object))
+    if (! decodeObject(str, object))
       return tclErrorMsg("Invalid object id '" + str + "'");
 
     objects.push_back(object);
   }
 
-  auto *object = app->scene_->unionObjects(objects);
+  auto *object = scene_->unionObjects(objects);
 
-  app->scene_->addObject(object);
+  scene_->addObject(object);
 
-  app->tcl()->setResult(encodeObject(object));
+  tcl()->setResult(encodeObject(object));
 
   return TCL_OK;
 }
 
 int
 App::
-subtractObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+subtractObjectsProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "subtractObjectsProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   StringList strs;
-  app->tcl()->splitList(args[0], strs);
+  tcl()->splitList(args[0], strs);
 
   std::vector<CGeomObject3D *> objects;
 
   for (const auto &str : strs) {
     CGeomObject3D *object;
-    if (! app->decodeObject(str, object))
+    if (! decodeObject(str, object))
       return tclErrorMsg("Invalid object id '" + str + "'");
 
     objects.push_back(object);
   }
 
-  auto *object = app->scene_->subtractObjects(objects);
+  auto *object = scene_->subtractObjects(objects);
 
-  app->scene_->addObject(object);
+  scene_->addObject(object);
 
-  app->tcl()->setResult(encodeObject(object));
+  tcl()->setResult(encodeObject(object));
 
   return TCL_OK;
 }
 
 int
 App::
-extrudeFacesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+extrudeFacesProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "extrudeFacesProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
     return tclErrorMsg("Invalid args");
 
   StringList fstrs;
-  app->tcl()->splitList(args[0], fstrs);
+  tcl()->splitList(args[0], fstrs);
 
   if (fstrs.size() < 1)
     return tclErrorMsg("Invalid args");
 
   std::vector<CGeomFace3D *> faces;
 
-  if (! app->decodeFaces(fstrs, faces))
+  if (! decodeFaces(fstrs, faces))
     return TCL_ERROR;
 
   double d;
@@ -3136,7 +3604,7 @@ extrudeFacesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
     for (auto *face : extrudeData.sideFaces)
       faceIds.push_back(encodeFace(face));
 
-    app->tcl()->setResult(faceIds);
+    tcl()->setResult(faceIds);
   }
 
   return TCL_OK;
@@ -3144,18 +3612,13 @@ extrudeFacesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
 int
 App::
-extrudeEdgesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+extrudeEdgesProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "extrudeEdgesProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
     return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
-  if (! app->decodeEdge(args[0], edge))
+  if (! decodeEdge(args[0], edge))
     return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   double d;
@@ -3166,121 +3629,96 @@ extrudeEdgesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
   auto faceId1 = encodeFace(face1);
 
-  app->tcl()->setResult(faceId1);
+  tcl()->setResult(faceId1);
 
   return TCL_OK;
 }
 
 int
 App::
-mergeEdgeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+mergeEdgeProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "mergeVerticesProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
-  if (! app->decodeEdge(args[0], edge))
+  if (! decodeEdge(args[0], edge))
     return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   auto vind = edge->getObject()->mergeEdge(edge->getInd());
 
   auto vertexId = encodeObjectVertexId(edge->getObject(), vind);
 
-  app->tcl()->setResult(vertexId);
+  tcl()->setResult(vertexId);
 
   return TCL_OK;
 }
 
 int
 App::
-duplicateFaceProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+duplicateFaceProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "duplicateFaceProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   CGeomFace3D *face;
-  if (! app->decodeFace(args[0], face))
+  if (! decodeFace(args[0], face))
     return tclErrorMsg("Invalid face id '" + args[0] + "'");
 
   auto *face1 = face->duplicate();
 
   face->getObject()->addFace(face1);
 
-  app->tcl()->setResult(encodeFace(face1));
+  tcl()->setResult(encodeFace(face1));
 
   return TCL_OK;
 }
 
 int
 App::
-separateFaceProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+separateFaceProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "separateFaceProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   CGeomFace3D *face;
-  if (! app->decodeFace(args[0], face))
+  if (! decodeFace(args[0], face))
     return tclErrorMsg("Invalid face id '" + args[0] + "'");
 
   auto *object1 = face->getObject()->separateFace(face);
 
-  app->tcl()->setResult(encodeObject(object1));
+  tcl()->setResult(encodeObject(object1));
 
   return TCL_OK;
 }
 
 int
 App::
-separateEdgeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+separateEdgeProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "separateEdgeProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
-  if (! app->decodeEdge(args[0], edge))
+  if (! decodeEdge(args[0], edge))
     return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   auto *object1 = edge->getObject()->separateEdge(edge);
 
-  app->tcl()->setResult(encodeObject(object1));
+  tcl()->setResult(encodeObject(object1));
 
   return TCL_OK;
 }
 
 int
 App::
-mirrorObjectProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+mirrorObjectProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "mirrorObjectProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
     return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
-  if (! app->decodeObject(args[0], object))
+  if (! decodeObject(args[0], object))
     return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   uint mirrorDir = 0;
@@ -3296,16 +3734,16 @@ mirrorObjectProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       return tclErrorMsg("Invalid mirror direction '" + args[1] + "'");
   }
 
-  auto c = app->cursor();
+  auto c = cursor();
 
   const auto &objects = object->mirror(CGeomObject3D::MirrorDir(mirrorDir), c);
 
   StringList objectIds1;
 
   for (auto *object1 : objects) {
-    auto name = "object." + std::to_string(app->scene_->getObjects().size() + 1);
+    auto name = "object." + std::to_string(scene_->getObjects().size() + 1);
 
-    app->scene_->addObject(object1);
+    scene_->addObject(object1);
 
     object1->setName(name);
 
@@ -3316,33 +3754,28 @@ mirrorObjectProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
     objectIds1.push_back(objectId1);
   }
 
-  app->tcl()->setResult(objectIds1);
+  tcl()->setResult(objectIds1);
 
   return TCL_OK;
 }
 
 int
 App::
-fillVerticesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+fillVerticesProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "fillVerticesProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   std::vector<CGeomVertex3D *> vertices;
 
-  if (! app->decodeVertices(args[0], vertices))
+  if (! decodeVertices(args[0], vertices))
     return TCL_ERROR;
 
   auto *object = vertices[0]->getObject();
 
   object->fillVertices(vertices);
 
-  app->tcl()->setResult(0);
+  tcl()->setResult(0);
 
   return TCL_OK;
 }
@@ -3426,58 +3859,48 @@ circularizeFacesProc(const CTclUtil::StringList &args)
 
 int
 App::
-deleteObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+deleteObjectsProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "deleteObjectsProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   StringList strs;
-  app->tcl()->splitList(args[0], strs);
+  tcl()->splitList(args[0], strs);
 
   std::vector<CGeomObject3D *> objects;
 
   for (const auto &str : strs) {
     CGeomObject3D *object;
-    if (! app->decodeObject(str, object))
+    if (! decodeObject(str, object))
       return tclErrorMsg("Invalid object id '" + str + "'");
 
     objects.push_back(object);
   }
 
   for (auto *object : objects) {
-    app->scene_->removeObject(object, /*force*/true);
+    scene_->removeObject(object, /*force*/true);
 
     delete object;
   }
 
-  app->tcl()->setResult(0);
+  tcl()->setResult(0);
 
   return TCL_OK;
 }
 
 int
 App::
-deleteFacesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+deleteFacesProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "deleteFacesProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   StringList strs;
-  app->tcl()->splitList(args[0], strs);
+  tcl()->splitList(args[0], strs);
 
   std::vector<CGeomFace3D *> faces;
 
-  if (! app->decodeFaces(strs, faces))
+  if (! decodeFaces(strs, faces))
     return TCL_ERROR;
 
   auto *object = faces[0]->getObject();
@@ -3488,31 +3911,26 @@ deleteFacesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
     delete face;
   }
 
-  app->tcl()->setResult(0);
+  tcl()->setResult(0);
 
   return TCL_OK;
 }
 
 int
 App::
-deleteVerticesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+deleteVerticesProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "deleteOVerticesroc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
     return tclErrorMsg("Invalid args");
 
   StringList strs;
-  app->tcl()->splitList(args[0], strs);
+  tcl()->splitList(args[0], strs);
 
   std::vector<CGeomVertex3D *> vertices;
 
   for (const auto &str : strs) {
     CGeomVertex3D *vertex;
-    if (! app->decodeVertex(str, vertex))
+    if (! decodeVertex(str, vertex))
       return tclErrorMsg("Invalid object id '" + str + "'");
 
     vertices.push_back(vertex);
@@ -3526,7 +3944,7 @@ deleteVerticesProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
     delete vertex;
   }
 
-  app->tcl()->setResult(0);
+  tcl()->setResult(0);
 
   return TCL_OK;
 }
@@ -3660,14 +4078,8 @@ writeObjProc(const CTclUtil::StringList &args)
 
 int
 App::
-vectorProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * const *objv)
+vectorProc(const CTclUtil::StringList &args)
 {
-  //std::cerr << "vectorProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  auto args = CTclUtil::getObjArgs(objc, objv);
-
   CVector3D v;
 
   if (args.size() == 3) {
@@ -3684,7 +4096,7 @@ vectorProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * co
   else
     return tclErrorMsg("Invalid args");
 
-  app->tcl()->setResult(vectorToObj(v));
+  tcl()->setResult(vectorToObj(v));
 
   return TCL_OK;
 }
@@ -3751,70 +4163,66 @@ getVectorProc(const std::vector<Tcl_Obj *> &objs)
 
 int
 App::
-setVectorProc(ClientData clientData, Tcl_Interp* interp, int objc, Tcl_Obj * const *objv)
+setVectorProc(const std::vector<Tcl_Obj *> &objs)
 {
-  //std::cerr << "setVectorProc\n";
-
-  auto *app = reinterpret_cast<App *>(clientData);
-
-  if (objc < 4)
+  if (objs.size() < 4)
     return tclErrorMsg("Invalid args");
 
-  if (! CTclVector3D::isObj(objv[1]))
+  if (! CTclVector3D::isObj(objs[1]))
     return tclErrorMsg("Invalid vector");
 
   CVector3D v;
-  if (CTclVector3D::getObj(interp, objv[1], v) == TCL_ERROR)
+  if (CTclVector3D::getObj(tcl_->interp(), objs[1], v) == TCL_ERROR)
     return tclErrorMsg("Invalid vector");
 
-  auto name = CTclUtil::stringFromObj(objv[2]);
+  auto name = CTclUtil::stringFromObj(objs[2]);
 
   if      (name == "x") {
     double x;
-    if (! objToReal(objv[3], x))
+    if (! objToReal(objs[3], x))
       return tclErrorMsg("Invalid real");
 
     v.setX(x);
   }
   else if (name == "y") {
     double y;
-    if (! objToReal(objv[3], y))
+    if (! objToReal(objs[3], y))
       return tclErrorMsg("Invalid real");
 
     v.setY(y);
   }
   else if (name == "z") {
     double z;
-    if (! objToReal(objv[3], z))
+    if (! objToReal(objs[3], z))
       return tclErrorMsg("Invalid real");
 
     v.setZ(z);
   }
   else if (name == "+" || name == "add") {
     CVector3D v1;
-    if (CTclVector3D::getObj(interp, objv[3], v1) == TCL_ERROR)
+    if (CTclVector3D::getObj(tcl_->interp(), objs[3], v1) == TCL_ERROR)
       return tclErrorMsg("Invalid vector");
 
     v += v1;
   }
   else if (name == "-" || name == "substract") {
     CVector3D v1;
-    if (CTclVector3D::getObj(interp, objv[3], v1) == TCL_ERROR)
+    if (CTclVector3D::getObj(tcl_->interp(), objs[3], v1) == TCL_ERROR)
       return tclErrorMsg("Invalid vector");
 
     v -= v1;
   }
   else if (name == "*" || name == "multiply") {
-    if (CTclVector3D::isObj(objv[3])) {
+    if (CTclVector3D::isObj(objs[3])) {
       CVector3D v1;
-      if (CTclVector3D::getObj(interp, objv[3], v1) == TCL_ERROR)
+      if (CTclVector3D::getObj(tcl_->interp(), objs[3], v1) == TCL_ERROR)
         return tclErrorMsg("Invalid vector");
 
       v *= v1;
     }
     else {
       double s;
-      if (! objToReal(objv[3], s))
+      if (! objToReal(objs[3], s))
         return tclErrorMsg("Invalid real");
 
       v *= s;
@@ -3822,7 +4230,7 @@ setVectorProc(ClientData clientData, Tcl_Interp* interp, int objc, Tcl_Obj * con
   }
   else if (name == "magnitude") {
     double s;
-    if (! objToReal(objv[3], s))
+    if (! objToReal(objs[3], s))
       return tclErrorMsg("Invalid real");
 
     v.setMagnitude(s);
@@ -3830,10 +4238,10 @@ setVectorProc(ClientData clientData, Tcl_Interp* interp, int objc, Tcl_Obj * con
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
 
-  if (CTclVector3D::setObj(interp, objv[1], v) == TCL_ERROR)
+  if (CTclVector3D::setObj(tcl_->interp(), objs[1], v) == TCL_ERROR)
     return tclErrorMsg("Invalid vector");
 
-  app->tcl()->setResult(objv[1]);
+  tcl()->setResult(objs[1]);
 
   return TCL_OK;
 }
@@ -3901,6 +4309,8 @@ void
 App::
 tick(bool update)
 {
+  ++ticks_;
+
   psys_->tick(0.01);
 
   for (auto *animData : animDatas_) {
@@ -3912,8 +4322,23 @@ tick(bool update)
 
   runTclCmd(cmd);
 
-  if (update)
+  if (update) {
     canvas()->update();
+
+    overview()->invalidate();
+  }
+}
+
+bool
+App::
+decodeParticle(Tcl_Obj *obj, CPSysParticle* &particle) const
+{
+  auto arg = CTclUtil::stringFromObj(obj);
+
+  if (! decodeParticle(arg, particle))
+    return errorMsg("Invalid particle id '" + arg + "'");
+
+  return true;
 }
 
 bool
@@ -4136,6 +4561,63 @@ decodeVertex(const std::string &arg, CGeomVertex3D* &vertex) const
   return true;
 }
 
+bool
+App::
+decodeTexture(Tcl_Obj *obj, CGeomTexture* &texture) const
+{
+  auto arg = CTclUtil::stringFromObj(obj);
+
+  if (! decodeTexture(arg, texture))
+    return errorMsg("Invalid texture id '" + arg + "'");
+
+  return true;
+}
+
+bool
+App::
+decodeTexture(const std::string &arg, CGeomTexture* &texture) const
+{
+  int textureId;
+  if (! decodeTextureId(arg, textureId))
+    return false;
+
+  texture = scene_->getTextureById(textureId);
+  if (! texture)
+    return false;
+
+  return true;
+}
+
+bool
+App::
+decodeMaterial(const std::string &arg, CGeomMaterial* &material) const
+{
+  int materialId;
+  if (! decodeMaterialId(arg, materialId))
+    return false;
+
+  material = scene_->getMaterialById(materialId);
+  if (! material)
+    return false;
+
+  return true;
+}
+
+bool
+App::
+decodeText(const std::string &arg, Text* &text) const
+{
+  int textId;
+  if (! decodeTextId(arg, textId))
+    return false;
+
+  text = canvas_->getTextById(textId);
+  if (! text)
+    return false;
+
+  return true;
+}
+
 CGeomObject3D *
 App::
 getNearestObject(const CPoint3D &p) const
@@ -4279,6 +4761,38 @@ getNearestVertex(CGeomFace3D *face, const CPoint3D &p) const
 
 bool
 App::
+stringToBBox(const std::string &str, CBBox3D &bbox) const
+{
+  StringList strs;
+  tcl_->splitList(str, strs);
+
+  if (strs.size() != 6)
+    return false;
+
+  double x1, y1, z1, x2, y2, z2;
+  if (! stringToReal(strs[0], x1) || ! stringToReal(strs[1], y1) || ! stringToReal(strs[2], z1) ||
+      ! stringToReal(strs[3], x2) || ! stringToReal(strs[4], y2) || ! stringToReal(strs[5], z2))
+    return false;
+
+  bbox = CBBox3D(CPoint3D(x1, y1, z1), CPoint3D(x2, y2, z2));
+
+  return true;
+}
+
+bool
+App::
+decodePoint(Tcl_Obj *obj, CPoint2D &p) const
+{
+  auto arg = CTclUtil::stringFromObj(obj);
+
+  if (! stringToPoint(arg, p))
+    return errorMsg("Invalid point '" + arg + "'");
+
+  return true;
+}
+
+bool
+App::
 stringToPoint(const std::string &str, CPoint2D &p) const
 {
   StringList strs;
@@ -4293,6 +4807,28 @@ stringToPoint(const std::string &str, CPoint2D &p) const
     return false;
 
   p = CPoint2D(x, y);
+
+  return true;
+}
+
+bool
+App::
+decodePoint(Tcl_Obj *obj, CPoint3D &p) const
+{
+  if (CTclVector3D::isObj(obj)) {
+    CVector3D v;
+    if (CTclVector3D::getObj(tcl_->interp(), obj, v) == TCL_ERROR)
+      return errorMsg("Invalid point '" + CTclUtil::stringFromObj(obj) + "'");
+
+    p = v.point();
+
+    return true;
+  }
+
+  auto arg = CTclUtil::stringFromObj(obj);
+
+  if (! stringToPoint(arg, p))
+    return errorMsg("Invalid point '" + arg + "'");
 
   return true;
 }
@@ -4341,6 +4877,59 @@ stringToVector(const std::string &str, CVector3D &v) const
 
 bool
 App::
+stringToRect(const std::string &str, CBBox2D &r) const
+{
+  StringList strs;
+  tcl_->splitList(str, strs);
+
+  if (strs.size() != 4)
+    return false;
+
+  double x1, y1, x2, y2;
+  if (! stringToReal(strs[0], x1) || ! stringToReal(strs[1], y1) ||
+      ! stringToReal(strs[2], x2) || ! stringToReal(strs[3], y2))
+    return false;
+
+  r = CBBox2D(x1, y1, x2, y2);
+
+  return true;
+}
+
+bool
+App::
+stringToColor(const std::string &str, CRGBA &c) const
+{
+  c = CRGBName::toRGBA(str);
+
+  return true;
+}
+
+bool
+App::
+decodeReal(Tcl_Obj *obj, double &r) const
+{
+  auto arg = CTclUtil::stringFromObj(obj);
+
+  if (! stringToReal(arg, r))
+    return errorMsg("Invalid real '" + arg + "'");
+
+  return true;
+}
+
+bool
+App::
+decodeBool(Tcl_Obj *obj, bool &b) const
+{
+  auto arg = CTclUtil::stringFromObj(obj);
+
+  if (! stringToBool(arg, b))
+    return errorMsg("Invalid bool '" + arg + "'");
+
+  return true;
+}
+
+bool
+App::
 runTclCmd(const std::string &cmd)
 {
   auto rc = tcl_->eval(cmd, /*showError*/true, /*showResult*/false);
@@ -4363,6 +4952,40 @@ App::
 setVar(const std::string &name, const std::string &value)
 {
   tcl_->createVar(name, value);
+}
+
+//---
+
+void
+App::
+showMetaEdit()
+{
+  static CQMetaEdit *metaEdit;
+
+  if (! metaEdit)
+    metaEdit = new CQMetaEdit;
+
+  metaEdit->show();
+
+  metaEdit->raise();
+}
+
+void
+App::
+showPerfDialog()
+{
+#ifdef CQ_PERF_GRAPH
+  auto *dialog = CQPerfDialog::instance();
+
+  dialog->show();
+#endif
+}
+
+void
+App::
+showAppOptions()
+{
+  CQAppOptions::show();
 }
 
 }

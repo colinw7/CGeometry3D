@@ -11,13 +11,22 @@ namespace CQTclModel3DView {
 
 class Particle;
 class Texture;
+class GeomObject;
 
 class ParticleSystem : public CPSysSystem {
  public:
   ParticleSystem();
 
   CPSysParticle *makeParticle(double mass=1.0, double x=0.0, double y=0.0, double z=0.0) override;
+
+  const GeomObject *particleObj() const { return particleObj_; }
+  void setParticleObj(GeomObject *p) { particleObj_ = p; }
+
+ private:
+  GeomObject* particleObj_ { nullptr };
 };
+
+//---
 
 class Particle : public CPSysParticle {
  public:
@@ -44,8 +53,16 @@ class Particle : public CPSysParticle {
   const CSize2D &tsize() const { return tsize_; }
   void setTSize(const CSize2D &v) { tsize_ = v; }
 
+  const std::string &shader() const { return shader_; }
+  void setShader(const std::string &s) { shader_ = s; }
+
   const std::string &meta() const { return meta_; }
   void setMeta(const std::string &s) { meta_ = s; }
+
+  const GeomObject *obj() const { return obj_; }
+  void setObj(GeomObject *p) { obj_ = p; }
+
+  void updateParticle() override;
 
  private:
   CRGBA       color_   { CRGBA::white() };
@@ -55,7 +72,10 @@ class Particle : public CPSysParticle {
   double      angle_   { 0.0 };
   CPoint2D    tpos_    { 0, 0 };
   CSize2D     tsize_   { 1, 1 };
+  std::string shader_;
   std::string meta_;
+
+  GeomObject *obj_ { nullptr };
 };
 
 }

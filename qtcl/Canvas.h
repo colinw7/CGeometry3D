@@ -5,8 +5,10 @@
 #include <FaceData.h>
 
 #include <CImagePtr.h>
+#include <CMatrix3DH.h>
 #include <CBBox3D.h>
 #include <CPoint2D.h>
+#include <CPlane3D.h>
 
 #include <QGLWidget>
 #include <QOpenGLExtraFunctions>
@@ -24,6 +26,8 @@ class App;
 class Camera;
 class ShaderProgram;
 class Texture;
+class Font;
+class Text;
 
 class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   Q_OBJECT
@@ -31,6 +35,42 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
  public:
   using SelectType = App::SelectType;
   using EditType   = App::EditType;
+
+  using Texts = std::vector<Text *>;
+
+  struct ParticleData {
+    CQGLBuffer*           buffer { nullptr };
+    std::vector<FaceData> faceDatas;
+  };
+
+  struct ViewportData {
+    std::string           id;
+    CBBox2D               rect       { 0, 0, 1, 1 };
+    QColor                bgColor    { 140, 140, 150 };
+    Camera*               camera     { nullptr };
+    CBBox3D               bbox;
+    bool                  updateBBox { true };
+    std::vector<CPlane3D> clips;
+  };
+
+  struct ShaderData {
+    std::string id;
+
+    std::string vs;
+    std::string gs;
+    std::string fs;
+
+    ShaderProgram* program { nullptr };
+
+    ParticleData particleData;
+
+    bool point { false };
+
+    double lineWidth { 0 };
+  };
+
+  using Particles       = std::vector<CPSysParticle *>;
+  using ShaderParticles = std::map<ShaderData *, Particles>;
 
  public:
   Canvas(App *app);
@@ -44,7 +84,7 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
 
   //---
 
-  Camera *camera() const { return camera_; }
+  Camera *camera() const;
 
   bool isPerspective() const { return perspective_; }
   void setPerspective(bool b) { perspective_ = b; }
@@ -68,8 +108,10 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
 
   //---
 
-  const QColor &bgColor() const { return bgColor_; }
-  void setBgColor(const QColor &c) { bgColor_ = c; }
+  const QColor &bgColor() const;
+  void setBgColor(const QColor &c);
+
+  CBBox2D viewportRegion() const;
 
   //---
 
@@ -95,6 +137,9 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
 
   bool isShowOrient() const { return showOrient_; }
   void setShowOrient(bool b) { showOrient_ = b; update(); }
+
+  int isStoreProjected() const { return storeProjected_; }
+  void setStoreProjected(int i) { storeProjected_ = i; }
 
   //---
 
@@ -156,10 +201,13 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
 
   //---
 
-  const CBBox3D &bbox() const { return bbox_; }
-  void setBBox(const CBBox3D &v) { bbox_ = v; updateCamera(); updateBBox_ = false; }
+  const CBBox3D &bbox() const;
+  void setBBox(const CBBox3D &b);
+
+  void setBBox(ViewportData *viewportData, const CBBox3D &b);
 
   void updateCamera();
+  void updateCamera(Camera *camera);
 
   //---
 
@@ -168,6 +216,18 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   void resizeGL(int, int) override;
 
   void paintGL() override;
+
+  //---
+
+  void enableClips(bool b);
+
+  void addScene ();
+  void addObject(CGeomObject3D *object, CBBox3D &bbox, bool updateBBox);
+
+  void drawScene();
+  void drawObject(CGeomObject3D *object);
+
+  void drawSelection();
 
   //---
 
@@ -185,13 +245,36 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
 
   //---
 
-  void addScene ();
-  void drawScene();
+  void addParticles(CBBox3D &bbox, bool updateBBox);
 
-  void drawSelection();
-
-  void addParticles();
   void drawParticles();
+
+  void drawParticle(CPSysParticle *particle, int i, ShaderProgram *program,
+                    CQGLTexture* &texture, ShaderData *shaderData);
+
+  void getShaderParticles(ShaderParticles &shaderParticles) const;
+
+  ShaderProgram *getShaderDataProgram(ShaderData *shaderData);
+
+  //---
+
+  CMatrix3DH calcWorldMatrix() const;
+
+  //---
+
+  Font *font() const { return font_; }
+
+  const Texts &texts() const { return texts_; }
+
+  void clearTexts();
+
+  void addText(Text *text);
+
+  Text *getTextById(uint id) const;
+
+  void updateTexts();
+
+  void drawTexts();
 
   //---
 
@@ -205,14 +288,41 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
 
   //---
 
+  std::vector<CGeomObject3D *> getDrawObjects() const;
+  void addDrawObjects(CGeomObject3D *object, std::vector<CGeomObject3D *> &objects) const;
+
+  void projectFaceVertices(CGeomFace3D *face);
+  void projectVertex(CGeomVertex3D *vertex);
+
+  //---
+
   CPoint2D pixelToView(const CPoint2D &p) const;
 
   //---
 
   void updateStatus();
 
+  //---
+
+  std::string addViewport(const CBBox2D &rect);
+
+  ViewportData *getCurrentViewportData() const;
+
+  ViewportData *getViewportData(const std::string &id) const;
+
+  const uint &currentViewport() const { return currentViewport_; }
+  void setCurrentViewport(const uint &v) { currentViewport_ = v; }
+
+  //---
+
+  std::string addShaderData(const std::string &vs, const std::string &fs);
+  std::string addShaderData(const std::string &vs, const std::string &gs, const std::string &fs);
+
+  ShaderData *getShaderData(const std::string &id) const;
+
  private:
   ShaderProgram *getShader(const QString &vertex, const QString &fragment);
+  ShaderProgram *getShader(const QString &vertex, const QString &geoemtry, const QString &fragment);
 
   void enableDepthTest();
   void enablePolygonLine();
@@ -250,8 +360,6 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
     CPoint2D        move      { 0.0, 0.0 };
   };
 
-  using Shaders = std::map<QString, ShaderProgram *>;
-
   //---
 
   App* app_ { nullptr };
@@ -259,8 +367,6 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   int ind_ { 0 };
 
   // camera
-  Camera* camera_ { nullptr };
-
   bool perspective_ { true };
 
   // state
@@ -280,6 +386,8 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   double lineWidth_  { 2.0 };
   bool   showOrient_ { false };
 
+  bool storeProjected_ { false };
+
   // lighting
   CRGBA  ambientColor_     { CRGBA::white() };
   double ambientStrength_  { 0.2 };
@@ -297,27 +405,47 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   bool textured_  { true };
 
   // globals
-  QColor bgColor_ { 140, 140, 150 };
-
   CRGBA selectColor_    { CRGBA::yellow() };
   CRGBA wireframeColor_ { CRGBA::white() };
 
   // interaction
   MouseData mouseData_;
 
-  CBBox3D bbox_;
+  //---
 
-  Shaders shaders_;
+  using ViewportDatas = std::vector<ViewportData *>;
 
-  bool invalid_    { true };
-  bool updateBBox_ { true };
+  ViewportDatas viewportDatas_;
+  uint          currentViewport_ { 0 };
+
+  //---
+
+  using Shaders     = std::map<QString, ShaderProgram *>;
+  using ShaderDatas = std::vector<ShaderData *>;
+
+  Shaders     shaders_;
+  ShaderDatas shaderDatas_;
+
+  //---
+
+  bool invalid_ { true };
 
   EditType   editType_   { EditType::SELECT };
   SelectType selectType_ { SelectType::FACE };
 
   //---
 
-  struct SelectionData {
+  struct DrawData {
+    CMatrix3DH worldMatrix;
+    CMatrix3DH viewMatrix;
+    CMatrix3DH modelMatrix;
+  };
+
+  DrawData drawData_;
+
+  //---
+
+  struct DrawSelectionData {
     CQGLBuffer* buffer { nullptr };
 
     uint lineIndex   { 0 };
@@ -325,16 +453,17 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
     uint endIndex    { 0 };
   };
 
-  SelectionData selectionData_;
+  DrawSelectionData drawSelectionData_;
 
   //---
 
-  struct ParticleData {
-    CQGLBuffer*           buffer { nullptr };
-    std::vector<FaceData> faceDatas;
-  };
-
   ParticleData particleData_;
+
+  //---
+
+  // font/text
+  Font* font_ { nullptr };
+  Texts texts_;
 
   //---
 

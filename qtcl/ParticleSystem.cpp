@@ -1,4 +1,5 @@
 #include <ParticleSystem.h>
+#include <GeomObject.h>
 
 namespace CQTclModel3DView {
 
@@ -12,19 +13,43 @@ CPSysParticle *
 ParticleSystem::
 makeParticle(double mass, double x, double y, double z)
 {
-  auto *p = new Particle(mass);
+  auto *particle = new Particle;
 
-  p->position()->set(x, y, z);
+  if (particleObj_) {
+    particle->setObj(particleObj_);
 
-  addParticle(p);
+    particleObj_->setParticle(particle);
+  }
 
-  return p;
+  particle->setMass(mass);
+
+  particle->position()->set(x, y, z);
+
+  addParticle(particle);
+
+  if (particleObj_)
+    particleObj_->setTranslate(x, y, z);
+
+  return particle;
 }
+
+//---
 
 Particle::
 Particle(double mass) :
  CPSysParticle(mass)
 {
+}
+
+void
+Particle::
+updateParticle()
+{
+  if (obj_) {
+    auto *pos = position();
+
+    obj_->setTranslate(pos->x(), pos->y(), pos->z());
+  }
 }
 
 }

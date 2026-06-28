@@ -496,6 +496,14 @@ compiler_moc_header_clean:
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
+		$(INC_DIR)/CMath/CBBox3D.h \
+		$(INC_DIR)/CMath/CBBox2D.h \
+		$(INC_DIR)/CMath/CVector2D.h \
+		$(INC_DIR)/CMath/CSize2D.h \
+		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
 		.moc/moc_predefs.h \
 		/usr/lib/qt5/bin/moc
 	@echo moc App.h && /usr/lib/qt5/bin/moc $(DEFINES) --include /home/colinw/git/CGeometry3D/qtcl/.moc/moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -I/home/colinw/git/CGeometry3D/qtcl -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQGLUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQImage' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQTabSplit' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQGroupBox' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQIconButton' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQRealSpin' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CImportModel' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CGeometry3D' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CMaterial' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CGLCamera' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CTclUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CImageLib' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFont' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CMath' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFileType' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFile' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/COS' -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtOpenGL -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtX11Extras -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtTest -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/c++/13 -I/usr/include/x86_64-linux-gnu/c++/13 -I/usr/include/c++/13/backward -I/usr/lib/gcc/x86_64-linux-gnu/13/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include App.h -o .moc/moc_App.cpp
@@ -512,17 +520,31 @@ compiler_moc_header_clean:
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
-		FaceData.h \
-		$(INC_DIR)/CUtil/CRGBA.h \
-		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h \
-		$(INC_DIR)/CMath/CPolygonOrientation.h \
-		$(INC_DIR)/CImageLib/CImagePtr.h \
 		$(INC_DIR)/CMath/CBBox3D.h \
 		$(INC_DIR)/CMath/CBBox2D.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
 		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
+		FaceData.h \
+		$(INC_DIR)/CMath/CPolygonOrientation.h \
+		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CMatrix3DH.h \
+		$(INC_DIR)/CMath/CMatrix3D.h \
+		$(INC_DIR)/CMath/CGaussianMatrix.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h \
 		.moc/moc_predefs.h \
 		/usr/lib/qt5/bin/moc
 	@echo moc Canvas.h && /usr/lib/qt5/bin/moc $(DEFINES) --include /home/colinw/git/CGeometry3D/qtcl/.moc/moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -I/home/colinw/git/CGeometry3D/qtcl -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQGLUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQImage' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQTabSplit' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQGroupBox' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQIconButton' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQRealSpin' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CImportModel' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CGeometry3D' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CMaterial' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CGLCamera' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CTclUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CImageLib' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFont' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CMath' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFileType' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFile' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/COS' -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtOpenGL -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtX11Extras -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtTest -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/c++/13 -I/usr/include/x86_64-linux-gnu/c++/13 -I/usr/include/c++/13/backward -I/usr/lib/gcc/x86_64-linux-gnu/13/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include Canvas.h -o .moc/moc_Canvas.cpp
@@ -572,6 +594,14 @@ compiler_moc_header_clean:
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
+		$(INC_DIR)/CMath/CBBox3D.h \
+		$(INC_DIR)/CMath/CBBox2D.h \
+		$(INC_DIR)/CMath/CVector2D.h \
+		$(INC_DIR)/CMath/CSize2D.h \
+		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
 		.moc/moc_predefs.h \
 		/usr/lib/qt5/bin/moc
 	@echo moc Toolbar.h && /usr/lib/qt5/bin/moc $(DEFINES) --include /home/colinw/git/CGeometry3D/qtcl/.moc/moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -I/home/colinw/git/CGeometry3D/qtcl -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQGLUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQImage' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQTabSplit' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQGroupBox' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQIconButton' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQRealSpin' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CImportModel' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CGeometry3D' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CMaterial' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CGLCamera' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CTclUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CImageLib' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFont' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CMath' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFileType' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFile' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/COS' -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtOpenGL -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtX11Extras -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtTest -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/c++/13 -I/usr/include/x86_64-linux-gnu/c++/13 -I/usr/include/c++/13/backward -I/usr/lib/gcc/x86_64-linux-gnu/13/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include Toolbar.h -o .moc/moc_Toolbar.cpp
@@ -589,17 +619,31 @@ compiler_moc_header_clean:
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
-		FaceData.h \
-		$(INC_DIR)/CUtil/CRGBA.h \
-		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h \
-		$(INC_DIR)/CMath/CPolygonOrientation.h \
-		$(INC_DIR)/CImageLib/CImagePtr.h \
 		$(INC_DIR)/CMath/CBBox3D.h \
 		$(INC_DIR)/CMath/CBBox2D.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
 		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
+		FaceData.h \
+		$(INC_DIR)/CMath/CPolygonOrientation.h \
+		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CMatrix3DH.h \
+		$(INC_DIR)/CMath/CMatrix3D.h \
+		$(INC_DIR)/CMath/CGaussianMatrix.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h \
 		.moc/moc_predefs.h \
 		/usr/lib/qt5/bin/moc
 	@echo moc Sidebar.h && /usr/lib/qt5/bin/moc $(DEFINES) --include /home/colinw/git/CGeometry3D/qtcl/.moc/moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -I/home/colinw/git/CGeometry3D/qtcl -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQGLUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQImage' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQTabSplit' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQGroupBox' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQIconButton' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQRealSpin' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CQUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CImportModel' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CGeometry3D' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CMaterial' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CGLCamera' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CTclUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CImageLib' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFont' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CUtil' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CMath' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFileType' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/CFile' -I'/home/colinw/git/CGeometry3D/qtcl/$(INC_DIR)/COS' -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtOpenGL -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtX11Extras -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtTest -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I/usr/include/c++/13 -I/usr/include/x86_64-linux-gnu/c++/13 -I/usr/include/c++/13/backward -I/usr/lib/gcc/x86_64-linux-gnu/13/include -I/usr/local/include -I/usr/include/x86_64-linux-gnu -I/usr/include Sidebar.h -o .moc/moc_Sidebar.cpp
@@ -656,14 +700,18 @@ $(OBJ_DIR)/CQTclModel3DView/Main.o: Main.cpp Main.h \
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
-		$(INC_DIR)/CQImage/CQImage.h \
-		$(INC_DIR)/CImageLib/CImage.h \
+		$(INC_DIR)/CMath/CBBox3D.h \
+		$(INC_DIR)/CMath/CBBox2D.h \
+		$(INC_DIR)/CMath/CVector2D.h \
+		$(INC_DIR)/CMath/CSize2D.h \
+		$(INC_DIR)/CMath/CISize2D.h \
 		$(INC_DIR)/CUtil/CRGBA.h \
 		$(INC_DIR)/CUtil/CRGB.h \
 		$(INC_DIR)/CUtil/CRGBName.h \
+		$(INC_DIR)/CQImage/CQImage.h \
+		$(INC_DIR)/CImageLib/CImage.h \
 		$(INC_DIR)/CUtil/CRGBACombineDef.h \
 		$(INC_DIR)/CUtil/CAlignType.h \
-		$(INC_DIR)/CMath/CISize2D.h \
 		$(INC_DIR)/CMath/CIBBox2D.h \
 		$(INC_DIR)/CMath/CIVector2D.h \
 		$(INC_DIR)/CFileType/CFileType.h \
@@ -685,33 +733,41 @@ $(OBJ_DIR)/CQTclModel3DView/App.o: App.cpp App.h \
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
-		Canvas.h \
-		FaceData.h \
-		$(INC_DIR)/CUtil/CRGBA.h \
-		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h \
-		$(INC_DIR)/CMath/CPolygonOrientation.h \
-		$(INC_DIR)/CImageLib/CImagePtr.h \
 		$(INC_DIR)/CMath/CBBox3D.h \
 		$(INC_DIR)/CMath/CBBox2D.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
 		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
+		Canvas.h \
+		FaceData.h \
+		$(INC_DIR)/CMath/CPolygonOrientation.h \
+		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CMatrix3DH.h \
+		$(INC_DIR)/CMath/CMatrix3D.h \
+		$(INC_DIR)/CMath/CGaussianMatrix.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h \
 		Overview.h \
 		CWindowRange2D.h \
 		$(INC_DIR)/CMath/CMathRound.h \
 		$(INC_DIR)/CMath/CMatrix2D.h \
-		$(INC_DIR)/CMath/CMatrix3DH.h \
-		$(INC_DIR)/CMath/CMatrix3D.h \
-		$(INC_DIR)/CMath/CGaussianMatrix.h \
 		Toolbar.h \
 		Sidebar.h \
 		Control.h \
 		Status.h \
 		GeomObject.h \
-		ShaderProgram.h \
-		CQGLBuffer.h \
-		$(INC_DIR)/CMath/CPoint4D.h \
 		$(INC_DIR)/CGeometry3D/CGeomObject3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomMesh.h \
 		$(INC_DIR)/CGeometry3D/CGeomSkeleton.h \
@@ -720,6 +776,7 @@ $(OBJ_DIR)/CQTclModel3DView/App.o: App.cpp App.h \
 		$(INC_DIR)/CMath/CTranslate3D.h \
 		$(INC_DIR)/CMath/CRotate3D.h \
 		$(INC_DIR)/CMath/CQuaternion.h \
+		$(INC_DIR)/CMath/CPoint4D.h \
 		$(INC_DIR)/CMath/CScale3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomFace3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomVertex3D.h \
@@ -751,8 +808,10 @@ $(OBJ_DIR)/CQTclModel3DView/App.o: App.cpp App.h \
 		ParticleSystem.h \
 		Camera.h \
 		$(INC_DIR)/CGLCamera/CGLCameraIFace.h \
-		Util.h \
+		Font.h \
+		$(INC_DIR)/CMath/CGLVector2D.h \
 		$(INC_DIR)/CMath/CGLVector3D.h \
+		Util.h \
 		$(INC_DIR)/CImportModel/CImportObj.h \
 		$(INC_DIR)/CImportModel/CImportBase.h \
 		$(INC_DIR)/CQTabSplit/CQTabSplit.h \
@@ -769,22 +828,14 @@ $(OBJ_DIR)/CQTclModel3DView/App.o: App.cpp App.h \
 		$(INC_DIR)/CFont/CFontStyle.h \
 		$(INC_DIR)/CUtil/CFlags.h \
 		$(INC_DIR)/CGeometry3D/CGeom3DRenderer.h \
-		$(INC_DIR)/CMath/CMathGeom2D.h \
-		$(INC_DIR)/CUtil/CLineJoinType.h \
-		$(INC_DIR)/CMath/CLine2D.h \
-		$(INC_DIR)/CMath/CShape2D.h \
-		$(INC_DIR)/CMath/C3Bezier2D.h \
-		$(INC_DIR)/CMath/C2Bezier2D.h \
 		$(INC_DIR)/CGeometry3D/CGeomCamera3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomMask.h \
 		$(INC_DIR)/CGeometry3D/CGeomEdge3D.h \
-		$(INC_DIR)/CMath/CLine3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomCube3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomCone3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomCylinder3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomSphere3D.h \
 		$(INC_DIR)/CMath/CSphere3D.h \
-		$(INC_DIR)/CMath/CShape3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomPlane3D.h \
 		$(INC_DIR)/CTclUtil/CTclUtil.h \
 		$(INC_DIR)/CTclUtil/CTclObj.h
@@ -802,24 +853,35 @@ $(OBJ_DIR)/CQTclModel3DView/Canvas.o: Canvas.cpp Canvas.h \
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
-		FaceData.h \
-		$(INC_DIR)/CUtil/CRGBA.h \
-		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h \
-		$(INC_DIR)/CMath/CPolygonOrientation.h \
-		$(INC_DIR)/CImageLib/CImagePtr.h \
 		$(INC_DIR)/CMath/CBBox3D.h \
 		$(INC_DIR)/CMath/CBBox2D.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
 		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
+		FaceData.h \
+		$(INC_DIR)/CMath/CPolygonOrientation.h \
+		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CMatrix3DH.h \
+		$(INC_DIR)/CMath/CMatrix3D.h \
+		$(INC_DIR)/CMath/CGaussianMatrix.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h \
 		Status.h \
 		ShaderProgram.h \
 		Camera.h \
 		$(INC_DIR)/CGLCamera/CGLCameraIFace.h \
-		$(INC_DIR)/CMath/CMatrix3DH.h \
-		$(INC_DIR)/CMath/CMatrix3D.h \
-		$(INC_DIR)/CMath/CGaussianMatrix.h \
 		$(INC_DIR)/CMath/CQuaternion.h \
 		Texture.h \
 		$(INC_DIR)/CGeometry3D/CGeomTexture.h \
@@ -837,8 +899,6 @@ $(OBJ_DIR)/CQTclModel3DView/Canvas.o: Canvas.cpp Canvas.h \
 		$(INC_DIR)/CImageLib/CImageMgr.h \
 		CQGLTexture.h \
 		GeomObject.h \
-		CQGLBuffer.h \
-		$(INC_DIR)/CMath/CPoint4D.h \
 		$(INC_DIR)/CGeometry3D/CGeomObject3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomMesh.h \
 		$(INC_DIR)/CGeometry3D/CGeomSkeleton.h \
@@ -846,6 +906,7 @@ $(OBJ_DIR)/CQTclModel3DView/Canvas.o: Canvas.cpp Canvas.h \
 		$(INC_DIR)/CGeometry3D/CGeomAnimationData.h \
 		$(INC_DIR)/CMath/CTranslate3D.h \
 		$(INC_DIR)/CMath/CRotate3D.h \
+		$(INC_DIR)/CMath/CPoint4D.h \
 		$(INC_DIR)/CMath/CScale3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomFace3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomVertex3D.h \
@@ -860,8 +921,11 @@ $(OBJ_DIR)/CQTclModel3DView/Canvas.o: Canvas.cpp Canvas.h \
 		$(INC_DIR)/CGeometry3D/CGeomMaterial.h \
 		$(INC_DIR)/CMath/CVector4D.h \
 		ParticleSystem.h \
-		Util.h \
+		Font.h \
+		$(INC_DIR)/CMath/CGLVector2D.h \
 		$(INC_DIR)/CMath/CGLVector3D.h \
+		Util.h \
+		CQGLBuffer.h \
 		$(INC_DIR)/CQGLUtil/CQGLUtil.h \
 		$(INC_DIR)/CGeometry3D/CGeomScene3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomLight3D.h \
@@ -873,15 +937,8 @@ $(OBJ_DIR)/CQTclModel3DView/Canvas.o: Canvas.cpp Canvas.h \
 		$(INC_DIR)/CFont/CFontStyle.h \
 		$(INC_DIR)/CUtil/CFlags.h \
 		$(INC_DIR)/CGeometry3D/CGeom3DRenderer.h \
-		$(INC_DIR)/CMath/CMathGeom2D.h \
-		$(INC_DIR)/CUtil/CLineJoinType.h \
-		$(INC_DIR)/CMath/CLine2D.h \
-		$(INC_DIR)/CMath/CShape2D.h \
-		$(INC_DIR)/CMath/C3Bezier2D.h \
-		$(INC_DIR)/CMath/C2Bezier2D.h \
 		$(INC_DIR)/CGeometry3D/CGeomCamera3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomEdge3D.h \
-		$(INC_DIR)/CMath/CLine3D.h \
 		$(INC_DIR)/CTclUtil/CTclUtil.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o $(OBJ_DIR)/CQTclModel3DView/Canvas.o Canvas.cpp
 
@@ -915,13 +972,21 @@ $(OBJ_DIR)/CQTclModel3DView/Overview.o: Overview.cpp Overview.h \
 		FaceData.h \
 		$(INC_DIR)/CMath/CPolygonOrientation.h \
 		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h \
 		Camera.h \
 		$(INC_DIR)/CGLCamera/CGLCameraIFace.h \
 		$(INC_DIR)/CMath/CQuaternion.h \
 		GeomObject.h \
-		ShaderProgram.h \
-		CQGLBuffer.h \
-		$(INC_DIR)/CMath/CPoint4D.h \
 		$(INC_DIR)/CGeometry3D/CGeomObject3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomMesh.h \
 		$(INC_DIR)/CGeometry3D/CGeomSkeleton.h \
@@ -929,6 +994,7 @@ $(OBJ_DIR)/CQTclModel3DView/Overview.o: Overview.cpp Overview.h \
 		$(INC_DIR)/CGeometry3D/CGeomAnimationData.h \
 		$(INC_DIR)/CMath/CTranslate3D.h \
 		$(INC_DIR)/CMath/CRotate3D.h \
+		$(INC_DIR)/CMath/CPoint4D.h \
 		$(INC_DIR)/CMath/CScale3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomFace3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomVertex3D.h \
@@ -942,8 +1008,11 @@ $(OBJ_DIR)/CQTclModel3DView/Overview.o: Overview.cpp Overview.h \
 		$(INC_DIR)/CUtil/CILineDash.h \
 		$(INC_DIR)/CGeometry3D/CGeomMaterial.h \
 		$(INC_DIR)/CMath/CVector4D.h \
-		Util.h \
+		Font.h \
+		$(INC_DIR)/CMath/CGLVector2D.h \
 		$(INC_DIR)/CMath/CGLVector3D.h \
+		Util.h \
+		CQGLBuffer.h \
 		$(INC_DIR)/CGeometry3D/CGeomScene3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomLight3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomAxes3D.h \
@@ -963,12 +1032,6 @@ $(OBJ_DIR)/CQTclModel3DView/Overview.o: Overview.cpp Overview.h \
 		$(INC_DIR)/CFont/CFontStyle.h \
 		$(INC_DIR)/CUtil/CFlags.h \
 		$(INC_DIR)/CGeometry3D/CGeom3DRenderer.h \
-		$(INC_DIR)/CMath/CMathGeom2D.h \
-		$(INC_DIR)/CUtil/CLineJoinType.h \
-		$(INC_DIR)/CMath/CLine2D.h \
-		$(INC_DIR)/CMath/CShape2D.h \
-		$(INC_DIR)/CMath/C3Bezier2D.h \
-		$(INC_DIR)/CMath/C2Bezier2D.h \
 		$(INC_DIR)/CGeometry3D/CGeomCamera3D.h \
 		$(INC_DIR)/CGeometry3D/CGeomTexture.h \
 		$(INC_DIR)/CFile/CFile.h \
@@ -989,22 +1052,33 @@ $(OBJ_DIR)/CQTclModel3DView/Control.o: Control.cpp Control.h \
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
-		FaceData.h \
-		$(INC_DIR)/CUtil/CRGBA.h \
-		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h \
-		$(INC_DIR)/CMath/CPolygonOrientation.h \
-		$(INC_DIR)/CImageLib/CImagePtr.h \
 		$(INC_DIR)/CMath/CBBox3D.h \
 		$(INC_DIR)/CMath/CBBox2D.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
 		$(INC_DIR)/CMath/CISize2D.h \
-		Camera.h \
-		$(INC_DIR)/CGLCamera/CGLCameraIFace.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
+		FaceData.h \
+		$(INC_DIR)/CMath/CPolygonOrientation.h \
+		$(INC_DIR)/CImageLib/CImagePtr.h \
 		$(INC_DIR)/CMath/CMatrix3DH.h \
 		$(INC_DIR)/CMath/CMatrix3D.h \
 		$(INC_DIR)/CMath/CGaussianMatrix.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h \
+		Camera.h \
+		$(INC_DIR)/CGLCamera/CGLCameraIFace.h \
 		$(INC_DIR)/CMath/CQuaternion.h \
 		Overview.h \
 		CWindowRange2D.h \
@@ -1029,25 +1103,36 @@ $(OBJ_DIR)/CQTclModel3DView/Toolbar.o: Toolbar.cpp Toolbar.h \
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
-		Canvas.h \
-		FaceData.h \
-		$(INC_DIR)/CUtil/CRGBA.h \
-		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h \
-		$(INC_DIR)/CMath/CPolygonOrientation.h \
-		$(INC_DIR)/CImageLib/CImagePtr.h \
 		$(INC_DIR)/CMath/CBBox3D.h \
 		$(INC_DIR)/CMath/CBBox2D.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
 		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
+		Canvas.h \
+		FaceData.h \
+		$(INC_DIR)/CMath/CPolygonOrientation.h \
+		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CMatrix3DH.h \
+		$(INC_DIR)/CMath/CMatrix3D.h \
+		$(INC_DIR)/CMath/CGaussianMatrix.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h \
 		Overview.h \
 		CWindowRange2D.h \
 		$(INC_DIR)/CMath/CMathRound.h \
 		$(INC_DIR)/CMath/CMatrix2D.h \
-		$(INC_DIR)/CMath/CMatrix3DH.h \
-		$(INC_DIR)/CMath/CMatrix3D.h \
-		$(INC_DIR)/CMath/CGaussianMatrix.h \
 		UI.h \
 		$(INC_DIR)/CQIconButton/CQIconButton.h \
 		$(INC_DIR)/CQUtil/CQUtil.h \
@@ -1067,24 +1152,35 @@ $(OBJ_DIR)/CQTclModel3DView/Sidebar.o: Sidebar.cpp Sidebar.h \
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
-		FaceData.h \
-		$(INC_DIR)/CUtil/CRGBA.h \
-		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h \
-		$(INC_DIR)/CMath/CPolygonOrientation.h \
-		$(INC_DIR)/CImageLib/CImagePtr.h \
 		$(INC_DIR)/CMath/CBBox3D.h \
 		$(INC_DIR)/CMath/CBBox2D.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
 		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
+		FaceData.h \
+		$(INC_DIR)/CMath/CPolygonOrientation.h \
+		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CMatrix3DH.h \
+		$(INC_DIR)/CMath/CMatrix3D.h \
+		$(INC_DIR)/CMath/CGaussianMatrix.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h \
 		Overview.h \
 		CWindowRange2D.h \
 		$(INC_DIR)/CMath/CMathRound.h \
 		$(INC_DIR)/CMath/CMatrix2D.h \
-		$(INC_DIR)/CMath/CMatrix3DH.h \
-		$(INC_DIR)/CMath/CMatrix3D.h \
-		$(INC_DIR)/CMath/CGaussianMatrix.h \
 		UI.h \
 		$(INC_DIR)/CQIconButton/CQIconButton.h \
 		$(INC_DIR)/CQUtil/CQUtil.h \
@@ -1111,18 +1207,29 @@ $(OBJ_DIR)/CQTclModel3DView/Camera.o: Camera.cpp Camera.h \
 		$(INC_DIR)/CMath/CQuaternion.h \
 		App.h \
 		$(INC_DIR)/CUtil/CGeom3DType.h \
-		Canvas.h \
-		FaceData.h \
-		$(INC_DIR)/CUtil/CRGBA.h \
-		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h \
-		$(INC_DIR)/CMath/CPolygonOrientation.h \
-		$(INC_DIR)/CImageLib/CImagePtr.h \
 		$(INC_DIR)/CMath/CBBox3D.h \
 		$(INC_DIR)/CMath/CBBox2D.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
-		$(INC_DIR)/CMath/CISize2D.h
+		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
+		Canvas.h \
+		FaceData.h \
+		$(INC_DIR)/CMath/CPolygonOrientation.h \
+		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o $(OBJ_DIR)/CQTclModel3DView/Camera.o Camera.cpp
 
 $(OBJ_DIR)/CQTclModel3DView/ShaderProgram.o: ShaderProgram.cpp ShaderProgram.h \
@@ -1137,16 +1244,16 @@ $(OBJ_DIR)/CQTclModel3DView/ShaderProgram.o: ShaderProgram.cpp ShaderProgram.h \
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CIPoint3D.h \
 		$(INC_DIR)/CMath/CMathMacros.h \
-		CQGLBuffer.h \
 		$(INC_DIR)/CMath/CBBox3D.h \
 		$(INC_DIR)/CMath/CBBox2D.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
 		$(INC_DIR)/CMath/CISize2D.h \
-		$(INC_DIR)/CMath/CPoint4D.h \
 		$(INC_DIR)/CUtil/CRGBA.h \
 		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h
+		$(INC_DIR)/CUtil/CRGBName.h \
+		CQGLBuffer.h \
+		$(INC_DIR)/CMath/CPoint4D.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o $(OBJ_DIR)/CQTclModel3DView/ShaderProgram.o ShaderProgram.cpp
 
 $(OBJ_DIR)/CQTclModel3DView/ParticleSystem.o: ParticleSystem.cpp ParticleSystem.h \
@@ -1155,7 +1262,47 @@ $(OBJ_DIR)/CQTclModel3DView/ParticleSystem.o: ParticleSystem.cpp ParticleSystem.
 		$(INC_DIR)/CUtil/CRGBName.h \
 		$(INC_DIR)/CMath/CPoint2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
-		$(INC_DIR)/CMath/CISize2D.h
+		$(INC_DIR)/CMath/CISize2D.h \
+		GeomObject.h \
+		FaceData.h \
+		$(INC_DIR)/CMath/CPoint3D.h \
+		$(INC_DIR)/CMath/CIPoint3D.h \
+		$(INC_DIR)/CMath/CPolygonOrientation.h \
+		$(INC_DIR)/CGeometry3D/CGeomObject3D.h \
+		$(INC_DIR)/CGeometry3D/CGeomMesh.h \
+		$(INC_DIR)/CMath/CVector3D.h \
+		$(INC_DIR)/CMath/CMathGen.h \
+		$(INC_DIR)/CMath/CIPoint2D.h \
+		$(INC_DIR)/CMath/CMathUtil.h \
+		$(INC_DIR)/COS/COSNaN.h \
+		$(INC_DIR)/CMath/CMathMacros.h \
+		$(INC_DIR)/CGeometry3D/CGeomSkeleton.h \
+		$(INC_DIR)/CGeometry3D/CGeomNodeData.h \
+		$(INC_DIR)/CGeometry3D/CGeomAnimationData.h \
+		$(INC_DIR)/CMath/CTranslate3D.h \
+		$(INC_DIR)/CMath/CMatrix3D.h \
+		$(INC_DIR)/CMath/CGaussianMatrix.h \
+		$(INC_DIR)/CMath/CRotate3D.h \
+		$(INC_DIR)/CMath/CQuaternion.h \
+		$(INC_DIR)/CMath/CMatrix3DH.h \
+		$(INC_DIR)/CMath/CPoint4D.h \
+		$(INC_DIR)/CMath/CScale3D.h \
+		$(INC_DIR)/CGeometry3D/CGeomFace3D.h \
+		$(INC_DIR)/CGeometry3D/CGeomVertex3D.h \
+		$(INC_DIR)/CUtil/CClipSide.h \
+		$(INC_DIR)/CGeometry3D/CGeomPoint3D.h \
+		$(INC_DIR)/CMath/CCoordFrame3D.h \
+		$(INC_DIR)/CMath/COrthonormalBasis3D.h \
+		$(INC_DIR)/CGeometry3D/CGeomLine3D.h \
+		$(INC_DIR)/CMaterial/CMaterial.h \
+		$(INC_DIR)/CUtil/CLineDash.h \
+		$(INC_DIR)/CUtil/CILineDash.h \
+		$(INC_DIR)/CGeometry3D/CGeomMaterial.h \
+		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CBBox3D.h \
+		$(INC_DIR)/CMath/CBBox2D.h \
+		$(INC_DIR)/CMath/CVector2D.h \
+		$(INC_DIR)/CMath/CVector4D.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o $(OBJ_DIR)/CQTclModel3DView/ParticleSystem.o ParticleSystem.cpp
 
 $(OBJ_DIR)/CQTclModel3DView/Font.o: Font.cpp Font.h \
@@ -1178,15 +1325,26 @@ $(OBJ_DIR)/CQTclModel3DView/Font.o: Font.cpp Font.h \
 		$(INC_DIR)/CMath/CVector2D.h \
 		$(INC_DIR)/CMath/CSize2D.h \
 		$(INC_DIR)/CMath/CISize2D.h \
+		$(INC_DIR)/CUtil/CRGBA.h \
+		$(INC_DIR)/CUtil/CRGB.h \
+		$(INC_DIR)/CUtil/CRGBName.h \
 		Canvas.h \
 		App.h \
 		$(INC_DIR)/CUtil/CGeom3DType.h \
 		FaceData.h \
-		$(INC_DIR)/CUtil/CRGBA.h \
-		$(INC_DIR)/CUtil/CRGB.h \
-		$(INC_DIR)/CUtil/CRGBName.h \
 		$(INC_DIR)/CMath/CPolygonOrientation.h \
 		$(INC_DIR)/CImageLib/CImagePtr.h \
+		$(INC_DIR)/CMath/CPlane3D.h \
+		$(INC_DIR)/CMath/CLine3D.h \
+		$(INC_DIR)/CMath/CMathGeom3D.h \
+		$(INC_DIR)/CMath/CTriangle3D.h \
+		$(INC_DIR)/CMath/CShape3D.h \
+		$(INC_DIR)/CMath/CMathGeom2D.h \
+		$(INC_DIR)/CUtil/CLineJoinType.h \
+		$(INC_DIR)/CMath/CLine2D.h \
+		$(INC_DIR)/CMath/CShape2D.h \
+		$(INC_DIR)/CMath/C3Bezier2D.h \
+		$(INC_DIR)/CMath/C2Bezier2D.h \
 		ShaderProgram.h \
 		Camera.h \
 		$(INC_DIR)/CGLCamera/CGLCameraIFace.h \

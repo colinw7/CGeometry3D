@@ -41,11 +41,23 @@ addFragmentShader(const QString &name)
     std::cerr << log().toStdString() << "\n";
 }
 
+void
+ShaderProgram::
+addGeometryShader(const QString &name)
+{
+  auto buildDir = app_->buildDir();
+
+  if (! addShaderFromSourceFile(QOpenGLShader::Geometry, buildDir + "/shaders/" + name))
+    std::cerr << log().toStdString() << "\n";
+}
+
 CQGLBuffer *
 ShaderProgram::
 createBuffer()
 {
-  return new CQGLBuffer(this);
+  buffer_ =  new CQGLBuffer(this);
+
+  return buffer_;
 }
 
 }

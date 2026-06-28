@@ -9,12 +9,15 @@
 
 #include <QFrame>
 
+class CGeomObject3D;
+
 namespace CQTclModel3DView {
 
 class App;
 class Shape;
 class Camera;
 class Light;
+class Text;
 
 class Overview : public QFrame {
   Q_OBJECT
@@ -76,10 +79,14 @@ class Overview : public QFrame {
   //---
 
   void updateModel();
+  void updateObject(CGeomObject3D *object);
 
   void drawModel();
 
   void drawCamera(Camera *camera);
+
+  void drawTexts();
+  void drawText(Text *text);
 
   void drawLight(Light *light);
 
@@ -100,7 +107,7 @@ class Overview : public QFrame {
 
   void getCameraShape(Camera *camera, CameraShape &shape) const;
 
- private Q_SLOTS:
+ public Q_SLOTS:
   void invalidate();
 
  private:

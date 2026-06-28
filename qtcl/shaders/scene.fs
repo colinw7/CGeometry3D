@@ -1,6 +1,6 @@
 #version 330 core
 
-in vec3 FragPos;
+in vec4 FragPos;
 in vec3 Normal;
 in vec3 Color;
 in vec2 TexCoords;
@@ -115,7 +115,7 @@ void main() {
   // specular color
   vec3 specColor = calcSpecularColor();
 
-  vec3 viewDir = normalize(viewPos - FragPos);
+  vec3 viewDir = normalize(viewPos - vec3(FragPos));
 
   // baked diffuse lighting
   float diffFactor = 1.0;

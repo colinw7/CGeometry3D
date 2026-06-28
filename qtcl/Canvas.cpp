@@ -6,6 +6,7 @@
 #include <Texture.h>
 #include <GeomObject.h>
 #include <ParticleSystem.h>
+#include <Font.h>
 #include <Util.h>
 
 #include <CQGLBuffer.h>
@@ -21,9 +22,19 @@
 #include <CTclUtil.h>
 #include <CBBox3D.h>
 
+#ifdef CQ_PERF_GRAPH
+#include <CQPerfMonitor.h>
+#else
+struct CQPerfTrace {
+  CQPerfTrace(const char *) { }
+};
+#endif
+
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QKeyEvent>
+
+#define USE_CLIP 1
 
 namespace CQTclModel3DView {
 
@@ -39,47 +50,64 @@ Canvas(App *app) :
 
   //---
 
-  camera_ = new Camera(app_);
-
-  camera_->setOrigin(CVector3D(0, 0, 0));
-  camera_->setDistance(5);
-
-  //---
-
   rubberBand_ = new CQRubberBand(this);
 
   //---
 
   connect(app_, SIGNAL(modelAdded()), this, SLOT(updateScene()));
 
-  connect(camera_, SIGNAL(stateChangedSignal()), this, SLOT(update()));
-
   //---
+
+  addViewport(CBBox2D(0, 0, 1, 1));
 
   updateStatus();
 }
 
 //---
 
+Camera *
+Canvas::
+camera() const
+{
+  auto *viewportData = getCurrentViewportData();
+
+  return viewportData->camera;
+}
+
 ShaderProgram *
 Canvas::
 sceneShaderProgram()
 {
-  return getShader("scene.vs", "scene.fs");
+  auto *program = getShader("scene.vs", "scene.fs");
+
+  if (! program->buffer())
+    program->createBuffer();
+
+  return program;
 }
 
 ShaderProgram *
 Canvas::
 selectionShaderProgram()
 {
-  return getShader("selection.vs", "selection.fs");
+  auto *program = getShader("selection.vs", "selection.fs");
+
+  if (! program->buffer())
+    program->createBuffer();
+
+  return program;
 }
 
 ShaderProgram *
 Canvas::
 particleShaderProgram()
 {
-  return getShader("particle.vs", "particle.fs");
+  auto *program = getShader("particle.vs", "particle.fs");
+
+  if (! program->buffer())
+    program->createBuffer();
+
+  return program;
 }
 
 //---
@@ -89,6 +117,15 @@ Canvas::
 initializeGL()
 {
   initializeOpenGLFunctions();
+
+  //---
+
+  font_ = new Font(this);
+
+  font_->init();
+
+  font_->setSize(48);
+  font_->setFontName("OpenSans-Regular.ttf");
 }
 
 void
@@ -98,17 +135,27 @@ resizeGL(int width, int height)
   setPixelWidth (width);
   setPixelHeight(height);
 
-  glViewport(0, 0, width, height);
+  for (uint i = 0; i < viewportDatas_.size(); ++i) {
+    currentViewport_ = i;
 
-  setAspect(double(width)/double(height));
+    auto region = viewportRegion();
 
-  camera_->setAspect(aspect());
+    auto *camera = this->camera();
+
+    camera->setAspect(double(region.getWidth())/double(region.getHeight()));
+  }
+
+  currentViewport_ = 0;
 }
 
 void
 Canvas::
 paintGL()
 {
+  CQPerfTrace trace("Canvas::paintGL");
+
+  //---
+
   if (invalid_) {
     addScene();
 
@@ -117,7 +164,15 @@ paintGL()
 
   //---
 
-  glClearColor(bgColor_.redF(), bgColor_.greenF(), bgColor_.blueF(), 1.0f);
+  currentViewport_ = 0;
+
+  auto region = viewportRegion();
+
+  glViewport(region.getXMin(), region.getYMin(), region.getWidth(), region.getHeight());
+
+  const auto &bgColor = this->bgColor();
+
+  glClearColor(bgColor.redF(), bgColor.greenF(), bgColor.blueF(), 1.0f);
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -134,7 +189,65 @@ paintGL()
 
   //---
 
+  enableClips(true);
+
   drawScene();
+
+  enableClips(false);
+
+  //---
+
+  for (uint i = 1; i < viewportDatas_.size(); ++i) {
+    currentViewport_ = i;
+
+    auto region = viewportRegion();
+
+    glViewport(region.getXMin(), region.getYMin(), region.getWidth(), region.getHeight());
+
+    //---
+
+    glEnable(GL_SCISSOR_TEST);
+
+    glScissor(region.getXMin(), region.getYMin(), region.getWidth(), region.getHeight());
+
+    const auto &bgColor = this->bgColor();
+
+    glClearColor(bgColor.redF(), bgColor.greenF(), bgColor.blueF(), 1.0f);
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glDisable(GL_SCISSOR_TEST);
+
+    //---
+
+    enableClips(true);
+
+    drawScene();
+
+    enableClips(false);
+  }
+
+  //---
+
+  currentViewport_ = 0;
+}
+
+void
+Canvas::
+enableClips(bool b)
+{
+#if USE_CLIP
+  auto *viewportData = getCurrentViewportData();
+
+  if (b) {
+    for (uint ic = 0; ic < viewportData->clips.size(); ++ic)
+      glEnable(GL_CLIP_DISTANCE0 + ic);
+  }
+  else {
+    for (uint ic = 0; ic < viewportData->clips.size(); ++ic)
+      glDisable(GL_CLIP_DISTANCE0 + ic);
+  }
+#endif
 }
 
 //---
@@ -143,7 +256,10 @@ void
 Canvas::
 updateScene(bool updateBBox)
 {
-  updateBBox_ = updateBBox;
+  if (updateBBox) {
+    for (auto *viewportData : viewportDatas_)
+      viewportData->updateBBox = true;
+  }
 
   invalid_ = true;
 
@@ -154,462 +270,595 @@ void
 Canvas::
 addScene()
 {
-  if (updateBBox_)
-    bbox_ = CBBox3D();
+  CQPerfTrace trace("Canvas::addScene");
+
+  //---
+
+  // TODO: per viewport ?
+  auto *viewportData = getCurrentViewportData();
+
+  auto bbox = this->bbox();
+
+  if (viewportData->updateBBox)
+    bbox = CBBox3D();
 
   //---
 
   auto *scene = app_->scene();
 
   for (auto *object : scene->getObjects()) {
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
+    if (! object->refObject())
+      addObject(object, bbox, viewportData->updateBBox);
+  }
+
+  //---
+
+  addParticles(bbox, viewportData->updateBBox);
+
+  //---
+
+  updateTexts();
+
+  //---
+
+  if (! bbox.isSet()) {
+    bbox.add(CPoint3D(-1, -1, -1));
+    bbox.add(CPoint3D( 1,  1,  1));
+  }
+
+  //---
+
+  if (viewportData->updateBBox)
+    updateCamera();
+}
+
+void
+Canvas::
+addObject(CGeomObject3D *object, CBBox3D &bbox, bool updateBBox)
+{
+  auto *object1 = dynamic_cast<GeomObject *>(object);
+  assert(object1);
+
+  //---
+
+  auto modelMatrix = CMatrix3DH(object1->getHierTransform());
+  auto meshMatrix  = CMatrix3DH(object->getMeshGlobalTransform());
+
+  //---
+
+  auto *buffer = object1->initBuffer(this);
+
+  //---
+
+  auto *objectMaterial = object->getMaterialP();
+
+  auto *diffuseTexture  = object->getDiffuseTexture();
+  auto *normalTexture   = object->getNormalTexture();
+  auto *specularTexture = object->getSpecularTexture();
+  auto *emissiveTexture = object->getEmissiveTexture();
+
+  //---
+
+  CBBox3D bbox1;
+
+  int pos = 0;
+
+  auto addFaceData = [&](CGeomFace3D *face, bool reverse=false) {
+    FaceData faceData;
+
+    faceData.face = const_cast<CGeomFace3D *>(face);
+
+    faceData.orient = face->getProjectedOrientation();
 
     //---
 
-    auto modelMatrix = CMatrix3DH(object1->getHierTransform());
-    auto meshMatrix  = CMatrix3DH(object->getMeshGlobalTransform());
+    auto *faceMaterial = faceData.face->getMaterialP();
+
+    if (! faceMaterial && objectMaterial)
+      faceMaterial = objectMaterial;
 
     //---
 
-    auto *buffer = object1->initBuffer(this);
+    faceData.diffuse = face->color().value_or(CRGBA(1, 1, 1));
+
+    if (faceMaterial && faceMaterial->diffuse())
+      faceData.diffuse = faceMaterial->diffuse().value();
 
     //---
 
-    auto *objectMaterial = object->getMaterialP();
+    // set face textures
+    auto *diffuseTexture1  = face->getDiffuseTexture();
+    auto *normalTexture1   = face->getNormalTexture();
+    auto *specularTexture1 = face->getSpecularTexture();
+    auto *emissiveTexture1 = face->getEmissiveTexture();
 
-    auto *diffuseTexture  = object->getDiffuseTexture();
-    auto *normalTexture   = object->getNormalTexture();
-    auto *specularTexture = object->getSpecularTexture();
-    auto *emissiveTexture = object->getEmissiveTexture();
+    if (! diffuseTexture1 ) diffuseTexture1  = diffuseTexture;
+    if (! normalTexture1  ) normalTexture1   = normalTexture;
+    if (! specularTexture1) specularTexture1 = specularTexture;
+    if (! emissiveTexture1) emissiveTexture1 = emissiveTexture;
+
+    if (faceMaterial) {
+      if (faceMaterial->diffuseTexture ()) diffuseTexture1  = faceMaterial->diffuseTexture ();
+      if (faceMaterial->normalTexture  ()) normalTexture1   = faceMaterial->normalTexture  ();
+      if (faceMaterial->specularTexture()) specularTexture1 = faceMaterial->specularTexture();
+      if (faceMaterial->emissiveTexture()) emissiveTexture1 = faceMaterial->emissiveTexture();
+    }
+
+    if (diffuseTexture1)
+      faceData.diffuseTexture = getGLTexture(diffuseTexture1, /*add*/true);
+
+    if (normalTexture1)
+      faceData.normalTexture = getGLTexture(normalTexture1, /*add*/true);
+
+    if (specularTexture1)
+      faceData.specularTexture = getGLTexture(specularTexture1, /*add*/true);
+
+    if (emissiveTexture1)
+      faceData.emissiveTexture = getGLTexture(emissiveTexture1, /*add*/true);
 
     //---
 
-    CBBox3D bbox1;
+    auto vertices = face->getVertices();
 
-    int pos = 0;
+    if (reverse)
+      std::reverse(vertices.begin(), vertices.end());
 
-    auto addFaceData = [&](CGeomFace3D *face, bool reverse=false) {
-      FaceData faceData;
+    //--
 
-      faceData.face = const_cast<CGeomFace3D *>(face);
+    // get face normal
+    CVector3D normal;
 
-      faceData.orient = face->getProjectedOrientation();
-
-      //---
-
-      auto *faceMaterial = faceData.face->getMaterialP();
-
-      if (! faceMaterial && objectMaterial)
-        faceMaterial = objectMaterial;
-
-      //---
-
-      faceData.diffuse = face->color().value_or(CRGBA(1, 1, 1));
-
-      if (faceMaterial && faceMaterial->diffuse())
-        faceData.diffuse = faceMaterial->diffuse().value();
-
-      //---
-
-      // set face textures
-      auto *diffuseTexture1  = face->getDiffuseTexture();
-      auto *normalTexture1   = face->getNormalTexture();
-      auto *specularTexture1 = face->getSpecularTexture();
-      auto *emissiveTexture1 = face->getEmissiveTexture();
-
-      if (! diffuseTexture1 ) diffuseTexture1  = diffuseTexture;
-      if (! normalTexture1  ) normalTexture1   = normalTexture;
-      if (! specularTexture1) specularTexture1 = specularTexture;
-      if (! emissiveTexture1) emissiveTexture1 = emissiveTexture;
-
-      if (faceMaterial) {
-        if (faceMaterial->diffuseTexture ()) diffuseTexture1  = faceMaterial->diffuseTexture ();
-        if (faceMaterial->normalTexture  ()) normalTexture1   = faceMaterial->normalTexture  ();
-        if (faceMaterial->specularTexture()) specularTexture1 = faceMaterial->specularTexture();
-        if (faceMaterial->emissiveTexture()) emissiveTexture1 = faceMaterial->emissiveTexture();
-      }
-
-      if (diffuseTexture1)
-        faceData.diffuseTexture = getGLTexture(diffuseTexture1, /*add*/true);
-
-      if (normalTexture1)
-        faceData.normalTexture = getGLTexture(normalTexture1, /*add*/true);
-
-      if (specularTexture1)
-        faceData.specularTexture = getGLTexture(specularTexture1, /*add*/true);
-
-      if (emissiveTexture1)
-        faceData.emissiveTexture = getGLTexture(emissiveTexture1, /*add*/true);
-
-      //---
-
-      auto vertices = face->getVertices();
-
-      if (reverse)
-        std::reverse(vertices.begin(), vertices.end());
-
-      //--
-
-      // get face normal
-      CVector3D normal;
-
-      if (face->getNormalSet())
-        normal = face->getNormal();
-      else {
-        for (const auto &v : vertices) {
-          auto &vertex = object->getVertex(v);
-
-          vertex.setViewed(vertex.getModel());
-        }
-
-        face->calcModelNormal(normal);
-      }
-
-      //---
-
-      faceData.pos = pos;
-      faceData.len = int(vertices.size());
-
-      int iv = 0;
-
+    if (face->getNormalSet())
+      normal = face->getNormal();
+    else {
       for (const auto &v : vertices) {
-        faceData.vertices.push_back(v);
+        auto &vertex = object->getVertex(v);
 
-        auto *vertex = object->getVertexP(v);
+        vertex.setViewed(vertex.getModel());
+      }
 
-        const auto &model = vertex->getModel();
+      face->calcModelNormal(normal);
+    }
 
-        auto model1 = meshMatrix *model;
-        auto model2 = modelMatrix*model1;
+    //---
 
-        vertex->setViewed(model2);
+    faceData.pos = pos;
+    faceData.len = int(vertices.size());
 
-        //---
+    int iv = 0;
 
-        // update color, normal for custom vertex value
+    for (const auto &v : vertices) {
+      faceData.vertices.push_back(v);
 
-        auto normal1 = normal;
-        auto color1  = faceData.diffuse;
+      auto *vertex = object->getVertexP(v);
 
-        if (! isFlatShaded()) {
-          if (vertex->hasNormal())
-            normal1 = vertex->getNormal();
-        }
+      const auto &model = vertex->getModel();
 
-        if (vertex->hasColor())
-          color1 = vertex->getColor();
+      auto model1 = meshMatrix *model;
+      auto model2 = modelMatrix*model1;
 
-        //---
+      vertex->setViewed(model2);
 
-        if (faceData.normalTexture) {
-          CPoint2D tpoint;
+      //---
 
-          if (vertex->hasTextureMap())
-            tpoint = vertex->getTextureMap();
-          else
-            tpoint = face->getTexturePoint(*vertex, iv);
+      // update color, normal for custom vertex value
 
-          int tw = faceData.normalTexture->getWidth ();
-          int th = faceData.normalTexture->getHeight();
+      auto normal1 = normal;
+      auto color1  = faceData.diffuse;
 
-          auto tx = CMathUtil::clamp(tpoint.x, 0.0, 1.0);
-          auto ty = CMathUtil::clamp(tpoint.y, 0.0, 1.0);
+      if (! isFlatShaded()) {
+        if (vertex->hasNormal())
+          normal1 = vertex->getNormal();
+      }
 
-          // get normal value from texture
-          auto rgba = faceData.normalTexture->getImage().pixel(tx*(tw - 1), ty*(th - 1));
-          auto tnormal = CVector3D(qRed(rgba)/255.0, qGreen(rgba)/255.0, qBlue(rgba)/255.0);
+      if (vertex->hasColor())
+        color1 = vertex->getColor();
 
-          // this normal is in tangent space
-          normal1 = (tnormal*2.0 - CVector3D(1.0, 1.0, 1.0)).normalized();
-        }
+      //---
 
-        //---
+      if (faceData.normalTexture) {
+        CPoint2D tpoint;
 
-        buffer->addInd(vertex->getInd());
+        if (vertex->hasTextureMap())
+          tpoint = vertex->getTextureMap();
+        else
+          tpoint = face->getTexturePoint(*vertex, iv);
 
-        buffer->addPoint(float(model.x), float(model.y), float(model.z));
+        int tw = faceData.normalTexture->getWidth ();
+        int th = faceData.normalTexture->getHeight();
 
-        buffer->addNormal(float(normal1.getX()), float(normal1.getY()), float(normal1.getZ()));
+        auto tx = CMathUtil::clamp(tpoint.x, 0.0, 1.0);
+        auto ty = CMathUtil::clamp(tpoint.y, 0.0, 1.0);
 
-        buffer->addColor(color1);
+        // get normal value from texture
+        auto rgba = faceData.normalTexture->getImage().pixel(tx*(tw - 1), ty*(th - 1));
+        auto tnormal = CVector3D(qRed(rgba)/255.0, qGreen(rgba)/255.0, qBlue(rgba)/255.0);
 
-        //---
+        // this normal is in tangent space
+        normal1 = (tnormal*2.0 - CVector3D(1.0, 1.0, 1.0)).normalized();
+      }
+
+      //---
+
+      buffer->addInd(vertex->getInd());
+
+      buffer->addPoint(float(model.x), float(model.y), float(model.z));
+
+      buffer->addNormal(float(normal1.getX()), float(normal1.getY()), float(normal1.getZ()));
+
+      buffer->addColor(color1);
+
+      //---
 
 #if 0
-        const auto &jointData = vertex->getJointData();
+      const auto &jointData = vertex->getJointData();
 
-        if (jointData.nodeDatas[0].node >= 0) {
-          for (int i = 0; i < 4; ++i) {
-            boneNodeIds[i] = jointData.nodeDatas[i].node;
-            boneWeights[i] = jointData.nodeDatas[i].weight;
-          }
-
-          buffer->addBoneIds    (boneNodeIds[0], boneNodeIds[1], boneNodeIds[2], boneNodeIds[3]);
-          buffer->addBoneWeights(boneWeights[0], boneWeights[1], boneWeights[2], boneWeights[3]);
+      if (jointData.nodeDatas[0].node >= 0) {
+        for (int i = 0; i < 4; ++i) {
+          boneNodeIds[i] = jointData.nodeDatas[i].node;
+          boneWeights[i] = jointData.nodeDatas[i].weight;
         }
+
+        buffer->addBoneIds    (boneNodeIds[0], boneNodeIds[1], boneNodeIds[2], boneNodeIds[3]);
+        buffer->addBoneWeights(boneWeights[0], boneWeights[1], boneWeights[2], boneWeights[3]);
+      }
 #endif
 
-        //---
+      //---
 
-        if (faceData.diffuseTexture) {
-          const auto &tpoint = face->getTexturePoint(*vertex, iv);
+      if (faceData.diffuseTexture) {
+        const auto &tpoint = face->getTexturePoint(*vertex, iv);
 
-          buffer->addTexturePoint(float(tpoint.x), float(tpoint.y));
-        }
-        else
-          buffer->addTexturePoint(0.0f, 0.0f);
-
-        //---
-
-        ++iv;
-
-        bbox1 += model2;
+        buffer->addTexturePoint(float(tpoint.x), float(tpoint.y));
       }
-
-      pos += faceData.len;
-
-      object1->addFaceData(faceData);
-    };
-
-    //---
-
-    const auto &faces = object->getFaces();
-
-    for (auto *face : faces) {
-      addFaceData(face);
-
-      auto *faceMaterial = const_cast<CGeomFace3D *>(face)->getMaterialP();
-
-      if (! faceMaterial && objectMaterial)
-        faceMaterial = objectMaterial;
-
-      if (face->getTwoSided() || (faceMaterial && faceMaterial->isTwoSided()))
-        addFaceData(face, /*reverse*/true);
-    }
-
-    //---
-
-    const auto &lines = object->getLines();
-
-    for (const auto *line : lines) {
-      FaceData faceData;
-
-      faceData.line = const_cast<CGeomLine3D *>(line);
-
-      //---
-
-      auto color = line->getColor();
-
-      //---
-
-      auto v1 = line->getStartInd();
-      auto v2 = line->getEndInd  ();
-
-      std::vector<uint> vertices;
-
-      vertices.push_back(v1);
-      vertices.push_back(v2);
-
-      //--
-
-      faceData.pos = pos;
-      faceData.len = int(vertices.size());
-
-      int iv = 0;
-
-      for (const auto &v : vertices) {
-        faceData.vertices.push_back(v);
-
-        const auto &vertex = object->getVertex(v);
-        const auto &model  = vertex.getModel();
-
-        auto model1 = meshMatrix *model;
-        auto model2 = modelMatrix*model1;
-
-        //---
-
-        // update color, normal for custom vertex value
-
-        auto color1 = color;
-
-        if (vertex.hasColor())
-          color1 = vertex.getColor();
-
-        //---
-
-        buffer->addInd(vertex.getInd());
-
-        buffer->addPoint(float(model.x), float(model.y), float(model.z));
-
-        buffer->addNormal(0, 0, 1);
-
-        buffer->addColor(color1);
-
+      else
         buffer->addTexturePoint(0.0f, 0.0f);
 
-        //---
+      //---
 
-        ++iv;
+      ++iv;
 
-        bbox1 += model2;
-      }
-
-      pos += faceData.len;
-
-      object1->addFaceData(faceData);
+      bbox1 += model2;
     }
 
-    //---
+    pos += faceData.len;
 
-    object1->setBBox(bbox1);
+    object1->addFaceData(faceData);
+  };
 
-    if (updateBBox_)
-      bbox_ += bbox1;
+  //---
 
-    //---
+  const auto &faces = object->getFaces();
 
-    buffer->load();
+  for (auto *face : faces) {
+    addFaceData(face);
+
+    auto *faceMaterial = const_cast<CGeomFace3D *>(face)->getMaterialP();
+
+    if (! faceMaterial && objectMaterial)
+      faceMaterial = objectMaterial;
+
+    if (face->getTwoSided() || (faceMaterial && faceMaterial->isTwoSided()))
+      addFaceData(face, /*reverse*/true);
   }
 
   //---
 
-  addParticles();
+  const auto &lines = object->getLines();
 
-  //---
+  for (const auto *line : lines) {
+    FaceData faceData;
 
-  if (! bbox_.isSet()) {
-    bbox_.add(CPoint3D(-1, -1, -1));
-    bbox_.add(CPoint3D( 1,  1,  1));
+    faceData.line = const_cast<CGeomLine3D *>(line);
+
+    //---
+
+    auto color = line->getColor();
+
+    //---
+
+    auto v1 = line->getStartInd();
+    auto v2 = line->getEndInd  ();
+
+    std::vector<uint> vertices;
+
+    vertices.push_back(v1);
+    vertices.push_back(v2);
+
+    //--
+
+    faceData.pos = pos;
+    faceData.len = int(vertices.size());
+
+    int iv = 0;
+
+    for (const auto &v : vertices) {
+      faceData.vertices.push_back(v);
+
+      const auto &vertex = object->getVertex(v);
+      const auto &model  = vertex.getModel();
+
+      auto model1 = meshMatrix *model;
+      auto model2 = modelMatrix*model1;
+
+      //---
+
+      // update color, normal for custom vertex value
+
+      auto color1 = color;
+
+      if (vertex.hasColor())
+        color1 = vertex.getColor();
+
+      //---
+
+      buffer->addInd(vertex.getInd());
+
+      buffer->addPoint(float(model.x), float(model.y), float(model.z));
+
+      buffer->addNormal(0, 0, 1);
+
+      buffer->addColor(color1);
+
+      buffer->addTexturePoint(0.0f, 0.0f);
+
+      //---
+
+      ++iv;
+
+      bbox1 += model2;
+    }
+
+    pos += faceData.len;
+
+    object1->addFaceData(faceData);
   }
 
   //---
 
-  if (updateBBox_)
-    updateCamera();
+  object1->setBBox(bbox1);
+
+  if (updateBBox) {
+    bbox += bbox1;
+
+    setBBox(bbox);
+  }
+
+  //---
+
+  buffer->load();
+}
+
+//---
+
+const CBBox3D &
+Canvas::
+bbox() const
+{
+  auto *viewportData = getCurrentViewportData();
+
+  return viewportData->bbox;
+}
+
+void
+Canvas::
+setBBox(const CBBox3D &b)
+{
+  auto *viewportData = getCurrentViewportData();
+
+  setBBox(viewportData, b);
+}
+
+void
+Canvas::
+setBBox(ViewportData *viewportData, const CBBox3D &b)
+{
+  viewportData->bbox = b;
+
+  updateCamera(viewportData->camera);
+
+  viewportData->updateBBox = false;
 }
 
 void
 Canvas::
 updateCamera()
 {
-  auto c = bbox_.getCenter();
-  auto d = bbox_.getMaxSize();
+  auto *camera = this->camera();
 
-  camera_->setOrigin(CVector3D(c));
-  camera_->setDistance(std::sqrt(2.0)*d);
+  updateCamera(camera);
 }
 
 void
 Canvas::
-addParticles()
+updateCamera(Camera *camera)
 {
-  auto *program = particleShaderProgram();
+  auto bbox = this->bbox();
 
-  if (! particleData_.buffer)
-    particleData_.buffer = program->createBuffer();
+  auto c = bbox.getCenter();
+  auto d = bbox.getMaxSize();
 
-  auto *buffer = particleData_.buffer;
+  camera->setOrigin(CVector3D(c));
+  camera->setDistance(std::sqrt(2.0)*d);
+}
 
-  buffer->clearBuffers();
+//---
 
-  int pos = 0;
+void
+Canvas::
+addParticles(CBBox3D &bbox, bool updateBBox)
+{
+  ShaderParticles shaderParticles;
+  getShaderParticles(shaderParticles);
 
-  auto addPoint = [&](const CPoint3D &p, const QColor &c,
-                      const CVector3D &normal, const CPoint2D &pt) {
-    buffer->addPoint(p.x, p.y, p.z);
-    buffer->addNormal(normal.getX(), normal.getY(), normal.getZ());
-    buffer->addColor(c.redF(), c.greenF(), c.blueF());
-    buffer->addTexturePoint(pt.x, pt.y);
-  };
+  //---
 
-  auto addRect = [&](const CPoint3D &p1, const CPoint3D &p2,
-                     const CPoint3D &p3, const CPoint3D &p4,
-                     const CRGBA &c, FaceData &faceData) {
-    auto color = RGBAToQColor(c);
+  for (const auto &ps : shaderParticles) {
+    auto *shaderData = ps.first;
 
-    faceData.pos = pos;
-    faceData.len = 4;
+    ShaderProgram *program = nullptr;
+    bool           point   = false;
 
-    CVector3D diff1(p1, p2);
-    CVector3D diff2(p2, p3);
-    CVector3D diff3(p3, p4);
-    CVector3D diff4(p4, p1);
+    if (shaderData) {
+      program = getShaderDataProgram(shaderData);
 
-    auto normal1 = diff4.crossProduct(diff1).normalized();
-    auto normal2 = diff1.crossProduct(diff2).normalized();
-    auto normal3 = diff2.crossProduct(diff3).normalized();
-    auto normal4 = diff3.crossProduct(diff4).normalized();
+      point = shaderData->point;
+    }
+    else
+      program = particleShaderProgram();
 
-    addPoint(p1, color, normal1, CPoint2D(0, 0));
-    addPoint(p2, color, normal2, CPoint2D(1, 0));
+    auto *buffer = program->buffer();
 
-    addPoint(p3, color, normal3, CPoint2D(1, 1));
-    addPoint(p4, color, normal4, CPoint2D(0, 1));
+    if (! program)
+      continue;
 
-    pos += 4;
-  };
+    //---
 
-  particleData_.faceDatas.clear();
+    buffer->clearBuffers();
 
-  auto *psys = app_->particleSystem();
+    int pos = 0;
 
-  auto np = psys->numberOfParticles();
+    auto addRectPoint = [&](const CPoint3D &p, const QColor &c,
+                            const CVector3D &normal, const CPoint2D &pt) {
+      buffer->addPoint(p.x, p.y, p.z);
+      buffer->addNormal(normal.getX(), normal.getY(), normal.getZ());
+      buffer->addColor(c.redF(), c.greenF(), c.blueF());
+      buffer->addTexturePoint(pt.x, pt.y);
+    };
 
-  for (uint i = 0; i < np; ++i) {
-    auto *particle = psys->getParticle(i);
-    assert(particle);
+    auto addPoint = [&](const CPoint3D &p, const CRGBA &c, FaceData &faceData) {
+      auto color = RGBAToQColor(c);
 
-    auto *particle1 = dynamic_cast<Particle *>(particle);
-    assert(particle1);
+      faceData.pos = pos;
+      faceData.len = 1;
 
-    const auto &color = particle1->color();
+      buffer->addPoint(p.x, p.y, p.z);
+      buffer->addColor(color.redF(), color.greenF(), color.blueF());
+    };
 
-    FaceData faceData;
+    auto addRect = [&](const CPoint3D &p1, const CPoint3D &p2,
+                       const CPoint3D &p3, const CPoint3D &p4,
+                       const CRGBA &c, FaceData &faceData) {
+      auto color = RGBAToQColor(c);
 
-    addRect(CPoint3D(-0.5, -0.5, 0.0), CPoint3D( 0.5, -0.5, 0.0),
-            CPoint3D( 0.5,  0.5, 0.0), CPoint3D(-0.5,  0.5, 0.0),
-            color, faceData);
+      faceData.pos = pos;
+      faceData.len = 4;
 
-    particleData_.faceDatas.push_back(faceData);
+      CVector3D diff1(p1, p2);
+      CVector3D diff2(p2, p3);
+      CVector3D diff3(p3, p4);
+      CVector3D diff4(p4, p1);
 
-    auto *p = particle->position();
+      auto normal1 = diff4.crossProduct(diff1).normalized();
+      auto normal2 = diff1.crossProduct(diff2).normalized();
+      auto normal3 = diff2.crossProduct(diff3).normalized();
+      auto normal4 = diff3.crossProduct(diff4).normalized();
 
-    if (updateBBox_)
-      bbox_.add(CPoint3D(p->x(), p->y(), p->z()));
+      addRectPoint(p1, color, normal1, CPoint2D(0, 0));
+      addRectPoint(p2, color, normal2, CPoint2D(1, 0));
+
+      addRectPoint(p3, color, normal3, CPoint2D(1, 1));
+      addRectPoint(p4, color, normal4, CPoint2D(0, 1));
+
+      pos += 4;
+    };
+
+    //---
+
+    ParticleData *particleData = nullptr;
+
+    if (shaderData)
+      particleData = &shaderData->particleData;
+    else
+      particleData = &particleData_;
+
+    particleData->faceDatas.clear();
+
+    //---
+
+    const auto &particles = ps.second;
+
+    for (auto *particle : particles) {
+      auto *particle1 = dynamic_cast<Particle *>(particle);
+
+      auto color = CRGBA::white();
+
+      if (particle1)
+        color = particle1->color();
+
+      FaceData faceData;
+
+      if (! point)
+        addRect(CPoint3D(-0.5, -0.5, 0.0), CPoint3D( 0.5, -0.5, 0.0),
+                CPoint3D( 0.5,  0.5, 0.0), CPoint3D(-0.5,  0.5, 0.0),
+                color, faceData);
+      else
+        addPoint(CPoint3D(0.0, 0.0, 0.0), color, faceData);
+
+      particleData->faceDatas.push_back(faceData);
+
+      if (updateBBox) {
+        auto *p = particle->position();
+
+        bbox.add(CPoint3D(p->x(), p->y(), p->z()));
+      }
+    }
+
+    //---
+
+    buffer->load();
   }
-
-  buffer->load();
 }
 
 void
 Canvas::
 drawScene()
 {
+  CQPerfTrace trace("Canvas::drawScene");
+
+  //---
+
   auto *program = this->sceneShaderProgram();
 
   program->bind();
 
   //---
 
-  CMatrix3DH worldMatrix;
-
-  if (isPerspective())
-    worldMatrix = camera_->perspectiveMatrix();
-  else
-    worldMatrix = camera_->orthoMatrix();
-
-  auto viewMatrix = camera_->viewMatrix();
-  auto viewPos    = camera_->position();
+  auto *camera = this->camera();
 
   // camera projection
+  auto worldMatrix = calcWorldMatrix();
   program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
 
   // camera/view transformation
+  auto viewMatrix = camera->viewMatrix();
   program->setUniformValue("view", CQGLUtil::toQMatrix(viewMatrix));
 
   // view pos
+  auto viewPos = camera->position();
   program->setUniformValue("viewPos", CQGLUtil::toVector(viewPos));
+
+  //---
+
+#if USE_CLIP
+  auto *viewportData = getCurrentViewportData();
+
+  program->setUniformValue("numClipPlanes", int(viewportData->clips.size()));
+
+  int clip_i = 0;
+
+  for (const auto &clip : viewportData->clips) {
+    const auto &n = clip.getNormal();
+
+    auto cv = QVector4D(n.getX(), n.getY(), n.getZ(), clip.getConstant());
+
+    auto clipName = "clipPlane[" + std::to_string(clip_i) + "]";
+
+    program->setUniformValue(clipName.c_str(), cv);
+
+    ++clip_i;
+  }
+#endif
 
   //---
 
@@ -624,7 +873,6 @@ drawScene()
 
   program->setUniformValue("emissionColor"   , CQGLUtil::toVector(emissiveColor()));
   program->setUniformValue("emissiveStrength", float(emissiveStrength()));
-
   program->setUniformValue("specularColor"   , CQGLUtil::toVector(specularColor()));
   program->setUniformValue("specularStrength", float(specularStrength()));
 
@@ -663,251 +911,19 @@ drawScene()
   auto *scene = app_->scene();
 
   for (auto *object : scene->getObjects()) {
-    if (! object->getVisible())
+    if (object->parent())
       continue;
 
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
-
-    if (! object1->buffer())
-      continue;
-
-    //---
-
-    // mesh matrix
-    auto meshMatrix = object->getMeshGlobalTransform();
-    program->setUniformValue("meshMatrix", CQGLUtil::toQMatrix(meshMatrix));
-
-    //---
-
-    // model matrix
-    //auto modelMatrix = CMatrix3DH::identity();
-    auto modelMatrix = object1->getHierTransform();
-    program->setUniformValue("model", CQGLUtil::toQMatrix(modelMatrix));
-
-    //---
-
-#if 0
-    // anim
-    program->setUniformValue("useBonePoints", isAnim); // per object ?
-
-    if (isAnim) {
-      updateNodeMatrices(object);
-
-      program->setUniformValueArray("globalBoneTransform",
-        &paintData_.nodeQMatrices[0], PaintData::NUM_NODE_MATRICES);
-    }
-#endif
-
-    //---
-
-    bool objectSelected = object->getHierSelected();
-
-    object1->buffer()->bind();
-
-    //---
-
-    auto *objectMaterial = object->getMaterialP();
-
-    //---
-
-    auto drawFace = [&](const FaceData &faceData, double transparency) {
-      bool faceSelected = (faceData.face ? faceData.face->getSelected() : false);
-
-      bool selected = objectSelected || faceSelected;
-
-      program->setUniformValue("isSelected", selected);
-
-      //---
-
-      bool useDiffuseTexture = (isTextured() ? !!faceData.diffuseTexture : false);
-
-      program->setUniformValue("diffuseTexture.enabled", useDiffuseTexture);
-
-      if (useDiffuseTexture) {
-        glActiveTexture(GL_TEXTURE0);
-        faceData.diffuseTexture->bind();
-
-        program->setUniformValue("diffuseTexture.texture", 0);
-      }
-
-      //---
-
-      bool useNormalTexture = (isTextured() ? !!faceData.normalTexture : false);
-
-      program->setUniformValue("normalTexture.enabled", useNormalTexture);
-
-      if (useNormalTexture) {
-        glActiveTexture(GL_TEXTURE1);
-        faceData.normalTexture->bind();
-
-        program->setUniformValue("normalTexture.texture", 1);
-      }
-
-      //---
-
-      bool useSpecularTexture = (isTextured() ? !!faceData.specularTexture : false);
-
-      program->setUniformValue("specularTexture.enabled", useSpecularTexture);
-
-      if (useSpecularTexture) {
-        glActiveTexture(GL_TEXTURE2);
-        faceData.specularTexture->bind();
-
-        program->setUniformValue("specularTexture.texture", 2);
-      }
-
-      //---
-
-      bool useEmissiveTexture = (isTextured() ? !!faceData.emissiveTexture : false);
-
-      program->setUniformValue("emissiveTexture.enabled", useEmissiveTexture);
-
-      if (useEmissiveTexture) {
-        glActiveTexture(GL_TEXTURE3);
-        faceData.emissiveTexture->bind();
-
-        program->setUniformValue("emissiveTexture.texture", 3);
-      }
-
-      program->setUniformValue("emissionColor", CQGLUtil::toVector(faceData.emission));
-
-      //---
-
-      program->setUniformValue("shininess", float(faceData.shininess));
-
-      program->setUniformValue("transparency", float(1.0 - transparency));
-
-      if (isShowOrient())
-        program->setUniformValue("orientation",
-          (faceData.orient == CPolygonOrientation::CLOCKWISE ? 1.0f : -1.0f));
-      else
-        program->setUniformValue("orientation", 0.0f);
-
-      //---
-
-      program->setUniformValue("isLine", false);
-
-      if (isWireframe() || selected) {
-        program->setUniformValue("isWireframe", true);
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-        glDrawArrays(GL_TRIANGLE_FAN, faceData.pos, faceData.len);
-      }
-
-      if (isSolid()) {
-        program->setUniformValue("isWireframe", false);
-
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-        glDrawArrays(GL_TRIANGLE_FAN, faceData.pos, faceData.len);
-      }
-
-#if 0
-      if (isPoints()) {
-        program->setUniformValue("isWireframe", true);
-
-        glDrawArrays(GL_POINTS, faceData.pos, faceData.len);
-      }
-#endif
-
-      // set view and project point
-      for (int i = 0; i < faceData.len; ++i) {
-        CQGLBuffer::PointData data;
-        object1->buffer()->getPointData(faceData.pos + i, data);
-
-        auto p1 = viewMatrix*data.point->point();
-        auto p2 = worldMatrix*p1;
-
-        auto &vertex = object->getVertex(data.ind.value());
-
-        vertex.setViewed   (p1);
-        vertex.setProjected(p2);
-      }
-    };
-
-    //---
-
-#if 0
-    bool anyTransparent = false;
-#endif
-
-    glDisable(GL_BLEND);
-    glDepthMask(GL_TRUE);
-
-    for (const auto &faceData : object1->faceDatas()) {
-      if      (faceData.face) {
-        auto *face = faceData.face;
-
-        if (! face->getVisible())
-          continue;
-
-        auto *faceMaterial = face->getMaterialP();
-
-        if (! faceMaterial && objectMaterial)
-          faceMaterial = objectMaterial;
-
-#if 0
-        if (faceMaterial && faceMaterial->transparency() > 0.0) {
-          anyTransparent = true;
-          continue;
-        }
-#endif
-
-        drawFace(faceData, 0.0);
-      }
-      else if (faceData.line) {
-        auto *line = faceData.line;
-
-        if (! line->getVisible())
-          continue;
-
-        program->setUniformValue("isWireframe", true);
-        program->setUniformValue("isLine"     , true);
-
-        glDrawArrays(GL_LINES, faceData.pos, faceData.len);
-      }
-      else
-        assert(false);
-    }
-
-#if 0
-    if (anyTransparent) {
-      glEnable(GL_BLEND);
-      glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-      glDepthMask(GL_FALSE);
-
-      for (const auto &faceData : object1->faceDatas()) {
-        auto *face = faceData.face;
-
-        if (! face->getVisible())
-          continue;
-
-        auto *faceMaterial = face->getMaterialP();
-
-        if (! faceMaterial && objectMaterial)
-          faceMaterial = objectMaterial;
-
-        if (! faceMaterial || faceMaterial->transparency() <= 0.0)
-          continue;
-
-        drawFace(faceData, faceMaterial->transparency());
-      }
-
-      glDisable(GL_BLEND);
-      glDepthMask(GL_TRUE);
-    }
-#endif
-
-    //---
-
-    object1->buffer()->unbind();
+    drawObject(object);
   }
 
   //---
 
   program->release();
+
+  //---
+
+  drawTexts();
 
   //---
 
@@ -920,92 +936,392 @@ drawScene()
 
 void
 Canvas::
+drawObject(CGeomObject3D *object)
+{
+  CQPerfTrace trace("Canvas::drawObject");
+
+  //---
+
+  if (! object->getVisible())
+    return;
+
+  auto *object1 = dynamic_cast<GeomObject *>(object);
+  assert(object1);
+
+  auto *particle = object1->particle();
+
+  if (particle && particle->isDead())
+    return;
+
+  //---
+
+  auto *geomObject1 = object1;
+
+  if (object->refObject()) {
+    geomObject1 = dynamic_cast<GeomObject *>(object->refObject());
+    assert(geomObject1);
+  }
+
+  //---
+
+  auto *buffer = geomObject1->buffer();
+
+  if (! buffer) {
+    for (auto *child : object->children()) {
+      drawObject(child);
+    }
+
+    return;
+  }
+
+  //---
+
+  auto *program = this->sceneShaderProgram();
+
+  //---
+
+  auto *camera = this->camera();
+
+  auto viewMatrix  = camera->viewMatrix();
+  auto worldMatrix = calcWorldMatrix();
+
+  // mesh matrix
+  auto meshMatrix = object->getMeshGlobalTransform();
+  program->setUniformValue("meshMatrix", CQGLUtil::toQMatrix(meshMatrix));
+
+  //---
+
+  // model matrix
+  //auto modelMatrix = CMatrix3DH::identity();
+  auto modelMatrix = object1->getHierTransform();
+
+#if 0
+  if (refObject && refObject != object)
+    modelMatrix = refObject->getHierTransform()*modelMatrix;
+#endif
+
+  program->setUniformValue("model", CQGLUtil::toQMatrix(modelMatrix));
+
+  //---
+
+#if 0
+  // anim
+  program->setUniformValue("useBonePoints", isAnim); // per object ?
+
+  if (isAnim) {
+    updateNodeMatrices(object);
+
+    program->setUniformValueArray("globalBoneTransform",
+      &paintData_.nodeQMatrices[0], PaintData::NUM_NODE_MATRICES);
+  }
+#endif
+
+  //---
+
+  bool objectSelected = object->getHierSelected();
+
+  auto *objectMaterial = object->getMaterialP();
+
+  //---
+
+  std::vector<CQGLTexture *> boundTextures;
+  boundTextures.resize(4);
+
+  auto bindTexture = [&](int ind, CQGLTexture *texture) {
+    if (texture != boundTextures[ind]) {
+      glActiveTexture(GL_TEXTURE0 + ind);
+      texture->bind();
+
+      boundTextures[ind] = texture;
+    }
+  };
+
+  auto drawFace = [&](const FaceData &faceData, double transparency) {
+    bool faceSelected = (faceData.face ? faceData.face->getSelected() : false);
+
+    bool selected = objectSelected || faceSelected;
+
+    program->setUniformValue("isSelected", selected);
+
+    //---
+
+    bool useDiffuseTexture = (isTextured() ? !!faceData.diffuseTexture : false);
+
+    program->setUniformValue("diffuseTexture.enabled", useDiffuseTexture);
+
+    if (useDiffuseTexture) {
+      bindTexture(0, faceData.diffuseTexture);
+      program->setUniformValue("diffuseTexture.texture", 0);
+    }
+
+    //---
+
+    bool useNormalTexture = (isTextured() ? !!faceData.normalTexture : false);
+
+    program->setUniformValue("normalTexture.enabled", useNormalTexture);
+
+    if (useNormalTexture) {
+      bindTexture(1, faceData.normalTexture);
+      program->setUniformValue("normalTexture.texture", 1);
+    }
+
+    //---
+
+    bool useSpecularTexture = (isTextured() ? !!faceData.specularTexture : false);
+
+    program->setUniformValue("specularTexture.enabled", useSpecularTexture);
+
+    if (useSpecularTexture) {
+      bindTexture(2, faceData.specularTexture);
+      program->setUniformValue("specularTexture.texture", 2);
+    }
+
+    //---
+
+    bool useEmissiveTexture = (isTextured() ? !!faceData.emissiveTexture : false);
+
+    program->setUniformValue("emissiveTexture.enabled", useEmissiveTexture);
+
+    if (useEmissiveTexture) {
+      bindTexture(3, faceData.emissiveTexture);
+      program->setUniformValue("emissiveTexture.texture", 3);
+    }
+
+    program->setUniformValue("emissionColor", CQGLUtil::toVector(faceData.emission));
+
+    //---
+
+    program->setUniformValue("shininess", float(faceData.shininess));
+
+    program->setUniformValue("transparency", float(1.0 - transparency));
+
+    if (isShowOrient())
+      program->setUniformValue("orientation",
+        (faceData.orient == CPolygonOrientation::CLOCKWISE ? 1.0f : -1.0f));
+    else
+      program->setUniformValue("orientation", 0.0f);
+
+    //---
+
+    program->setUniformValue("isLine", false);
+
+    if (isWireframe() || selected) {
+      program->setUniformValue("isWireframe", true);
+
+      glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+      glDrawArrays(GL_TRIANGLE_FAN, faceData.pos, faceData.len);
+    }
+
+    if (isSolid()) {
+      program->setUniformValue("isWireframe", false);
+
+      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+      glDrawArrays(GL_TRIANGLE_FAN, faceData.pos, faceData.len);
+    }
+
+#if 0
+    if (isPoints()) {
+      program->setUniformValue("isWireframe", true);
+
+      glDrawArrays(GL_POINTS, faceData.pos, faceData.len);
+    }
+#endif
+
+    if (isStoreProjected()) {
+      // set view and project point
+      for (int i = 0; i < faceData.len; ++i) {
+        CQGLBuffer::PointData data;
+        buffer->getPointData(faceData.pos + i, data);
+
+        auto p1 = viewMatrix*data.point->point();
+        auto p2 = worldMatrix*p1;
+
+        auto &vertex = object->getVertex(data.ind.value());
+
+        vertex.setViewed   (p1);
+        vertex.setProjected(p2);
+      }
+    }
+  };
+
+  //---
+
+#if 0
+  bool anyTransparent = false;
+#endif
+
+  buffer->bind();
+
+  const auto &faceDatas = geomObject1->faceDatas();
+
+  glDisable(GL_BLEND);
+  glDepthMask(GL_TRUE);
+
+  for (const auto &faceData : faceDatas) {
+    if      (faceData.face) {
+      auto *face = faceData.face;
+
+      if (! face->getVisible())
+        continue;
+
+      auto *faceMaterial = face->getMaterialP();
+
+      if (! faceMaterial && objectMaterial)
+        faceMaterial = objectMaterial;
+
+#if 0
+      if (faceMaterial && faceMaterial->transparency() > 0.0) {
+        anyTransparent = true;
+        continue;
+      }
+#endif
+
+      drawFace(faceData, 0.0);
+    }
+    else if (faceData.line) {
+      auto *line = faceData.line;
+
+      if (! line->getVisible())
+        continue;
+
+      program->setUniformValue("isWireframe", true);
+      program->setUniformValue("isLine"     , true);
+
+      glDrawArrays(GL_LINES, faceData.pos, faceData.len);
+    }
+    else
+      assert(false);
+  }
+
+#if 0
+  if (anyTransparent) {
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+
+    for (const auto &faceData : faceDatas) {
+      auto *face = faceData.face;
+
+      if (! face->getVisible())
+        continue;
+
+      auto *faceMaterial = face->getMaterialP();
+
+      if (! faceMaterial && objectMaterial)
+        faceMaterial = objectMaterial;
+
+      if (! faceMaterial || faceMaterial->transparency() <= 0.0)
+        continue;
+
+      drawFace(faceData, faceMaterial->transparency());
+    }
+
+    glDisable(GL_BLEND);
+    glDepthMask(GL_TRUE);
+  }
+#endif
+
+  //---
+
+  buffer->unbind();
+
+  //---
+
+  for (auto *child : object->children()) {
+    drawObject(child);
+  }
+}
+
+void
+Canvas::
 drawSelection()
 {
   auto *program = selectionShaderProgram();
 
   //---
 
-  if (! selectionData_.buffer)
-    selectionData_.buffer = program->createBuffer();
+  if (! drawSelectionData_.buffer)
+    drawSelectionData_.buffer = program->createBuffer();
 
-  selectionData_.buffer->clearBuffers();
+  drawSelectionData_.buffer->clearBuffers();
 
   //---
 
   auto color = CRGBA::yellow();
 
   auto addLine = [&](const CPoint3D &p1, const CPoint3D &p2) {
-    selectionData_.buffer->addPoint(float(p1.x), float(p1.y), float(p1.z));
-    selectionData_.buffer->addColor(color);
+    drawSelectionData_.buffer->addPoint(float(p1.x), float(p1.y), float(p1.z));
+    drawSelectionData_.buffer->addColor(color);
 
-    selectionData_.buffer->addPoint(float(p2.x), float(p2.y), float(p2.z));
-    selectionData_.buffer->addColor(color);
+    drawSelectionData_.buffer->addPoint(float(p2.x), float(p2.y), float(p2.z));
+    drawSelectionData_.buffer->addColor(color);
   };
 
   auto addPoint = [&](const CPoint3D &p) {
-    selectionData_.buffer->addPoint(float(p.x), float(p.y), float(p.z));
-    selectionData_.buffer->addColor(color);
+    drawSelectionData_.buffer->addPoint(float(p.x), float(p.y), float(p.z));
+    drawSelectionData_.buffer->addColor(color);
   };
 
   //---
 
   auto *scene = app_->scene();
 
-  selectionData_.lineIndex = 0;
+  drawSelectionData_.lineIndex = 0;
 
   for (auto *object : scene->getObjects()) {
     auto *object1 = dynamic_cast<GeomObject *>(object);
     assert(object1);
+
+    auto modelMatrix = CMatrix3DH(object1->getHierTransform());
 
     const auto &edges = object->getEdges();
 
     for (auto *e : edges) {
       if (e->getSelected())
-        addLine(e->modelStart(), e->modelEnd());
+        addLine(modelMatrix*e->modelStart(), modelMatrix*e->modelEnd());
     }
   }
 
-  selectionData_.vertexIndex = selectionData_.buffer->numPoints();
+  drawSelectionData_.vertexIndex = drawSelectionData_.buffer->numPoints();
 
   for (auto *object : scene->getObjects()) {
     auto *object1 = dynamic_cast<GeomObject *>(object);
     assert(object1);
 
+    auto modelMatrix = CMatrix3DH(object1->getHierTransform());
+
     const auto &vertices = object->getVertices();
 
     for (auto *v : vertices) {
       if (v && v->getSelected())
-        addPoint(v->getModel());
+        addPoint(modelMatrix*v->getModel());
     }
   }
 
-  selectionData_.endIndex = selectionData_.buffer->numPoints();
+  drawSelectionData_.endIndex = drawSelectionData_.buffer->numPoints();
 
   //---
 
-  selectionData_.buffer->load();
+  drawSelectionData_.buffer->load();
 
   //---
 
-  selectionData_.buffer->bind();
+  drawSelectionData_.buffer->bind();
 
   program->bind();
 
   //---
 
+  auto *camera = this->camera();
+
   // camera projection
-  CMatrix3DH worldMatrix;
-
-  if (isPerspective())
-    worldMatrix = camera_->perspectiveMatrix();
-  else
-    worldMatrix = camera_->orthoMatrix();
-
+  auto worldMatrix = calcWorldMatrix();
   program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
 
   // camera/view transformation
-  auto viewMatrix = camera_->viewMatrix();
+  auto viewMatrix = camera->viewMatrix();
   program->setUniformValue("view", CQGLUtil::toQMatrix(viewMatrix));
 
   // model matrix
@@ -1014,31 +1330,31 @@ drawSelection()
 
   //---
 
-  if (selectionData_.vertexIndex > selectionData_.lineIndex) {
+  if (drawSelectionData_.vertexIndex > drawSelectionData_.lineIndex) {
     glLineWidth(8);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    glDrawArrays(GL_LINES, selectionData_.lineIndex,
-                 selectionData_.vertexIndex - selectionData_.lineIndex);
+    glDrawArrays(GL_LINES, drawSelectionData_.lineIndex,
+                 drawSelectionData_.vertexIndex - drawSelectionData_.lineIndex);
 
     glLineWidth(1);
   }
 
-  if (selectionData_.endIndex > selectionData_.vertexIndex) {
+  if (drawSelectionData_.endIndex > drawSelectionData_.vertexIndex) {
     glPointSize(8);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
 
-    glDrawArrays(GL_POINTS, selectionData_.vertexIndex,
-                 selectionData_.endIndex - selectionData_.vertexIndex);
+    glDrawArrays(GL_POINTS, drawSelectionData_.vertexIndex,
+                 drawSelectionData_.endIndex - drawSelectionData_.vertexIndex);
 
     glPointSize(1);
   }
 
   //---
 
-  selectionData_.buffer->unbind();
+  drawSelectionData_.buffer->unbind();
 
   //---
 
@@ -1049,49 +1365,171 @@ void
 Canvas::
 drawParticles()
 {
-  if (! particleData_.buffer)
+  ShaderParticles shaderParticles;
+  getShaderParticles(shaderParticles);
+
+  //---
+
+  for (const auto &ps : shaderParticles) {
+    auto *shaderData = ps.first;
+
+    ShaderProgram *program = nullptr;
+    double         lineWidth = 0.0;
+
+    if (shaderData) {
+      program = getShaderDataProgram(shaderData);
+
+      lineWidth = shaderData->lineWidth;
+    }
+    else
+      program = particleShaderProgram();
+
+    auto *buffer = program->buffer();
+
+    if (! program)
+      continue;
+
+    //---
+
+    program->bind();
+
+    buffer->bind();
+
+    //---
+
+    glPointSize(pointSize());
+    glLineWidth(lineWidth);
+
+    glDepthFunc(GL_LEQUAL);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+
+    //---
+
+    auto *camera = this->camera();
+
+    // camera projection
+    auto worldMatrix = calcWorldMatrix();
+    program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
+
+    // camera/view transformation
+    auto viewMatrix = camera->viewMatrix();
+    program->setUniformValue("view", CQGLUtil::toQMatrix(viewMatrix));
+
+    // model matrix
+    auto modelMatrix = CMatrix3DH::identity();
+    program->setUniformValue("model", CQGLUtil::toQMatrix(modelMatrix));
+
+    //---
+
+    CQGLTexture *texture = nullptr;
+
+    program->setUniformValue("textureId", 0);
+
+    const auto &particles = ps.second;
+
+    uint i = 0;
+
+    for (auto *particle : particles) {
+      drawParticle(particle, i, program, texture, shaderData);
+
+      ++i;
+    }
+
+    //---
+
+    buffer->unbind();
+
+    //---
+
+    program->release();
+
+    //---
+
+    glDisable(GL_BLEND);
+  }
+}
+
+void
+Canvas::
+drawParticle(CPSysParticle *particle, int i, ShaderProgram *program,
+             CQGLTexture* &texture, ShaderData *shaderData)
+{
+  if (particle->isDead())
     return;
 
-  auto *program = particleShaderProgram();
+  auto *particle1 = dynamic_cast<Particle *>(particle);
 
-  program->bind();
+  if (particle1 && particle1->texture()) {
+    auto *texture1 = getGLTexture(const_cast<Texture *>(particle1->texture()), /*add*/true);
 
-  particleData_.buffer->bind();
+    if (texture1 != texture) {
+      texture = texture1;
 
-  //---
+      glActiveTexture(GL_TEXTURE0);
+      texture->bind();
+    }
 
-  glPointSize(pointSize());
+    program->setUniformValue("useTexture", true);
+  }
+  else {
+    program->setUniformValue("useTexture", false);
+  }
 
-  glDepthFunc(GL_LEQUAL);
-  glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+  auto *p = particle->position();
 
-  //---
+  CVector3D pos(p->x(), p->y(), p->z());
 
-  // camera projection
-  CMatrix3DH worldMatrix;
+  auto angle = (particle1 ? particle1->angle() : 0.0);
 
-  if (isPerspective())
-    worldMatrix = camera_->perspectiveMatrix();
-  else
-    worldMatrix = camera_->orthoMatrix();
+  auto tpos  = CPoint2D(0, 0);
+  auto tsize = CSize2D (1, 1);
 
-  program->setUniformValue("projection", CQGLUtil::toQMatrix(worldMatrix));
+  if (particle1) {
+    tpos  = particle1->tpos();
+    tsize = particle1->tsize();
+  }
 
-  // camera/view transformation
-  auto viewMatrix = camera_->viewMatrix();
-  program->setUniformValue("view", CQGLUtil::toQMatrix(viewMatrix));
+  auto size  = (particle1 ? particle1->size () : 1.0);
+  auto alpha = (particle1 ? particle1->alpha() : 1.0);
 
-  // model matrix
-  auto modelMatrix = CMatrix3DH::identity();
+  program->setUniformValue("position", vectorToQVector(pos));
+  program->setUniformValue("size"    , float(size));
+  program->setUniformValue("alpha"   , float(alpha));
+  program->setUniformValue("tpos"    , QVector2D(tpos.x, tpos.y));
+  program->setUniformValue("tsize"   , QVector2D(tsize.getWidth(), tsize.getHeight()));
+
+  auto modelMatrix = CMatrix3DH::rotation(CMathGen::Z_AXIS_3D, angle);
   program->setUniformValue("model", CQGLUtil::toQMatrix(modelMatrix));
 
   //---
 
-  CQGLTexture *texture = nullptr;
+  ParticleData *particleData = nullptr;
+  bool          point        = false;
 
-  program->setUniformValue("textureId", 0);
+  if (shaderData) {
+    particleData = &shaderData->particleData;
+    point        = shaderData->point;
+  }
+  else
+    particleData = &particleData_;
 
+  const auto &faceData = particleData->faceDatas[i];
+
+  if (! point) {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    glDrawArrays(GL_TRIANGLE_FAN, faceData.pos, faceData.len);
+  }
+  else {
+    glDrawArrays(GL_POINTS, faceData.pos, faceData.len);
+  }
+}
+
+void
+Canvas::
+getShaderParticles(ShaderParticles &shaderParticles) const
+{
   auto *psys = app_->particleSystem();
 
   auto np = psys->numberOfParticles();
@@ -1100,66 +1538,107 @@ drawParticles()
     auto *particle = psys->getParticle(i);
     assert(particle);
 
-    if (particle->isDead())
-      continue;
-
     auto *particle1 = dynamic_cast<Particle *>(particle);
-    assert(particle1);
 
-    if (particle1->texture()) {
-      auto *texture1 = getGLTexture(const_cast<Texture *>(particle1->texture()), /*add*/true);
+    ShaderData *shaderData { nullptr };
 
-      if (texture1 != texture) {
-        texture = texture1;
+    if (particle1) {
+      auto id = particle1->shader();
 
-        glActiveTexture(GL_TEXTURE0);
-        texture->bind();
-      }
-
-      program->setUniformValue("useTexture", true);
-    }
-    else {
-      program->setUniformValue("useTexture", false);
+      if (id != "")
+        shaderData = getShaderData(id);
     }
 
-    auto *p = particle1->position();
+    shaderParticles[shaderData].push_back(particle);
+  }
+}
 
-    CVector3D pos(p->x(), p->y(), p->z());
+ShaderProgram *
+Canvas::
+getShaderDataProgram(ShaderData *shaderData)
+{
+  if (! shaderData->program) {
+    shaderData->program = getShader(QString::fromStdString(shaderData->vs),
+                                    QString::fromStdString(shaderData->gs),
+                                    QString::fromStdString(shaderData->fs));
 
-    auto angle = particle1->angle();
-
-    const auto &tpos  = particle1->tpos();
-    const auto &tsize = particle1->tsize();
-
-    program->setUniformValue("position", vectorToQVector(pos));
-    program->setUniformValue("size"    , float(particle1->size()));
-    program->setUniformValue("alpha"   , float(particle1->alpha()));
-    program->setUniformValue("tpos"    , QVector2D(tpos.x, tpos.y));
-    program->setUniformValue("tsize"   , QVector2D(tsize.getWidth(), tsize.getHeight()));
-
-    auto modelMatrix = CMatrix3DH::rotation(CMathGen::Z_AXIS_3D, angle);
-    program->setUniformValue("model", CQGLUtil::toQMatrix(modelMatrix));
-
-    //---
-
-    const auto &faceData = particleData_.faceDatas[i];
-
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-    glDrawArrays(GL_TRIANGLE_FAN, faceData.pos, faceData.len);
+    if (! shaderData->program->buffer())
+      shaderData->program->createBuffer();
   }
 
-  //---
+  return shaderData->program;
+}
 
-  particleData_.buffer->unbind();
+//---
 
-  //---
+CMatrix3DH
+Canvas::
+calcWorldMatrix() const
+{
+  auto *camera = this->camera();
 
-  program->release();
+  if (isPerspective())
+    return camera->perspectiveMatrix();
+  else
+    return camera->orthoMatrix();
+}
 
-  //---
+//---
 
-  glDisable(GL_BLEND);
+void
+Canvas::
+clearTexts()
+{
+  for (auto *text : texts_)
+    delete text;
+
+  texts_.clear();
+}
+
+void
+Canvas::
+addText(Text *text)
+{
+  texts_.push_back(text);
+}
+
+Text *
+Canvas::
+getTextById(uint id) const
+{
+  for (auto *text : texts_) {
+    if (text->id() == id)
+      return text;
+  }
+
+  return nullptr;
+}
+
+void
+Canvas::
+updateTexts()
+{
+  for (auto *text : texts_)
+    text->updateText();
+}
+
+void
+Canvas::
+drawTexts()
+{
+  glDisable(GL_CULL_FACE);
+
+  for (auto *text : texts_) {
+    if (! text->isVisible())
+      continue;
+
+    if (text->viewport() >= 0 && currentViewport() != uint(text->viewport()))
+      continue;
+
+    text->render(this);
+  }
+
+  glEnable(GL_CULL_FACE);
 }
 
 //---
@@ -1210,6 +1689,8 @@ mouseMoveEvent(QMouseEvent *e)
 
   //---
 
+  auto *camera = this->camera();
+
   auto dx = CMathUtil::sign(mouseData_.move.x - mouseData_.press.x);
   auto dy = CMathUtil::sign(mouseData_.move.y - mouseData_.press.y);
 
@@ -1222,12 +1703,12 @@ mouseMoveEvent(QMouseEvent *e)
   else if (mouseData_.button == Qt::MiddleButton) {
     auto da = M_PI/180.0;
 
-    camera_->rotateY(-dx*da);
-    camera_->rotateX(-dy*da);
+    camera->rotateY(-dx*da);
+    camera->rotateX(-dy*da);
   }
   else if (mouseData_.button == Qt::RightButton) {
-    camera_->moveRight(-dx/10.0);
-    camera_->moveUp   ( dy/10.0);
+    camera->moveRight(-dx/10.0);
+    camera->moveUp   ( dy/10.0);
   }
 
   //---
@@ -1242,11 +1723,24 @@ mouseReleaseEvent(QMouseEvent *e)
   mouseData_.move.x = e->x();
   mouseData_.move.y = e->y();
 
+  auto *camera = this->camera();
+
   if (mouseData_.button == Qt::LeftButton) {
     auto dx = std::abs(mouseData_.press.x - mouseData_.move.x);
     auto dy = std::abs(mouseData_.press.y - mouseData_.move.y);
 
     if (editType() == EditType::SELECT) {
+#if 0
+      setStoreProjected(true);
+      drawScene();
+      setStoreProjected(false);
+#endif
+
+      drawData_.worldMatrix = calcWorldMatrix();
+      drawData_.viewMatrix  = camera->viewMatrix();
+
+      //---
+
       bool flip = mouseData_.isControl;
 
       if (! mouseData_.isShift && ! mouseData_.isControl)
@@ -1281,10 +1775,14 @@ void
 Canvas::
 wheelEvent(QWheelEvent *e)
 {
-  auto d  = bbox_.getMaxSize()/100.0;
+  auto bbox = this->bbox();
+
+  auto d  = bbox.getMaxSize()/100.0;
   auto dw = e->angleDelta().y()/250.0;
 
-  camera_->setDistance(camera_->distance() - dw*d);
+  auto *camera = this->camera();
+
+  camera->setDistance(camera->distance() - dw*d);
 }
 
 void
@@ -1296,7 +1794,9 @@ keyPressEvent(QKeyEvent *e)
 
   auto k = e->key();
 
-  auto d  = bbox_.getMaxSize()/100.0;
+  auto bbox = this->bbox();
+
+  auto d  = bbox.getMaxSize()/100.0;
   auto da = M_PI/60.0;
 
   if (k == Qt::Key_Escape) {
@@ -1308,6 +1808,8 @@ keyPressEvent(QKeyEvent *e)
       setEditType(EditType::SELECT);
     return;
   }
+
+  auto *camera = this->camera();
 
   if      (editType() == EditType::TCL) {
     std::string keyStr;
@@ -1337,43 +1839,43 @@ keyPressEvent(QKeyEvent *e)
   }
   else if (editType() == EditType::CAMERA) {
     if      (k == Qt::Key_Left) {
-      camera_->moveRight(-d);
+      camera->moveRight(-d);
     }
     else if (k == Qt::Key_Right) {
-      camera_->moveRight(d);
+      camera->moveRight(d);
     }
     else if (k == Qt::Key_Up) {
-      camera_->moveUp(d);
+      camera->moveUp(d);
     }
     else if (k == Qt::Key_Down) {
-      camera_->moveUp(-d);
+      camera->moveUp(-d);
     }
     else if (k == Qt::Key_Plus) {
-      camera_->moveFront(d);
+      camera->moveFront(d);
     }
     else if (k == Qt::Key_Minus) {
-      camera_->moveFront(-d);
+      camera->moveFront(-d);
     }
     else if (k == Qt::Key_W) {
-      camera_->rotateX(da);
+      camera->rotateX(da);
     }
     else if (k == Qt::Key_S) {
-      camera_->rotateX(-da);
+      camera->rotateX(-da);
     }
     else if (k == Qt::Key_A) {
-      camera_->rotateY(da);
+      camera->rotateY(da);
     }
     else if (k == Qt::Key_D) {
-      camera_->rotateY(-da);
+      camera->rotateY(-da);
     }
     else if (k == Qt::Key_Q) {
-      camera_->rotateZ(-da);
+      camera->rotateZ(-da);
     }
     else if (k == Qt::Key_E) {
-      camera_->rotateZ(da);
+      camera->rotateZ(da);
     }
     else if (k == Qt::Key_Space) {
-      camera_->printMatrices();
+      camera->printMatrices();
     }
   }
 }
@@ -1390,20 +1892,23 @@ selectFaceAt(const CPoint2D &pos, bool flip)
   double       minDist = 0.0;
   CGeomFace3D *minFace = nullptr;
 
-  auto *scene = app_->scene();
-
-  for (auto *object : scene->getObjects()) {
-    if (! object->getVisible())
-      continue;
-
+  for (auto *object : getDrawObjects()) {
     auto *object1 = dynamic_cast<GeomObject *>(object);
     assert(object1);
+
+    //---
+
+    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+
+    //---
 
     const auto &faces = object->getFaces();
 
     for (auto *face : faces) {
       if (! face->getVisible())
         continue;
+
+      projectFaceVertices(face);
 
       auto orient = face->getProjectedOrientation();
 
@@ -1452,20 +1957,23 @@ selectFaceIn(const CPoint2D &p1, const CPoint2D &p2, bool flip)
 
   std::vector<CGeomFace3D *> faces1;
 
-  auto *scene = app_->scene();
-
-  for (auto *object : scene->getObjects()) {
-    if (! object->getVisible())
-      continue;
-
+  for (auto *object : getDrawObjects()) {
     auto *object1 = dynamic_cast<GeomObject *>(object);
     assert(object1);
+
+    //---
+
+    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+
+    //---
 
     const auto &faces = object->getFaces();
 
     for (auto *face : faces) {
       if (! face->getVisible())
         continue;
+
+      projectFaceVertices(face);
 
       if (isCullFace()) {
         auto orient = face->getProjectedOrientation();
@@ -1509,14 +2017,15 @@ selectEdgeAt(const CPoint2D &pos, bool flip)
   double       minDist = 0.0;
   CGeomEdge3D *minEdge = nullptr;
 
-  auto *scene = app_->scene();
-
-  for (auto *object : scene->getObjects()) {
-    if (! object->getVisible())
-      continue;
-
+  for (auto *object : getDrawObjects()) {
     auto *object1 = dynamic_cast<GeomObject *>(object);
     assert(object1);
+
+    //---
+
+    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+
+    //---
 
     const auto &edges = object->getEdges();
 
@@ -1557,20 +2066,23 @@ selectVertexAt(const CPoint2D &pos, bool flip)
   double         minDist = 0.0;
   CGeomVertex3D *minVertex = nullptr;
 
-  auto *scene = app_->scene();
-
-  for (auto *object : scene->getObjects()) {
-    if (! object->getVisible())
-      continue;
-
+  for (auto *object : getDrawObjects()) {
     auto *object1 = dynamic_cast<GeomObject *>(object);
     assert(object1);
+
+    //---
+
+    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+
+    //---
 
     const auto &vertices = object->getVertices();
 
     for (auto *vertex : vertices) {
       if (! vertex || ! vertex->getVisible())
         continue;
+
+      projectVertex(vertex);
 
       auto c = vertex->getProjected().toPoint2D();
 
@@ -1606,20 +2118,23 @@ selectVertexIn(const CPoint2D &p1, const CPoint2D &p2, bool flip)
 
   std::vector<CGeomVertex3D *> vertices1;
 
-  auto *scene = app_->scene();
-
-  for (auto *object : scene->getObjects()) {
-    if (! object->getVisible())
-      continue;
-
+  for (auto *object : getDrawObjects()) {
     auto *object1 = dynamic_cast<GeomObject *>(object);
     assert(object1);
+
+    //---
+
+    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+
+    //---
 
     const auto &vertices = object->getVertices();
 
     for (auto *vertex : vertices) {
       if (! vertex || ! vertex->getVisible())
         continue;
+
+      projectVertex(vertex);
 
       auto c = vertex->getProjected().toPoint2D();
 
@@ -1695,6 +2210,62 @@ emitSelectionChanged()
   app_->runTclCmd(cmd);
 }
 
+std::vector<CGeomObject3D *>
+Canvas::
+getDrawObjects() const
+{
+  std::vector<CGeomObject3D *> objects;
+
+  auto *scene = app_->scene();
+
+  for (auto *object : scene->getObjects()) {
+    if (object->parent())
+      continue;
+
+    addDrawObjects(object, objects);
+  }
+
+  return objects;
+}
+
+void
+Canvas::
+addDrawObjects(CGeomObject3D *object, std::vector<CGeomObject3D *> &objects) const
+{
+  if (! object->getVisible())
+    return;
+
+  objects.push_back(object);
+
+  for (auto *child : object->children()) {
+    addDrawObjects(child, objects);
+  }
+}
+
+void
+Canvas::
+projectFaceVertices(CGeomFace3D *face)
+{
+  auto *object = face->getObject();
+
+  for (const auto &vind : face->getVertices()) {
+    auto *vertex = object->getVertexP(vind);
+
+    projectVertex(vertex);
+  }
+}
+
+void
+Canvas::
+projectVertex(CGeomVertex3D *vertex)
+{
+  auto p1 = drawData_.viewMatrix*drawData_.modelMatrix*vertex->getModel();
+  auto p2 = drawData_.worldMatrix*p1;
+
+  vertex->setViewed   (p1);
+  vertex->setProjected(p2);
+}
+
 //---
 
 // convert pixel (mouse) position to GL coords
@@ -1762,6 +2333,43 @@ enableDepthTest()
 
 //---
 
+const QColor &
+Canvas::
+bgColor() const
+{
+  auto *viewportData = getCurrentViewportData();
+
+  return viewportData->bgColor;
+}
+
+void
+Canvas::
+setBgColor(const QColor &c)
+{
+  auto *viewportData = getCurrentViewportData();
+
+  viewportData->bgColor = c;
+}
+
+CBBox2D
+Canvas::
+viewportRegion() const
+{
+  auto *viewportData = getCurrentViewportData();
+
+  auto pw = pixelWidth ();
+  auto ph = pixelHeight();
+
+  auto x1 = viewportData->rect.getXMin()*pw;
+  auto y1 = viewportData->rect.getYMin()*ph;
+  auto x2 = viewportData->rect.getXMax()*pw;
+  auto y2 = viewportData->rect.getYMax()*ph;
+
+  return CBBox2D(x1, y1, x2, y2);
+}
+
+//---
+
 void
 Canvas::
 setCullFace(bool b)
@@ -1815,6 +2423,96 @@ enablePolygonLine()
 
 //---
 
+std::string
+Canvas::
+addViewport(const CBBox2D &rect)
+{
+  auto *viewportData = new ViewportData;
+
+  viewportData->id   = "viewport" + std::to_string(viewportDatas_.size() + 1);
+  viewportData->rect = rect;
+
+  viewportData->camera = new Camera(app_);
+
+  viewportData->camera->setOrigin(CVector3D(0, 0, 0));
+  viewportData->camera->setDistance(5);
+
+  connect(viewportData->camera, SIGNAL(stateChangedSignal()), this, SLOT(update()));
+
+  viewportDatas_.push_back(viewportData);
+
+  //---
+
+  currentViewport_ = viewportDatas_.size() - 1;
+
+  auto region = viewportRegion();
+
+  viewportData->camera->setAspect(double(region.getWidth())/double(region.getHeight()));
+
+  currentViewport_ = 0;
+
+  return viewportData->id;
+}
+
+Canvas::ViewportData *
+Canvas::
+getCurrentViewportData() const
+{
+  return viewportDatas_[currentViewport_];
+}
+
+Canvas::ViewportData *
+Canvas::
+getViewportData(const std::string &id) const
+{
+  if (id == "")
+    return viewportDatas_[0];
+
+  for (auto *viewportData : viewportDatas_)
+    if (viewportData->id == id)
+      return viewportData;
+
+  return nullptr;
+}
+
+//---
+
+std::string
+Canvas::
+addShaderData(const std::string &vs, const std::string &fs)
+{
+  return addShaderData(vs, "", fs);
+}
+
+std::string
+Canvas::
+addShaderData(const std::string &vs, const std::string &gs, const std::string &fs)
+{
+  auto id = "Shader." + std::to_string(shaderDatas_.size() + 1);
+
+  auto *data = new ShaderData;
+
+  data->id = id;
+  data->vs = vs;
+  data->gs = gs;
+  data->fs = fs;
+
+  shaderDatas_.push_back(data);
+
+  return id;
+}
+
+Canvas::ShaderData *
+Canvas::
+getShaderData(const std::string &id) const
+{
+  for (auto *shaderData : shaderDatas_)
+    if (shaderData->id == id)
+      return shaderData;
+
+  return nullptr;
+}
+
 ShaderProgram *
 Canvas::
 getShader(const QString &vertex, const QString &fragment)
@@ -1827,6 +2525,28 @@ getShader(const QString &vertex, const QString &fragment)
     auto *shaderProgram = new ShaderProgram(app_);
 
     shaderProgram->addShaders(vertex, fragment);
+
+    ps = shaders_.insert(ps, Shaders::value_type(id, shaderProgram));
+  }
+
+  return (*ps).second;
+}
+
+ShaderProgram *
+Canvas::
+getShader(const QString &vertex, const QString &geometry, const QString &fragment)
+{
+  auto id = QString("V:%1,G:%2,F:%3").arg(vertex).arg(geometry).arg(fragment);
+
+  auto ps = shaders_.find(id);
+
+  if (ps == shaders_.end()) {
+    auto *shaderProgram = new ShaderProgram(app_);
+
+    shaderProgram->addShaders(vertex, fragment);
+
+    if (geometry != "")
+      shaderProgram->addGeometryShader(geometry);
 
     ps = shaders_.insert(ps, Shaders::value_type(id, shaderProgram));
   }

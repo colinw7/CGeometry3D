@@ -2,9 +2,7 @@
 #define CGeomObject_H
 
 #include <FaceData.h>
-#include <ShaderProgram.h>
 
-#include <CQGLBuffer.h>
 #include <CGeomObject3D.h>
 #include <CBBox3D.h>
 
@@ -13,23 +11,20 @@ class CQGLBuffer;
 namespace CQTclModel3DView {
 
 class Canvas;
+class Particle;
 
 class GeomObject : public CGeomObject3D {
  public:
   using FaceDatas = std::vector<FaceData>;
 
  public:
-  GeomObject(CGeomScene3D *pscene, const std::string &name) :
-   CGeomObject3D(pscene, name) {
-  }
+  GeomObject(CGeomScene3D *pscene, const std::string &name);
 
-  GeomObject(const GeomObject &object) :
-   CGeomObject3D(object) {
-  }
+  GeomObject(const GeomObject &object);
 
-  GeomObject *dup() const override {
-    return new GeomObject(*this);
-  }
+ ~GeomObject();
+
+  GeomObject *dup() const override;
 
   //---
 
@@ -42,37 +37,25 @@ class GeomObject : public CGeomObject3D {
 
   const FaceDatas &faceDatas() const { return faceDatas_; }
 
-  CQGLBuffer *initBuffer(Canvas *canvas) {
-    assert(canvas->sceneShaderProgram());
+  CQGLBuffer *initBuffer(Canvas *canvas);
 
-    if (! buffer_)
-      buffer_ = canvas->sceneShaderProgram()->createBuffer();
-
-    buffer_->clearBuffers();
-
-    faceDatas_.clear();
-
-    return buffer_;
-  }
-
-  void addFaceData(const FaceData &faceData) {
-    faceDatas_.push_back(faceData);
-  }
+  void addFaceData(const FaceData &faceData);
 
   //---
 
-  void setProperty(const std::string &name, const std::string &value) {
-    propertyMap_[name] = value;
-  }
+  void setProperty(const std::string &name, const std::string &value);
 
-  bool getProperty(const std::string &name, std::string &value) {
-    auto p = propertyMap_.find(name);
-    if (p == propertyMap_.end()) return false;
+  bool getProperty(const std::string &name, std::string &value);
 
-    value = (*p).second;
+  //---
 
-    return true;
-  }
+  const Particle *particle() const { return particle_; }
+  void setParticle(Particle *p) { particle_ = p; }
+
+  //---
+
+  const std::string &meta() const { return meta_; }
+  void setMeta(const std::string &s) { meta_ = s; }
 
  private:
   using PropertyMap = std::map<std::string, std::string>;
@@ -84,6 +67,10 @@ class GeomObject : public CGeomObject3D {
   FaceDatas faceDatas_;
 
   PropertyMap propertyMap_;
+
+  Particle* particle_ { nullptr };
+
+  std::string meta_;
 };
 
 }

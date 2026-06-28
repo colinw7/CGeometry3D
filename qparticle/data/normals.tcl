@@ -20,6 +20,8 @@ proc selectionProc { } {
     set v1 [addVertex $::selection_obj $center]
     set v2 [addVertex $::selection_obj $p]
 
-    addLine $::selection_obj [list $v1 $v2]
+    set l [addLine $::selection_obj [list $v1 $v2]]
+
+    setLineValue $l color white
   }
 }

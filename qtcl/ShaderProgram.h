@@ -18,11 +18,15 @@ class ShaderProgram : public QOpenGLShaderProgram {
 
   void addVertexShader  (const QString &name);
   void addFragmentShader(const QString &name);
+  void addGeometryShader(const QString &name);
+
+  CQGLBuffer *buffer() const { return buffer_; }
 
   CQGLBuffer *createBuffer();
 
  private:
-  App* app_ { nullptr };
+  App*        app_    { nullptr };
+  CQGLBuffer* buffer_ { nullptr };
 };
 
 }

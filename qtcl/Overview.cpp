@@ -3,12 +3,21 @@
 #include <Camera.h>
 #include <GeomObject.h>
 #include <App.h>
+#include <Font.h>
 #include <Util.h>
 
 #include <CQGLBuffer.h>
 
 #include <CGeomScene3D.h>
 #include <CGeomObject3D.h>
+
+#ifdef CQ_PERF_GRAPH
+#include <CQPerfMonitor.h>
+#else
+struct CQPerfTrace {
+  CQPerfTrace(const char *) { }
+};
+#endif
 
 #include <QPainter>
 #include <QMouseEvent>
@@ -99,6 +108,10 @@ void
 Overview::
 paintEvent(QPaintEvent *)
 {
+  CQPerfTrace trace("Overview::paintEvent");
+
+  //---
+
   QPainter painter(this);
 
   drawData_.painter = &painter;
@@ -108,12 +121,8 @@ paintEvent(QPaintEvent *)
   auto *canvas = app_->canvas();
   auto *camera = dynamic_cast<Camera *>(canvas->camera());
 
-  if (canvas->isPerspective())
-    drawData_.worldMatrix = camera->perspectiveMatrix();
-  else
-    drawData_.worldMatrix = camera->orthoMatrix();
-
-  drawData_.viewMatrix = camera->viewMatrix();
+  drawData_.worldMatrix = canvas->calcWorldMatrix();
+  drawData_.viewMatrix  = camera->viewMatrix();
 
   //---
 
@@ -162,6 +171,14 @@ paintEvent(QPaintEvent *)
 
   //---
 
+  painter.save();
+
+  drawTexts();
+
+  painter.restore();
+
+  //---
+
   if (isShowCamera()) {
     painter.save();
 
@@ -175,6 +192,10 @@ void
 Overview::
 updateModel()
 {
+  CQPerfTrace trace("Overview::updateModel");
+
+  //---
+
   drawData_.bbox = CBBox3D();
 
   drawData_.faces.clear();
@@ -182,30 +203,71 @@ updateModel()
   auto *scene = app_->scene();
 
   for (auto *object : scene->getObjects()) {
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
+    if (object->parent())
+      continue;
 
-    //---
+    updateObject(object);
+  }
+}
 
-    const auto &faceDatas = object1->faceDatas();
-    auto       *buffer    = object1->buffer();
+void
+Overview::
+updateObject(CGeomObject3D *object)
+{
+  CQPerfTrace trace("Overview::updateObject");
 
-    for (const auto &faceData : faceDatas) {
-      Face face;
+  if (! object->getVisible())
+    return;
 
-      face.color = faceData.diffuse;
+  //---
 
-      for (int i = 0; i < faceData.len; ++i) {
-        CQGLBuffer::PointData data;
-        buffer->getPointData(faceData.pos + i, data);
+  auto *object1 = dynamic_cast<GeomObject *>(object);
+  assert(object1);
 
-        face.points.push_back(data.point->point());
+  auto *geomObject1 = object1;
 
-        drawData_.bbox += data.point->point();
-      }
+  if (object->refObject()) {
+    geomObject1 = dynamic_cast<GeomObject *>(object->refObject());
+    assert(geomObject1);
+  }
 
-      drawData_.faces.push_back(face);
+  //---
+
+  auto modelMatrix = object1->getHierTransform();
+
+#if 0
+  if (refObject && refObject != object)
+    modelMatrix = refObject->getHierTransform()*modelMatrix;
+#endif
+
+  //---
+
+  const auto &faceDatas = geomObject1->faceDatas();
+  auto       *buffer    = geomObject1->buffer();
+
+  for (const auto &faceData : faceDatas) {
+    Face face;
+
+    face.color = faceData.diffuse;
+
+    for (int i = 0; i < faceData.len; ++i) {
+      CQGLBuffer::PointData data;
+      buffer->getPointData(faceData.pos + i, data);
+
+      auto p = modelMatrix*data.point->point();
+
+      face.points.push_back(p);
+
+      drawData_.bbox += p;
     }
+
+    drawData_.faces.push_back(face);
+  }
+
+  //---
+
+  for (auto *child : object->children()) {
+    updateObject(child);
   }
 }
 
@@ -235,6 +297,8 @@ void
 Overview::
 drawModel()
 {
+  CQPerfTrace trace("Overview::drawModel");
+
   auto drawPolygon2D = [&](const ViewData &view, const std::vector<CPoint2D> &points) {
     drawData_.painter->setClipRect(view.rect);
 
@@ -286,6 +350,27 @@ drawModel()
       drawPolygon(face.points);
     }
   }
+}
+
+void
+Overview::
+drawTexts()
+{
+  auto *canvas = app_->canvas();
+
+  for (auto *text : canvas->texts()) {
+    drawText(text);
+  }
+}
+
+void
+Overview::
+drawText(Text *text)
+{
+  auto pos = text->position();
+
+  drawPoint(CVector3D(pos.getX(), pos.getY(), pos.getZ()),
+            QString::fromStdString(text->text()));
 }
 
 void

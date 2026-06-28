@@ -79,11 +79,9 @@ class Toolbar : public QFrame {
 
   void updateWidgets();
 
-#if 0
   void metaEditSlot();
   void performanceSlot();
   void optionsSlot();
-#endif
 
  private:
   QToolButton *addDebugButton();

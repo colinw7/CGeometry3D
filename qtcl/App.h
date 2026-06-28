@@ -4,6 +4,9 @@
 #include <CGeom3DType.h>
 #include <CVector3D.h>
 #include <CPoint3D.h>
+#include <CBBox3D.h>
+#include <CBBox2D.h>
+#include <CRGBA.h>
 
 #include <QFrame>
 
@@ -15,6 +18,8 @@ class CGeomFace3D;
 class CGeomEdge3D;
 class CGeomLine3D;
 class CGeomVertex3D;
+class CGeomTexture;
+class CGeomMaterial;
 
 class CPSysParticle;
 class CPSysSpring;
@@ -32,6 +37,7 @@ class Control;
 class Toolbar;
 class Sidebar;
 class Status;
+class Text;
 
 class ParticleSystem;
 
@@ -148,6 +154,8 @@ class App : public QFrame {
 
   //---
 
+  uint ticks() const { return ticks_; }
+
   bool isRunning() const { return running_; }
   void setRunning(bool b) { running_ = b; }
 
@@ -176,53 +184,7 @@ class App : public QFrame {
  private:
   void initTcl();
 
-  static int addObjectProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addVertexProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addFaceProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addLineProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addMaterialProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addTextureProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-
-  static int addPlaneProc   (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addConeProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addCubeProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addCylinderProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addSphereProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int addTerrainProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-
-  static int getObjectValueProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int setObjectValueProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int getFaceValueProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int setFaceValueProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int getEdgeValueProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int setEdgeValueProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int getLineValueProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int setLineValueProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int getVertexValueProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int setVertexValueProc  (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int setMaterialValueProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-
-  static int intersectObjectsProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int inverseObjectProc   (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int unionObjectsProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int subtractObjectsProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-
-  static int extrudeFacesProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int extrudeEdgesProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int mergeEdgeProc    (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int duplicateFaceProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int separateFaceProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int separateEdgeProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int mirrorObjectProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int fillVerticesProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-
-  static int deleteObjectsProc (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int deleteFacesProc   (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int deleteVerticesProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-
-  static int vectorProc   (ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-  static int setVectorProc(ClientData, Tcl_Interp*, int, Tcl_Obj * const *);
-
+  bool decodeParticle  (Tcl_Obj *obj, CPSysParticle* &particle) const;
   bool decodeParticle  (const std::string &arg, CPSysParticle* &particle) const;
   bool decodeSpring    (const std::string &arg, CPSysSpring* &particle) const;
   bool decodeAttraction(const std::string &arg, CPSysAttraction* &particle) const;
@@ -238,6 +200,10 @@ class App : public QFrame {
   bool decodeVertices(const std::vector<std::string> &args,
                       std::vector<CGeomVertex3D *> &vertices) const;
   bool decodeVertex  (const std::string &arg, CGeomVertex3D* &vertex) const;
+  bool decodeTexture (Tcl_Obj *obj, CGeomTexture* &texture) const;
+  bool decodeTexture (const std::string &arg, CGeomTexture* &texture) const;
+  bool decodeMaterial(const std::string &arg, CGeomMaterial* &material) const;
+  bool decodeText    (const std::string &arg, Text* &text) const;
 
   CGeomObject3D *getNearestObject(const CPoint3D &) const;
   CGeomFace3D   *getNearestFace  (CGeomObject3D *, const CPoint3D &) const;
@@ -247,9 +213,17 @@ class App : public QFrame {
   CGeomVertex3D *getNearestVertex(CGeomObject3D *, const CPoint3D &) const;
   CGeomVertex3D *getNearestVertex(CGeomFace3D *, const CPoint3D &) const;
 
+  bool stringToBBox  (const std::string &str, CBBox3D &bbox) const;
+  bool decodePoint   (Tcl_Obj *str, CPoint2D &p) const;
   bool stringToPoint (const std::string &str, CPoint2D &p) const;
+  bool decodePoint   (Tcl_Obj *str, CPoint3D &p) const;
   bool stringToPoint (const std::string &str, CPoint3D &p) const;
   bool stringToVector(const std::string &str, CVector3D &v) const;
+  bool stringToRect  (const std::string &str, CBBox2D &r) const;
+  bool decodeReal    (Tcl_Obj *obj, double &r) const;
+  bool decodeBool    (Tcl_Obj *obj, bool &b) const;
+
+  bool stringToColor(const std::string &str, CRGBA &c) const;
 
  public:
   using StringList = std::vector<std::string>;
@@ -257,9 +231,15 @@ class App : public QFrame {
   int getAppValueProc(const StringList &);
   int setAppValueProc(const StringList &);
 
+  int addViewportProc     (const StringList &);
+  int setViewportValueProc(const StringList &);
+
+  int addShaderProc     (const StringList &);
+  int setShaderValueProc(const StringList &);
+
   int addParticleProc     (const StringList &);
   int getParticleValueProc(const StringList &);
-  int setParticleValueProc(const StringList &);
+  int setParticleValueProc(const std::vector<Tcl_Obj *> &);
 
   int addSpringProc     (const StringList &);
   int getSpringValueProc(const StringList &);
@@ -269,20 +249,74 @@ class App : public QFrame {
   int getAttractionValueProc(const StringList &);
   int setAttractionValueProc(const StringList &);
 
+  int getObjectValueProc  (const StringList &);
+  int setObjectValueProc  (const StringList &);
+  int getFaceValueProc    (const StringList &);
+  int setFaceValueProc    (const StringList &);
+  int getLineValueProc    (const StringList &);
+  int setLineValueProc    (const StringList &);
+  int getEdgeValueProc    (const StringList &);
+  int setEdgeValueProc    (const StringList &);
+  int getVertexValueProc  (const StringList &);
+  int setVertexValueProc  (const StringList &);
+  int setMaterialValueProc(const StringList &);
+  int getTextValueProc    (const StringList &);
+  int setTextValueProc    (const StringList &);
+
   int getObjectPropertyProc(const StringList &);
   int setObjectPropertyProc(const StringList &);
 
+  int intersectObjectsProc(const StringList &);
+  int inverseObjectProc   (const StringList &);
+  int unionObjectsProc    (const StringList &);
+  int subtractObjectsProc (const StringList &);
+
+  int extrudeFacesProc (const StringList &);
+  int extrudeEdgesProc (const StringList &);
+  int mergeEdgeProc    (const StringList &);
+  int duplicateFaceProc(const StringList &);
+  int separateFaceProc (const StringList &);
+  int separateEdgeProc (const StringList &);
+  int mirrorObjectProc (const StringList &);
+  int fillVerticesProc (const StringList &);
+
+  int addObjectProc  (const StringList &);
+  int addVertexProc  (const StringList &);
+  int addFaceProc    (const StringList &);
+  int addLineProc    (const StringList &);
+  int addMaterialProc(const StringList &);
+  int addTextureProc (const StringList &);
+  int addTextProc    (const StringList &);
+
+  int addPlaneProc   (const StringList &);
+  int addCubeProc    (const StringList &);
+  int addConeProc    (const StringList &);
+  int addCylinderProc(const StringList &);
+  int addSphereProc  (const StringList &);
+  int addTerrainProc (const StringList &);
+
   int scaleFacesProc      (const StringList &);
   int circularizeFacesProc(const StringList &);
+
+  int deleteObjectsProc (const StringList &);
+  int deleteFacesProc   (const StringList &);
+  int deleteVerticesProc(const StringList &);
 
   int animateRealProc(const StringList &);
 
   int readModelProc(const StringList &);
   int writeObjProc (const StringList &);
 
-  int getVectorProc(const std::vector<Tcl_Obj *> &objs);
-
+  int vectorProc    (const StringList &);
+  int getVectorProc (const std::vector<Tcl_Obj *> &objs);
+  int setVectorProc (const std::vector<Tcl_Obj *> &objs);
   int calcVectorProc(const StringList &);
+
+  //---
+
+  void showMetaEdit();
+  void showPerfDialog();
+  void showAppOptions();
 
  private Q_SLOTS:
   void timerSlot();
@@ -308,9 +342,9 @@ class App : public QFrame {
 
   ParticleSystem *psys_ { nullptr };
 
-  QTimer* timer_ { nullptr };
-
-  bool running_ { true };
+  QTimer* timer_   { nullptr };
+  uint    ticks_   { 0 };
+  bool    running_ { true };
 
   AnimDatas animDatas_;
 };
