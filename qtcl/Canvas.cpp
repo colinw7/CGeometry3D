@@ -1789,6 +1789,10 @@ void
 Canvas::
 keyPressEvent(QKeyEvent *e)
 {
+  auto keyStr = getKeyString(e);
+
+  keyPressed_[keyStr] = true;
+
   mouseData_.isControl = (e->modifiers() & Qt::ControlModifier);
   mouseData_.isShift   = (e->modifiers() & Qt::ShiftModifier);
 
@@ -1812,18 +1816,6 @@ keyPressEvent(QKeyEvent *e)
   auto *camera = this->camera();
 
   if      (editType() == EditType::TCL) {
-    std::string keyStr;
-
-    if      (e->key() == Qt::Key_Left ) keyStr = "left";
-    else if (e->key() == Qt::Key_Right) keyStr = "right";
-    else if (e->key() == Qt::Key_Up   ) keyStr = "up";
-    else if (e->key() == Qt::Key_Down ) keyStr = "down";
-    else if (e->key() == Qt::Key_Space) keyStr = "space";
-    else                                keyStr = e->text().toStdString();
-
-    if (keyStr == "")
-      keyStr = "key." + std::to_string(e->key());
-
     std::vector<std::string> args;
 
     args.push_back(keyStr);
@@ -1878,6 +1870,46 @@ keyPressEvent(QKeyEvent *e)
       camera->printMatrices();
     }
   }
+}
+
+void
+Canvas::
+keyReleaseEvent(QKeyEvent *e)
+{
+  auto keyStr = getKeyString(e);
+
+  keyPressed_[keyStr] = false;
+}
+
+bool
+Canvas::
+getKeyPressed(const std::string &key) const
+{
+  auto p = keyPressed_.find(key);
+
+  if (p == keyPressed_.end())
+    return false;
+
+  return (*p).second;
+}
+
+std::string
+Canvas::
+getKeyString(QKeyEvent *e) const
+{
+  std::string keyStr;
+
+  if      (e->key() == Qt::Key_Left ) keyStr = "left";
+  else if (e->key() == Qt::Key_Right) keyStr = "right";
+  else if (e->key() == Qt::Key_Up   ) keyStr = "up";
+  else if (e->key() == Qt::Key_Down ) keyStr = "down";
+  else if (e->key() == Qt::Key_Space) keyStr = "space";
+  else                                keyStr = e->text().toStdString();
+
+  if (keyStr == "")
+    keyStr = "key." + std::to_string(e->key());
+
+  return keyStr;
 }
 
 //---

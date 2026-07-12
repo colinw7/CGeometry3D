@@ -3,6 +3,7 @@
 
 #include <CGeom3DType.h>
 #include <CVector3D.h>
+#include <CMatrix3D.h>
 #include <CPoint3D.h>
 #include <CBBox3D.h>
 #include <CBBox2D.h>
@@ -219,6 +220,8 @@ class App : public QFrame {
   bool decodePoint   (Tcl_Obj *str, CPoint3D &p) const;
   bool stringToPoint (const std::string &str, CPoint3D &p) const;
   bool stringToVector(const std::string &str, CVector3D &v) const;
+  bool objToVector   (Tcl_Obj *obj, CVector3D &v) const;
+  bool stringToMatrix(const std::string &str, CMatrix3D &m) const;
   bool stringToRect  (const std::string &str, CBBox2D &r) const;
   bool decodeReal    (Tcl_Obj *obj, double &r) const;
   bool decodeBool    (Tcl_Obj *obj, bool &b) const;
@@ -311,6 +314,11 @@ class App : public QFrame {
   int getVectorProc (const std::vector<Tcl_Obj *> &objs);
   int setVectorProc (const std::vector<Tcl_Obj *> &objs);
   int calcVectorProc(const StringList &);
+
+  int matrixProc    (const StringList &);
+  int getMatrixProc (const std::vector<Tcl_Obj *> &objs);
+  int setMatrixProc (const std::vector<Tcl_Obj *> &objs);
+  int calcMatrixProc(const StringList &);
 
   //---
 

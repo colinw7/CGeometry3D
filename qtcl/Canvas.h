@@ -238,6 +238,7 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   void wheelEvent(QWheelEvent *e) override;
 
   void keyPressEvent(QKeyEvent *event) override;
+  void keyReleaseEvent(QKeyEvent *event) override;
 
   //---
 
@@ -275,6 +276,12 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   void updateTexts();
 
   void drawTexts();
+
+  //---
+
+  bool getKeyPressed(const std::string &key) const;
+
+  std::string getKeyString(QKeyEvent *e) const;
 
   //---
 
@@ -468,6 +475,12 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   //---
 
   CQRubberBand* rubberBand_ { nullptr };
+
+  //---
+
+  using KeyPressed = std::map<std::string, bool>;
+
+  KeyPressed keyPressed_;
 };
 
 }

@@ -424,6 +424,10 @@ Tcl_Obj *vectorToObj(const CVector3D &v) {
   return CTclVector3D::newObj(v);
 }
 
+Tcl_Obj *matrixToObj(const CMatrix3D &m) {
+  return CTclMatrix3D::newObj(m);
+}
+
 CTcl::RealList pointToRealArray(const CPoint3D &p) {
   CTcl::RealList realList;
 
@@ -569,10 +573,15 @@ CTCL_DCL_OBJECT_PROC(App, animateReal, animateRealProc, this)
 CTCL_DCL_OBJECT_PROC(App, readModel, readModelProc, this)
 CTCL_DCL_OBJECT_PROC(App, writeObj , writeObjProc , this)
 
-CTCL_DCL_OBJECT_PROC (App, vector    , vectorProc    , this)
-CTCL_DCL_TCL_OBJ_PROC(App, get_vector, getVectorProc , this)
-CTCL_DCL_TCL_OBJ_PROC(App, set_vector, setVectorProc , this)
-CTCL_DCL_OBJECT_PROC (App, calcVector, calcVectorProc, this)
+CTCL_DCL_OBJECT_PROC (App, vector     , vectorProc    , this)
+CTCL_DCL_TCL_OBJ_PROC(App, get_vector , getVectorProc , this)
+CTCL_DCL_TCL_OBJ_PROC(App, set_vector , setVectorProc , this)
+CTCL_DCL_OBJECT_PROC (App, calc_vector, calcVectorProc, this)
+
+CTCL_DCL_OBJECT_PROC (App, matrix     , matrixProc    , this)
+CTCL_DCL_TCL_OBJ_PROC(App, get_matrix , getMatrixProc , this)
+CTCL_DCL_TCL_OBJ_PROC(App, set_matrix , setMatrixProc , this)
+CTCL_DCL_OBJECT_PROC (App, calc_matrix, calcMatrixProc, this)
 
 App::
 App()
@@ -819,10 +828,16 @@ initTcl()
   CTCL_OBJECT_PROC(tcl_, writeObj , App, this)
 
   // vector
-  CTCL_OBJECT_PROC (tcl_, vector    , App, this);
-  CTCL_TCL_OBJ_PROC(tcl_, get_vector, App, this);
-  CTCL_TCL_OBJ_PROC(tcl_, set_vector, App, this);
-  CTCL_OBJECT_PROC (tcl_, calcVector, App, this);
+  CTCL_OBJECT_PROC (tcl_, vector     , App, this);
+  CTCL_TCL_OBJ_PROC(tcl_, get_vector , App, this);
+  CTCL_TCL_OBJ_PROC(tcl_, set_vector , App, this);
+  CTCL_OBJECT_PROC (tcl_, calc_vector, App, this);
+
+  // matrix
+  CTCL_OBJECT_PROC (tcl_, matrix     , App, this);
+  CTCL_TCL_OBJ_PROC(tcl_, get_matrix , App, this);
+  CTCL_TCL_OBJ_PROC(tcl_, set_matrix , App, this);
+  CTCL_OBJECT_PROC (tcl_, calc_matrix, App, this);
 
   //---
 
@@ -925,6 +940,12 @@ getAppValueProc(const CTclUtil::StringList &args)
   }
   else if (name == "viewport") {
     tcl_->setResult(int(canvas()->currentViewport()));
+  }
+  else if (name == "key") {
+    if (args.size() < 2)
+      return tclErrorMsg("Invalid args");
+
+    tcl_->setResult(canvas()->getKeyPressed(args[1]));
   }
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
@@ -4076,6 +4097,8 @@ writeObjProc(const CTclUtil::StringList &args)
   return TCL_OK;
 }
 
+//---
+
 int
 App::
 vectorProc(const CTclUtil::StringList &args)
@@ -4090,7 +4113,7 @@ vectorProc(const CTclUtil::StringList &args)
     v = CVector3D(x, y, z);
   }
   else if (args.size() == 1) {
-    if (! CTclVector3D::stringToVector(args[0], v))
+    if (! CTclVector3D::fromString(args[0], v))
       return tclErrorMsg("Invalid vector '" + args[0] + "'");
   }
   else
@@ -4108,11 +4131,8 @@ getVectorProc(const std::vector<Tcl_Obj *> &objs)
   if (objs.size() < 2)
     return tclErrorMsg("Invalid args");
 
-  if (! CTclVector3D::isObj(objs[0]))
-    return tclErrorMsg("Invalid vector");
-
   CVector3D v;
-  if (CTclVector3D::getObj(tcl_->interp(), objs[0], v) == TCL_ERROR)
+  if (! objToVector(objs[0], v))
     return tclErrorMsg("Invalid vector");
 
   auto name = CTclUtil::stringFromObj(objs[1]);
@@ -4130,7 +4150,7 @@ getVectorProc(const std::vector<Tcl_Obj *> &objs)
       return tclErrorMsg("Invalid args");
 
     CVector3D v1;
-    if (CTclVector3D::getObj(tcl_->interp(), objs[2], v1) == TCL_ERROR)
+    if (! objToVector(objs[2], v1))
       return tclErrorMsg("Invalid vector");
 
     tcl_->setResult(v.getDistance(v1));
@@ -4140,7 +4160,7 @@ getVectorProc(const std::vector<Tcl_Obj *> &objs)
       return tclErrorMsg("Invalid args");
 
     CVector3D v1;
-    if (CTclVector3D::getObj(tcl_->interp(), objs[2], v1) == TCL_ERROR)
+    if (! objToVector(objs[2], v1))
       return tclErrorMsg("Invalid vector");
 
     tcl_->setResult(v.dotProduct(v1));
@@ -4150,7 +4170,7 @@ getVectorProc(const std::vector<Tcl_Obj *> &objs)
       return tclErrorMsg("Invalid args");
 
     CVector3D v1;
-    if (CTclVector3D::getObj(tcl_->interp(), objs[2], v1) == TCL_ERROR)
+    if (! objToVector(objs[2], v1))
       return tclErrorMsg("Invalid vector");
 
     tcl_->setResult(vectorToObj(v.crossProduct(v1)));
@@ -4165,64 +4185,61 @@ int
 App::
 setVectorProc(const std::vector<Tcl_Obj *> &objs)
 {
-  if (objs.size() < 4)
+  if (objs.size() < 3)
     return tclErrorMsg("Invalid args");
 
-  if (! CTclVector3D::isObj(objs[1]))
-    return tclErrorMsg("Invalid vector");
-
   CVector3D v;
-  if (CTclVector3D::getObj(tcl_->interp(), objs[1], v) == TCL_ERROR)
+  if (! objToVector(objs[0], v))
     return tclErrorMsg("Invalid vector");
 
-  auto name = CTclUtil::stringFromObj(objs[2]);
+  auto name = CTclUtil::stringFromObj(objs[1]);
 
   if      (name == "x") {
     double x;
-    if (! objToReal(objs[3], x))
+    if (! objToReal(objs[2], x))
       return tclErrorMsg("Invalid real");
 
     v.setX(x);
   }
   else if (name == "y") {
     double y;
-    if (! objToReal(objs[3], y))
+    if (! objToReal(objs[2], y))
       return tclErrorMsg("Invalid real");
 
     v.setY(y);
   }
   else if (name == "z") {
     double z;
-    if (! objToReal(objs[3], z))
+    if (! objToReal(objs[2], z))
       return tclErrorMsg("Invalid real");
 
     v.setZ(z);
   }
   else if (name == "+" || name == "add") {
     CVector3D v1;
-    if (CTclVector3D::getObj(tcl_->interp(), objs[3], v1) == TCL_ERROR)
+    if (! objToVector(objs[2], v1))
       return tclErrorMsg("Invalid vector");
 
     v += v1;
   }
   else if (name == "-" || name == "substract") {
     CVector3D v1;
-    if (CTclVector3D::getObj(tcl_->interp(), objs[3], v1) == TCL_ERROR)
+    if (! objToVector(objs[2], v1))
       return tclErrorMsg("Invalid vector");
 
     v -= v1;
   }
   else if (name == "*" || name == "multiply") {
-    if (CTclVector3D::isObj(objs[3])) {
+    if (CTclVector3D::isObj(objs[2])) {
       CVector3D v1;
-      if (CTclVector3D::getObj(tcl_->interp(), objs[3], v1) == TCL_ERROR)
+      if (! objToVector(objs[2], v1))
         return tclErrorMsg("Invalid vector");
 
       v *= v1;
     }
     else {
       double s;
-      if (! objToReal(objs[3], s))
+      if (! objToReal(objs[2], s))
         return tclErrorMsg("Invalid real");
 
       v *= s;
@@ -4230,7 +4247,7 @@ setVectorProc(const std::vector<Tcl_Obj *> &objs)
   }
   else if (name == "magnitude") {
     double s;
-    if (! objToReal(objs[3], s))
+    if (! objToReal(objs[2], s))
       return tclErrorMsg("Invalid real");
 
     v.setMagnitude(s);
@@ -4238,10 +4255,10 @@ setVectorProc(const std::vector<Tcl_Obj *> &objs)
   else
     return tclErrorMsg("Invalid value name '" + name + "'");
 
-  if (CTclVector3D::setObj(tcl_->interp(), objs[1], v) == TCL_ERROR)
+  if (CTclVector3D::setObj(tcl_->interp(), objs[0], v) == TCL_ERROR)
     return tclErrorMsg("Invalid vector");
 
-  tcl()->setResult(objs[1]);
+  tcl()->setResult(objs[0]);
 
   return TCL_OK;
 }
@@ -4294,6 +4311,145 @@ calcVectorProc(const CTclUtil::StringList &args)
 
   return TCL_OK;
 }
+
+//---
+
+int
+App::
+matrixProc(const CTclUtil::StringList &args)
+{
+  CMatrix3D m;
+
+  if      (args.size() == 16) {
+    double mm[16];
+
+    for (uint i = 0; i < 16; ++i) {
+      if (! stringToReal(args[i], mm[i]))
+        return tclErrorMsg("Invalid real values");
+    }
+
+    m = CMatrix3D(mm, 16);
+  }
+  else if (args.size() == 1) {
+    if (! CTclMatrix3D::fromString(args[0], m))
+      return tclErrorMsg("Invalid matrix '" + args[0] + "'");
+  }
+  else if (args.size() == 0) {
+  }
+  else
+    return tclErrorMsg("Invalid args");
+
+  tcl()->setResult(matrixToObj(m));
+
+  return TCL_OK;
+}
+
+int
+App::
+getMatrixProc(const std::vector<Tcl_Obj *> &objs)
+{
+  if (objs.size() < 2)
+    return tclErrorMsg("Invalid args");
+
+  if (! CTclMatrix3D::isObj(objs[0]))
+    return tclErrorMsg("Invalid matrix");
+
+  CMatrix3D m;
+  if (CTclMatrix3D::getObj(tcl_->interp(), objs[0], m) == TCL_ERROR)
+    return tclErrorMsg("Invalid matrix");
+
+  auto name = CTclUtil::stringFromObj(objs[1]);
+
+  if      (name == "determinant")
+    tcl_->setResult(m.determinant());
+  else
+    return tclErrorMsg("Invalid value name '" + name + "'");
+
+  return TCL_OK;
+}
+
+int
+App::
+setMatrixProc(const std::vector<Tcl_Obj *> &objs)
+{
+  if (objs.size() < 3)
+    return tclErrorMsg("Invalid args");
+
+  if (! CTclMatrix3D::isObj(objs[0]))
+    return tclErrorMsg("Invalid matrix");
+
+  CMatrix3D m;
+  if (CTclMatrix3D::getObj(tcl_->interp(), objs[0], m) == TCL_ERROR)
+    return tclErrorMsg("Invalid matrix");
+
+  auto name = CTclUtil::stringFromObj(objs[1]);
+
+  if      (name == "translation") {
+    CVector3D v;
+    if (! objToVector(objs[2], v))
+      return tclErrorMsg("Invalid vector");
+
+    m.setTranslation(v.getX(), v.getY(), v.getZ());
+  }
+  else if (name == "+" || name == "add") {
+    CMatrix3D m1;
+    if (CTclMatrix3D::getObj(tcl_->interp(), objs[2], m1) == TCL_ERROR)
+      return tclErrorMsg("Invalid matrix");
+
+    m += m1;
+  }
+  else if (name == "-" || name == "substract") {
+    CMatrix3D m1;
+    if (CTclMatrix3D::getObj(tcl_->interp(), objs[2], m1) == TCL_ERROR)
+      return tclErrorMsg("Invalid matrix");
+
+    m -= m1;
+  }
+  else if (name == "*" || name == "multiply") {
+    if (CTclMatrix3D::isObj(objs[2])) {
+      CMatrix3D m1;
+      if (CTclMatrix3D::getObj(tcl_->interp(), objs[2], m1) == TCL_ERROR)
+        return tclErrorMsg("Invalid matrix");
+
+      m *= m1;
+    }
+    else {
+      double s;
+      if (! objToReal(objs[2], s))
+        return tclErrorMsg("Invalid real");
+
+      m *= s;
+    }
+  }
+  else
+    return tclErrorMsg("Invalid value name '" + name + "'");
+
+  if (CTclMatrix3D::setObj(tcl_->interp(), objs[0], m) == TCL_ERROR)
+    return tclErrorMsg("Invalid matrix");
+
+  tcl()->setResult(objs[0]);
+
+  return TCL_OK;
+}
+
+int
+App::
+calcMatrixProc(const CTclUtil::StringList &args)
+{
+  if (args.size() < 2)
+    return tclErrorMsg("Invalid args");
+
+  CMatrix3D m;
+  if (! stringToMatrix(args[0], m))
+    return tclErrorMsg("Invalid matrix '" + args[0] + "'");
+
+  auto name = args[1];
+
+  return tclErrorMsg("Invalid value name '" + name + "'");
+
+  return TCL_OK;
+}
+//---
 
 void
 App::
@@ -4817,7 +4973,7 @@ decodePoint(Tcl_Obj *obj, CPoint3D &p) const
 {
   if (CTclVector3D::isObj(obj)) {
     CVector3D v;
-    if (CTclVector3D::getObj(tcl_->interp(), obj, v) == TCL_ERROR)
+    if (! objToVector(obj, v))
       return errorMsg("Invalid point '" + CTclUtil::stringFromObj(obj) + "'");
 
     p = v.point();
@@ -4858,6 +5014,7 @@ bool
 App::
 stringToVector(const std::string &str, CVector3D &v) const
 {
+#if 0
   StringList strs;
   tcl_->splitList(str, strs);
 
@@ -4873,6 +5030,29 @@ stringToVector(const std::string &str, CVector3D &v) const
   v = CVector3D(x, y, z);
 
   return true;
+#else
+  return CTclVector3D::fromString(str, v);
+#endif
+}
+
+bool
+App::
+objToVector(Tcl_Obj *obj, CVector3D &v) const
+{
+  if (! CTclVector3D::isObj(obj))
+    return false;
+
+  if (CTclVector3D::getObj(tcl_->interp(), obj, v) == TCL_ERROR)
+    return false;
+
+  return true;
+}
+
+bool
+App::
+stringToMatrix(const std::string &str, CMatrix3D &m) const
+{
+  return CTclMatrix3D::fromString(str, m);
 }
 
 bool
