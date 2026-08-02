@@ -7,6 +7,13 @@
 
 class CQGLTexture {
  public:
+  enum class Type {
+    NONE,
+    IMAGE,
+    TARGET,
+    SHADOW
+  };
+
   enum class WrapType {
     CLAMP,
     REPEAT
@@ -43,10 +50,25 @@ class CQGLTexture {
   const std::string &getName() const { return name_; }
   void setName(const std::string &s) { name_ = s; }
 
+  //---
+
+  int getTargetWidth () const { return targetWidth_; }
+  int getTargetHeight() const { return targetHeight_; }
+
+  // set as render target
   bool setTarget(int w, int h);
+
+#if 0
+  // set as shadow buffer
+  bool setShadow(int w, int h);
+#endif
+
+  //---
 
   const QOpenGLExtraFunctions *functions() const { return functions_; }
   void setFunctions(QOpenGLExtraFunctions *p) { functions_ = p; }
+
+  //---
 
   void bind() const;
   void unbind() const;
@@ -54,12 +76,51 @@ class CQGLTexture {
   void bindBuffer() const;
   void unbindBuffer() const;
 
+  //---
+
   void enable(bool b);
+
+  //---
 
   void draw();
   void draw(double x1, double y1, double x2, double y2);
   void draw(double x1, double y1, double z1, double x2, double y2, double z2,
             double tx1=0.0, double ty1=0.0, double tx2=1.0, double ty2=1.0);
+
+  //---
+
+#if 0
+  struct ImageData {
+    ImageData() { }
+
+    bool scale { false };
+    bool debug { false };
+  };
+
+  void writeImage(const std::string &filename, const ImageData &data=ImageData()) const;
+
+  //---
+
+  struct MinMax {
+    std::optional<float> min;
+    std::optional<float> max;
+
+    void update(float c) {
+      min = (min ? std::min(*min, c) : c);
+      max = (max ? std::max(*max, c) : c);
+    }
+
+    void print(const char *prefix) const {
+      std::cerr << prefix << " min: " << double(*min) << " max: " << double(*max) << "\n";
+    }
+
+    double map(float r) const {
+      return (r - *min)/(*max - *min);
+    }
+  };
+
+  void getRange(MinMax &minMax) const;
+#endif
 
  private:
   CQGLTexture(const CQGLTexture &);
@@ -69,6 +130,8 @@ class CQGLTexture {
   bool init(const QImage &image, bool flip);
 
  private:
+  Type type_ { Type::NONE };
+
   QImage         image_;
   unsigned char *imageData_ { nullptr };
 

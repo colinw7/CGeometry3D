@@ -104,10 +104,14 @@ proc loadAlien { filename name } {
 }
 
 proc addAlien { } {
+  if {$::dead_aliens >= $::num_aliens} {
+    return
+  }
+
   if {! [info exists ::alien1_obj]} {
-    set ::alien1_obj [loadAlien "data/defender_alien1.obj" "alien1"]
-    set ::alien2_obj [loadAlien "data/defender_alien2.obj" "alien2"]
-    set ::alien3_obj [loadAlien "data/defender_alien3.obj" "alien3"]
+    set ::alien1_obj [loadAlien "data/defender/defender_alien1.obj" "alien1"]
+    set ::alien2_obj [loadAlien "data/defender/defender_alien2.obj" "alien2"]
+    set ::alien3_obj [loadAlien "data/defender/defender_alien3.obj" "alien3"]
   }
 
   set i ""
@@ -143,7 +147,7 @@ proc addAlien { } {
   }
 
   if {$i != ""} {
-    echo "Add Alien"
+    # echo "Add Alien"
 
     set ::alien_x($i) [randIn -64 64]
     set ::alien_y($i) [randIn -64 64]
@@ -164,9 +168,10 @@ proc addAlien { } {
 proc alienScore { alien } {
   set meta [getObjectValue $alien meta]
 
-  if {$meta == "alien3"} { return 100 }
-  if {$meta == "alien1"} { return 200 }
-  if {$meta == "alien4"} { return 300 }
+  if {$meta == "alien1"} { return 100 }
+  if {$meta == "alien2"} { return 200 }
+
+  echo "No Score for Alien $meta"
 
   return 0
 }
@@ -255,6 +260,7 @@ proc alienPickupHuman { i ih } {
 
   set ::alien($i) $::alien2($i)
 
+  setObjectValue $::alien($i) meta "alien2"
   setObjectValue $::alien($i) visible 1
 
   setObjectValue $::alien($i) translate [list $::alien_x($i) $::alien_y($i) 0] set
@@ -262,14 +268,28 @@ proc alienPickupHuman { i ih } {
   setObjectValue $::humans($ih) meta "captured"
 }
 
+# alien hit ship
 proc alienHitShip { i } {
   echo "Hit Ship"
 
-  # hit ship
+  killAlien $i
+
+  shipLoseLife
+}
+
+proc killAlien { i } {
+  set ::score [expr {$::score + [alienScore $::alien($i)]}]
+
   setObjectValue $::alien($i) meta   "dead"
   setObjectValue $::alien($i) visible 0
 
-  shipLoseLife
+  incr ::dead_aliens
+
+  setTextValue $::score_text text "Score: $::score"
+
+  if {$::dead_aliens == $::num_aliens} {
+    nextLevel
+  }
 }
 
 proc moveAlienToTarget { i } {
@@ -442,17 +462,22 @@ proc gameOver { } {
   setAppValue  running 0
 }
 
-proc restartGame { } {
+proc nextLevel { } {
+  restartGame 1
+}
+
+proc restartGame { nextLevel } {
   setAppValue running 0
 
   initGround
 
-  set ::num_aliens 8
-  set ::alien_dx   0
-  set ::alien_dy   0
-  set ::alien_w    16
-  set ::alien_h    16
-  set ::alien_v    2
+  set ::num_aliens  8
+  set ::dead_aliens 0
+  set ::alien_dx    0
+  set ::alien_dy    0
+  set ::alien_w     16
+  set ::alien_h     16
+  set ::alien_v     2
 
   for {set i 0} {$i < $::num_aliens} {incr i} {
     if {[info exists ::alien_bullet($i)]} {
@@ -479,50 +504,63 @@ proc restartGame { } {
     addAlien
   }
 
-  set ::lives 3
-  set ::score 0
-  set ::level 1
+  if {$nextLevel == 0} {
+    set ::lives 3
+    set ::score 0
+    set ::level 1
 
-  setTextValue $::lives_text text "Lives: $::lives"
-  setTextValue $::score_text text "Score: $::score"
-  setTextValue $::level_text text "Level: $::level"
+    setTextValue $::lives_text text "Lives: $::lives"
+    setTextValue $::score_text text "Score: $::score"
+    setTextValue $::level_text text "Level: $::level"
 
-  if {[info exists ::ship_dir]} {
-    if {$::ship_dir != 1} {
-      setObjectValue $::ship_obj rotate [list 0 1 0] 180
+    if {[info exists ::ship_dir]} {
+      if {$::ship_dir != 1} {
+        setObjectValue $::ship_obj rotate [list 0 1 0] 180
+      }
+    }
+  } else {
+    incr ::level
+
+    setTextValue $::level_text text "Level: $::level"
+  }
+
+  if {$nextLevel == 0} {
+    set ::ship_dx     64
+    set ::ship_w      16
+    set ::ship_h      16
+    set ::ship_dir    1
+    set ::ship_vx     1
+    set ::ship_ax     1.5
+    set ::ship_min_vx 1
+    set ::ship_max_vx 20
+    set ::ship_vy     4
+
+    set ::ship_target_x ""
+    set ::ship_turning  0
+
+    set ::ship_bullet_xmax 96
+
+    set ::ship_x -$::ship_dx
+    set ::ship_y 0
+
+    setObjectValue $::ship_obj translate [list $::ship_x $::ship_y 0] set
+
+    # ---
+
+    set ::ship_num_bullets 4
+
+    for {set i 0} {$i < $::ship_num_bullets} {incr i} {
+      set ::ship_bullet($i) ""
     }
   }
 
-  set ::ship_dx     32
-  set ::ship_w      16
-  set ::ship_h      16
-  set ::ship_dir    1
-  set ::ship_vx     1
-  set ::ship_ax     1
-  set ::ship_max_vx 20
-  set ::ship_vy     2
-
-  set ::ship_target_x ""
-  set ::ship_turning  0
-
-  set ::ship_bullet_xmax 96
-
-  set ::ship_x -$::ship_dx
-  set ::ship_y 0
-
-  setObjectValue $::ship_obj translate [list $::ship_x $::ship_y 0] set
+  # ---
 
   set ::num_humans 3
 
   addHuman 0 -64
   addHuman 1   0
   addHuman 2  64
-
-  set ::ship_num_bullets 4
-
-  for {set i 0} {$i < $::ship_num_bullets} {incr i} {
-    set ::ship_bullet($i) ""
-  }
 
   # ---
 
@@ -555,13 +593,13 @@ proc shipLoseLife { } {
 }
 
 proc shipUp { } {
-  set ::ship_y [expr {$::ship_y + $::ship_vy}]
+  set ::ship_y [limitShipY [expr {$::ship_y + $::ship_vy}]]
 
   setObjectValue $::ship_obj translate [list $::ship_x $::ship_y 0] set
 }
 
 proc shipDown { } {
-  set ::ship_y [expr {$::ship_y - $::ship_vy}]
+  set ::ship_y [limitShipY [expr {$::ship_y - $::ship_vy}]]
 
   setObjectValue $::ship_obj translate [list $::ship_x $::ship_y 0] set
 }
@@ -597,6 +635,13 @@ proc shipThrust { } {
   }
   if {$::ship_vx < -$::ship_max_vx} {
     set ::ship_vx -$::ship_max_vx
+  }
+
+  if {$::ship_vx <= 0 && $::ship_vx > -$::ship_min_vx} {
+    set ::ship_vx -$::ship_min_vx
+  }
+  if {$::ship_vx >= 0 && $::ship_vx < $::ship_min_vx} {
+    set ::ship_vx $::ship_min_vx
   }
 
   if {0} {
@@ -661,7 +706,7 @@ proc shipShoot { } {
   # ---
 
   # set bullet velocity
-  set bullet_vx 400
+  set bullet_vx 800
 
   set shoot_vel [expr {$::ship_vx + $bullet_vx*$::ship_dir}]
 
@@ -675,7 +720,7 @@ proc shipShoot { } {
 # Ground
 
 proc addGround { x } {
-  set ground_obj [readModel "data/defender_ground1.obj"]
+  set ground_obj [readModel "data/defender/defender_ground1.obj"]
 
   setObjectValue $ground_obj scale     [list 2 2 2] set
   setObjectValue $ground_obj translate [list $x $::ground_y 0] set
@@ -716,7 +761,7 @@ proc addHuman { i x } {
   set ::human_y($i) $::ground_y
 
   if {! [info exists ::humans($i)]} {
-    set ::humans($i) [readModel "data/humanoid_tri.obj"]
+    set ::humans($i) [readModel "data/defender/humanoid_tri.obj"]
 
     setObjectValue $::humans($i) scale     [list 0.5 0.5 0.5] set
     setObjectValue $::humans($i) translate [list $::human_x($i) $::human_y($i) 0] set
@@ -741,6 +786,15 @@ proc wrapX { x } {
   return $x
 }
 
+proc limitShipY { y } {
+  if       {$y > 48} {
+    set y 48
+  } elseif {$y < $::ground_y} {
+    set y $::ground_y
+  }
+  return $y
+}
+
 # ---
 
 proc hitAlien { } {
@@ -757,12 +811,9 @@ proc updateShipBullet { particle } {
 
     echo "Hit Alien: $alien"
 
-    set ::score [expr {$::score + [alienScore $alien]}]
+    setParticleValue $particle dead 1
 
-    setTextValue $::score_text text "Score: $::score"
-
-    setParticleValue $particle dead    1
-    setObjectValue   $alien    visible 0
+    killAlien $ii
 
     if {$::alien_human($ii) != ""} {
       set human $::humans($::alien_human($ii))
@@ -925,7 +976,7 @@ proc keyPress { args } {
   set ctrl  [lindex $args 1]
   set shift [lindex $args 2]
 
-  echo "keyPress ($key) ($ctrl) ($shift)"
+  # echo "keyPress ($key) ($ctrl) ($shift)"
 
   if {0} {
   if       {$key == "q" || $key == "Q"} {
@@ -944,8 +995,8 @@ proc keyPress { args } {
   if       {$key == "d" || $key == "D"} {
     set ::debug [expr {1 - $::debug}]
   } elseif {$key == "r" || $key == "R"} {
-    restartGame
+    restartGame 0
   }
 }
 
-restartGame
+restartGame 0

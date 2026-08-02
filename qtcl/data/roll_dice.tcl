@@ -2,7 +2,7 @@ proc randIn { min max } {
   return [expr {rand()*($max - $min) + $min}]
 }
 
-set dice [readModel "data/dice.obj"]
+set dice [readModel "data/dice/dice.obj"]
 
 setObjectValue $dice translate [list 0 -1 0]
 

@@ -222,6 +222,7 @@ class App : public QFrame {
   bool stringToVector(const std::string &str, CVector3D &v) const;
   bool objToVector   (Tcl_Obj *obj, CVector3D &v) const;
   bool stringToMatrix(const std::string &str, CMatrix3D &m) const;
+  bool objToMatrix   (Tcl_Obj *obj, CMatrix3D &m) const;
   bool stringToRect  (const std::string &str, CBBox2D &r) const;
   bool decodeReal    (Tcl_Obj *obj, double &r) const;
   bool decodeBool    (Tcl_Obj *obj, bool &b) const;

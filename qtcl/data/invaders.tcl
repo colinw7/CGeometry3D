@@ -24,12 +24,12 @@ proc loadInvader { filename name } {
   setObjectValue $obj visible 0
 }
 
-set invader1 [loadInvader "data/invader1.obj" "invader1"]
-set invader2 [loadInvader "data/invader2.obj" "invader2"]
-set invader3 [loadInvader "data/invader3.obj" "invader3"]
-set invader4 [loadInvader "data/invader4.obj" "invader4"]
+set invader1 [loadInvader "data/invaders/invader1.obj" "invader1"]
+set invader2 [loadInvader "data/invaders/invader2.obj" "invader2"]
+set invader3 [loadInvader "data/invaders/invader3.obj" "invader3"]
+set invader4 [loadInvader "data/invaders/invader4.obj" "invader4"]
 
-set invader_bullet_obj [loadInvader "data/invader_bullet.obj" "invader_bullet"]
+set invader_bullet_obj [loadInvader "data/invaders/invader_bullet.obj" "invader_bullet"]
 
 set invader_nx 5
 set invader_ny 11
@@ -154,11 +154,11 @@ proc loadBase { filename name } {
   setObjectValue $obj visible 0
 }
 
-set base0_obj [loadBase "data/invader_base.obj"   "base0"]
-set base1_obj [loadBase "data/invader_base_1.obj" "base1"]
-set base2_obj [loadBase "data/invader_base_2.obj" "base2"]
-set base3_obj [loadBase "data/invader_base_3.obj" "base3"]
-set base4_obj [loadBase "data/invader_base_4.obj" "base4"]
+set base0_obj [loadBase "data/invaders/invader_base.obj"   "base0"]
+set base1_obj [loadBase "data/invaders/invader_base_1.obj" "base1"]
+set base2_obj [loadBase "data/invaders/invader_base_2.obj" "base2"]
+set base3_obj [loadBase "data/invaders/invader_base_3.obj" "base3"]
+set base4_obj [loadBase "data/invaders/invader_base_4.obj" "base4"]
 
 set num_bases 4
 set base_dx   48

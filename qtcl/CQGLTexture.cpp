@@ -90,6 +90,10 @@ void
 CQGLTexture::
 setImage(const QImage &image)
 {
+  assert(type_ == Type::NONE || type_ == Type::IMAGE);
+
+  type_ = Type::IMAGE;
+
   init(image, /*flip*/false);
 }
 
@@ -97,6 +101,10 @@ void
 CQGLTexture::
 setImage(const CImagePtr &image)
 {
+  assert(type_ == Type::NONE || type_ == Type::IMAGE);
+
+  type_ = Type::IMAGE;
+
   QImage &qimage = dynamic_cast<CQImage *>(image.get())->getQImage();
 
   init(qimage, /*flip*/false);
@@ -106,7 +114,11 @@ bool
 CQGLTexture::
 setTarget(int w, int h)
 {
-  if (! valid_ || w != targetWidth_ ||  h != targetHeight_) {
+  assert(type_ == Type::NONE || type_ == Type::TARGET);
+
+  type_ = Type::TARGET;
+
+  if (! valid_ || w != targetWidth_ || h != targetHeight_) {
     targetWidth_  = w;
     targetHeight_ = h;
 
@@ -128,7 +140,7 @@ setTarget(int w, int h)
     if (! checkError("glBindTexture")) return false;
 
     // Give an empty image to OpenGL ( the last "0" )
-    // no difference for GL_RGBA and GL_RGB
+    // no difference for GL_RGBA and GL_RGB (TODO: support multisample)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, targetWidth_, targetHeight_,
                  /*border*/0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
     if (! checkError("glTexImage2D")) return false;
@@ -138,13 +150,16 @@ setTarget(int w, int h)
   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//  if (! checkError("glTexParameteri")) return false;
 
   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+//  if (! checkError("glTexParameteri")) return false;
 
 //  glBindTexture(GL_TEXTURE_2D, 0);
 //  if (! checkError("glBindTexture")) return false;
 
+    // allocate depth buffer
     if (depthRenderBuffer_ == 0)
       functions_->glGenRenderbuffers(1, &depthRenderBuffer_);
 
@@ -159,6 +174,7 @@ setTarget(int w, int h)
     // attach it to currently bound framebuffer object
     //functions_->glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, id_, 0);
     functions_->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, id_, 0);
+    if (! checkError("glFramebufferTexture2D")) return false;
 
     // generate render buffer
     // Set the list of draw buffers.
@@ -175,6 +191,110 @@ setTarget(int w, int h)
 
   return true;
 }
+
+#if 0
+bool
+CQGLTexture::
+setShadow(int w, int h)
+{
+  assert(type_ == Type::NONE || type_ == Type::SHADOW);
+
+  type_ = Type::SHADOW;
+
+  if (! valid_ || w != targetWidth_ || h != targetHeight_) {
+    targetWidth_  = w;
+    targetHeight_ = h;
+
+    // The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
+    if (frameBufferId_ == 0)
+      functions_->glGenFramebuffers(1, &frameBufferId_);
+
+    // The texture we're going to render to
+    if (id_ == 0) {
+      glGenTextures(1, &id_);
+      if (! checkError("glGenTextures")) return false;
+    }
+
+    // make texture current
+    glBindTexture(GL_TEXTURE_2D, id_);
+    if (! checkError("glBindTexture")) return false;
+
+    // Give an empty image to OpenGL ( the last "0" )
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, targetWidth_, targetHeight_,
+                 /*border*/0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+    if (! checkError("glTexImage2D")) return false;
+
+    // Poor filtering (need min filter to avoid mip map use - not set)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    if (! checkError("glTexParameteri")) return false;
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    if (! checkError("glTexParameteri")) return false;
+
+    // const depth on texture border for clipping of light view
+    float borderColor[] = { 1.0, 1.0, 1.0, 1.0 };
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
+
+#if 0
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    if (! checkError("glTexParameteri")) return false;
+#endif
+
+#if 0
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+    glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_TEXTURE_MODE, GL_ALPHA);
+    if (! checkError("glTexParameteri")) return false;
+#endif
+
+#if 0
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_R_TO_TEXTURE);
+    if (! checkError("glTexParameteri")) return false;
+#endif
+
+    int width, height, depth;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_DEPTH_SIZE, &depth);
+    std::cerr << "Texture : " << width << " " << height << " " << depth << "\n";
+
+    // make framebuffer current
+    functions_->glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId_);
+    if (! checkError("glBindFramebuffer")) return false;
+
+    // use texture as frame buffer depth
+    functions_->glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, id_, 0);
+    if (! checkError("glFramebufferTexture2D")) return false;
+
+    glDrawBuffer(GL_NONE); // disable color buffers
+    glReadBuffer(GL_NONE);
+
+    if (functions_->glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
+      std::cerr << "Framebuffer error\n";
+      return false;
+    }
+
+    GLint depthBits;
+    functions_->glGetFramebufferAttachmentParameteriv(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                                                      GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE,
+                                                      &depthBits);
+    std::cerr << "Framebuffer depth: " << depthBits << "\n";
+
+    // reset current frame buffer
+    functions_->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (! checkError("glBindFramebuffer")) return false;
+
+    valid_ = true;
+  }
+
+  return true;
+}
+#endif
 
 bool
 CQGLTexture::
@@ -287,7 +407,9 @@ bind() const
 {
   glEnable(GL_TEXTURE_2D);
 
-  if (frameBufferId_ > 0) {
+  if      (type_ == Type::TARGET) {
+    assert(frameBufferId_ > 0);
+
     glBindTexture(GL_TEXTURE_2D, 0);
 
     functions_->glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId_);
@@ -295,6 +417,17 @@ bind() const
 
     // Clear the screen
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  }
+  else if (type_ == Type::SHADOW) {
+    assert(frameBufferId_ > 0);
+
+    //glBindTexture(GL_TEXTURE_2D, 0);
+
+    functions_->glViewport(0, 0, targetWidth_, targetHeight_);
+    functions_->glBindFramebuffer(GL_FRAMEBUFFER, frameBufferId_);
+
+    // Clear the screen
+    glClear(GL_DEPTH_BUFFER_BIT);
   }
   else {
     glBindTexture(GL_TEXTURE_2D, id_);
@@ -305,11 +438,20 @@ void
 CQGLTexture::
 unbind() const
 {
-  if (frameBufferId_ > 0) {
+  if      (type_ == Type::TARGET) {
+    assert(frameBufferId_ > 0);
+
+    functions_->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  }
+  else if (type_ == Type::SHADOW) {
+    assert(frameBufferId_ > 0);
+
     functions_->glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
   else
     glBindTexture(GL_TEXTURE_2D, 0);
+
+  glDisable(GL_TEXTURE_2D);
 }
 
 void
@@ -328,6 +470,8 @@ unbindBuffer() const
 {
   if (frameBufferId_)
     glBindTexture(GL_TEXTURE_2D, 0);
+
+  glDisable(GL_TEXTURE_2D);
 }
 
 void
@@ -420,5 +564,223 @@ displayFramebufferTexture(ShaderProgram *program, int vertexId)
   unbind();
 
   program->unbind();
+}
+#endif
+
+//---
+
+#if 0
+void
+CQGLTexture::
+writeImage(const std::string &filename, const ImageData &data) const
+{
+  if (data.debug)
+    std::cerr << "write: " << filename << "\n";
+
+  glBindTexture(GL_TEXTURE_2D, getId());
+
+  int width, height;
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+
+  std::vector<float> pixels;
+  std::vector<CRGBA> colors;
+
+  colors.resize(width*height);
+
+  if (type_ == Type::SHADOW) {
+    MinMax minMax;
+
+    pixels.resize(width*height);
+
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, &pixels[0]);
+
+    int ii = 0;
+
+    for (int iy = 0; iy < height; ++iy) {
+      int iy1 = height - 1 - iy;
+
+      for (int ix = 0; ix < width; ++ix, ++ii) {
+        auto r = pixels[ii];
+
+        if (data.scale)
+          minMax.update(r);
+        else {
+          int ii1 = iy1*width + ix;
+
+          colors[ii1] = CRGBA(r, r, r);
+        }
+      }
+    }
+
+    if (data.scale) {
+      int ii = 0;
+
+      for (int iy = 0; iy < height; ++iy) {
+        int iy1 = height - 1 - iy;
+
+        for (int ix = 0; ix < width; ++ix, ++ii) {
+          auto r = pixels[ii];
+
+          auto r1 = minMax.map(r);
+
+          int ii1 = iy1*width + ix;
+
+          colors[ii1] = CRGBA(r1, r1, r1);
+        }
+      }
+    }
+
+    if (data.debug)
+      minMax.print("r");
+  }
+  else {
+    MinMax minMax;
+    MinMax rMinMax;
+    MinMax gMinMax;
+    MinMax bMinMax;
+    MinMax aMinMax;
+
+    pixels.resize(4*width*height);
+
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, &pixels[0]);
+
+    int ii = 0, ii1 = 0;
+
+    for (int iy = 0; iy < height; ++iy) {
+      int iy1 = height - 1 - iy;
+
+      for (int ix = 0; ix < width; ++ix, ii += 4, ++ii1) {
+        auto r = pixels[ii + 0];
+        auto g = pixels[ii + 1];
+        auto b = pixels[ii + 2];
+        auto a = pixels[ii + 3];
+
+        if (data.scale) {
+          minMax.update(r);
+          minMax.update(g);
+          minMax.update(b);
+        //minMax.update(a);
+
+          if (data.debug) {
+            rMinMax.update(r);
+            gMinMax.update(g);
+            bMinMax.update(b);
+            aMinMax.update(a);
+          }
+        }
+        else {
+          int ii1 = iy1*width + ix;
+
+          colors[ii1] = CRGBA(r, g, b, a);
+        }
+      }
+    }
+
+    if (data.scale) {
+      int ii = 0;
+
+      for (int iy = 0; iy < height; ++iy) {
+        int iy1 = height - 1 - iy;
+
+        for (int ix = 0; ix < width; ++ix, ii += 4) {
+          auto r = pixels[ii + 0];
+          auto g = pixels[ii + 1];
+          auto b = pixels[ii + 2];
+
+          auto r1 = minMax.map(r);
+          auto g1 = minMax.map(g);
+          auto b1 = minMax.map(b);
+
+          int ii1 = iy1*width + ix;
+
+          colors[ii1] = CRGBA(r1, g1, b1);
+        }
+      }
+
+      if (data.debug) {
+        rMinMax.print("r");
+        gMinMax.print("g");
+        bMinMax.print("b");
+        aMinMax.print("a");
+      }
+    }
+  }
+
+  glBindTexture(GL_TEXTURE_2D, 0);
+
+  //---
+
+  auto src = CImageNoSrc();
+
+  auto image = CImageMgrInst->createImage(src);
+
+  image->setDataSize(width, height);
+
+  int ii = 0;
+
+  for (int iy = 0; iy < height; ++iy) {
+    for (int ix = 0; ix < width; ++ix, ++ii) {
+      image->setRGBAPixel(ix, iy, colors[ii]);
+    }
+  }
+
+  CFile file(filename);
+
+  image->writePNG(&file);
+}
+#endif
+
+#if 0
+void
+CQGLTexture::
+getRange(MinMax &minMax) const
+{
+  glBindTexture(GL_TEXTURE_2D, getId());
+
+  int width, height;
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+  glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+
+  std::vector<float> pixels;
+
+  if (type_ == Type::SHADOW) {
+    pixels.resize(width*height);
+
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, &pixels[0]);
+
+    int ii = 0;
+
+    for (int iy = 0; iy < height; ++iy) {
+      for (int ix = 0; ix < width; ++ix, ++ii) {
+        auto r = pixels[ii];
+
+        minMax.update(r);
+      }
+    }
+  }
+  else {
+    pixels.resize(4*width*height);
+
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, &pixels[0]);
+
+    int ii = 0, ii1 = 0;
+
+    for (int iy = 0; iy < height; ++iy) {
+      for (int ix = 0; ix < width; ++ix, ii += 4, ++ii1) {
+        auto r = pixels[ii + 0];
+        auto g = pixels[ii + 1];
+        auto b = pixels[ii + 2];
+      //auto a = pixels[ii + 3];
+
+        minMax.update(r);
+        minMax.update(g);
+        minMax.update(b);
+      //minMax.update(a);
+      }
+    }
+  }
+
+  glBindTexture(GL_TEXTURE_2D, 0);
 }
 #endif

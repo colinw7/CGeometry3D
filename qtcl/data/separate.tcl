@@ -40,4 +40,4 @@ foreach vertex [getFaceValue $face2 vertices] {
   puts [getVertexValue $vertex model]
 }
 
-writeObj "separate.obj"
+writeObj "separate/separate.obj"
