@@ -152,17 +152,17 @@ class Canvas : public QGLWidget, public QOpenGLExtraFunctions {
   double diffuseStrength() const { return diffuseStrength_; }
   void setDiffuseStrength(double r) { diffuseStrength_ = r; }
 
-  const CRGBA &emissiveColor() const { return emissiveColor_; }
-  void setEmissiveColor(const CRGBA &v) { emissiveColor_ = v; }
-
-  double emissiveStrength() const { return emissiveStrength_; }
-  void setEmissiveStrength(double r) { emissiveStrength_ = r; }
-
   const CRGBA &specularColor() const { return specularColor_; }
   void setSpecularColor(const CRGBA &v) { specularColor_ = v; }
 
   double specularStrength() const { return specularStrength_; }
   void setSpecularStrength(double r) { specularStrength_ = r; }
+
+  const CRGBA &emissiveColor() const { return emissiveColor_; }
+  void setEmissiveColor(const CRGBA &v) { emissiveColor_ = v; }
+
+  double emissiveStrength() const { return emissiveStrength_; }
+  void setEmissiveStrength(double r) { emissiveStrength_ = r; }
 
   bool isFixedDiffuse() const { return fixedDiffuse_; }
   void setFixedDiffuse(bool b) { fixedDiffuse_ = b; update(); }

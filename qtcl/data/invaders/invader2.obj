@@ -1,6 +1,6 @@
 # Blender 5.1.1
 # www.blender.org
-mtllib data/invader2.mtl
+mtllib invader2.mtl
 o Cube
 v -1.500000 4.000000 -0.500000
 v -1.500000 4.000000 0.500000

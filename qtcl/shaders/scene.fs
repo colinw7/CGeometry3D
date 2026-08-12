@@ -12,11 +12,11 @@ uniform vec3 viewPos;
 uniform vec3  ambientColor;
 uniform float ambientStrength;
 uniform float diffuseStrength;
-uniform vec3  emissionColor;
-uniform float emissiveStrength;
 uniform vec3  specularColor;
 uniform float specularStrength;
 uniform float shininess;
+uniform vec3  emissionColor;
+uniform float emissiveStrength;
 uniform bool  fixedDiffuse;
 
 //--- Textures

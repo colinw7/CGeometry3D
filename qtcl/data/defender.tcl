@@ -45,11 +45,13 @@ set debug 0
 
 # 3D View
 
+addModelDir "data/defender"
+
 setAppValue running 0
 
 setAppValue edit_type "tcl"
 
-setViewportValue "" camera_distance 128
+setViewportValue "" camera.distance 128
 setViewportValue "" bg_color        "#444444"
 
 setViewportValue "" clip [list 0 -1 0] 48
@@ -57,7 +59,7 @@ setViewportValue "" clip [list 0  1 0] 60
 
 set scanner [addViewport [list 0.3 0.05 0.7 0.15]]
 
-setViewportValue $scanner camera_distance 128
+setViewportValue $scanner camera.distance 128
 setViewportValue $scanner bg_color        "#222222"
 
 setViewportValue $scanner clip [list -1 0 0] 1024
@@ -573,7 +575,7 @@ proc restartGame { nextLevel } {
   setViewportValue ""         bbox [list -40 -40 -40 40 40 40]
   setViewportValue $::scanner bbox [list -40 -40 -40 40 40 40]
 
-  setViewportValue "" camera_distance 128
+  setViewportValue "" camera.distance 128
 
   # ---
 

@@ -15,7 +15,7 @@ setObjectValue $plane   translate [list 0 35 0]
 setObjectValue $terrain material $m1
 
 setAppValue pitch           90
-setAppValue camera_distance 75
+setAppValue camera.distance 75
 
 showNormals
 

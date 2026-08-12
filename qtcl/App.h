@@ -8,6 +8,7 @@
 #include <CBBox3D.h>
 #include <CBBox2D.h>
 #include <CRGBA.h>
+#include <CArray2D.h>
 
 #include <QFrame>
 
@@ -142,6 +143,8 @@ class App : public QFrame {
   const QString &buildDir() const { return buildDir_; }
   void setBuildDir(const QString &s) { buildDir_ = s; }
 
+  //---
+
   CGeomScene3D *scene() const { return scene_; }
 
   //---
@@ -214,18 +217,20 @@ class App : public QFrame {
   CGeomVertex3D *getNearestVertex(CGeomObject3D *, const CPoint3D &) const;
   CGeomVertex3D *getNearestVertex(CGeomFace3D *, const CPoint3D &) const;
 
-  bool stringToBBox  (const std::string &str, CBBox3D &bbox) const;
-  bool decodePoint   (Tcl_Obj *str, CPoint2D &p) const;
-  bool stringToPoint (const std::string &str, CPoint2D &p) const;
-  bool decodePoint   (Tcl_Obj *str, CPoint3D &p) const;
-  bool stringToPoint (const std::string &str, CPoint3D &p) const;
-  bool stringToVector(const std::string &str, CVector3D &v) const;
-  bool objToVector   (Tcl_Obj *obj, CVector3D &v) const;
-  bool stringToMatrix(const std::string &str, CMatrix3D &m) const;
-  bool objToMatrix   (Tcl_Obj *obj, CMatrix3D &m) const;
-  bool stringToRect  (const std::string &str, CBBox2D &r) const;
-  bool decodeReal    (Tcl_Obj *obj, double &r) const;
-  bool decodeBool    (Tcl_Obj *obj, bool &b) const;
+  bool stringToBBox   (const std::string &str, CBBox3D &bbox) const;
+  bool decodePoint    (Tcl_Obj *str, CPoint2D &p) const;
+  bool stringToPoint  (const std::string &str, CPoint2D &p) const;
+  bool decodePoint    (Tcl_Obj *str, CPoint3D &p) const;
+  bool stringToPoint  (const std::string &str, CPoint3D &p) const;
+  bool stringToVector (const std::string &str, CVector3D &v) const;
+  bool objToVector    (Tcl_Obj *obj, CVector3D &v) const;
+  bool stringToMatrix (const std::string &str, CMatrix3D &m) const;
+  bool objToMatrix    (Tcl_Obj *obj, CMatrix3D &m) const;
+  bool stringToArray2D(const std::string &str, CArray2D<double> &m) const;
+  bool objToArray2D   (Tcl_Obj *obj, CArray2D<double> &m) const;
+  bool stringToRect   (const std::string &str, CBBox2D &r) const;
+  bool decodeReal     (Tcl_Obj *obj, double &r) const;
+  bool decodeBool     (Tcl_Obj *obj, bool &b) const;
 
   bool stringToColor(const std::string &str, CRGBA &c) const;
 
@@ -308,8 +313,9 @@ class App : public QFrame {
 
   int animateRealProc(const StringList &);
 
-  int readModelProc(const StringList &);
-  int writeObjProc (const StringList &);
+  int readModelProc  (const StringList &);
+  int writeObjProc   (const StringList &);
+  int addModelDirProc(const StringList &);
 
   int vectorProc    (const StringList &);
   int getVectorProc (const std::vector<Tcl_Obj *> &objs);
@@ -320,6 +326,11 @@ class App : public QFrame {
   int getMatrixProc (const std::vector<Tcl_Obj *> &objs);
   int setMatrixProc (const std::vector<Tcl_Obj *> &objs);
   int calcMatrixProc(const StringList &);
+
+  int array2DProc    (const StringList &);
+  int getArray2DProc (const std::vector<Tcl_Obj *> &objs);
+  int setArray2DProc (const std::vector<Tcl_Obj *> &objs);
+  int calcArray2DProc(const StringList &);
 
   //---
 
@@ -356,6 +367,8 @@ class App : public QFrame {
   bool    running_ { true };
 
   AnimDatas animDatas_;
+
+  std::vector<std::string> modelDirs_;
 };
 
 }

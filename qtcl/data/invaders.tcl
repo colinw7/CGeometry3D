@@ -3,15 +3,18 @@
 #  . alien animation
 #  . base destroy
 
+addModelDir "data/invaders"
+
 set invader_w 16
 set invader_h 8
 
 set dw [expr {$invader_w + 1}]
 set dh [expr {$invader_h + 2}]
 
+setAppValue edit_type "tcl"
+
+setAppValue camera.distance 128
 setAppValue bg_color        "#444444"
-setAppValue camera_distance 128
-setAppValue edit_type       "tcl"
 
 proc randIn { min max } {
   return [expr {rand()*($max - $min) + $min}]
@@ -187,7 +190,7 @@ for {set ix 0} {$ix < $num_bases} {incr ix} {
   addBase $ix
 }
 
-set ship_obj [readModel "data/invader_ship.obj"]
+set ship_obj [readModel "data/invaders/invader_ship.obj"]
 
 set ship_x 0
 set ship_y -72
@@ -331,6 +334,8 @@ proc shipShoot { } {
 }
 
 proc tickProc { args } {
+  setAppValue camera.distance 128
+
   foreach particle [getAppValue particles] {
     set dead [getParticleValue $particle dead]
     if {$dead} { continue }
@@ -452,7 +457,6 @@ proc tickProc { args } {
 
   updateInvaderDx
 }
-
 
 proc keyPress { args } {
   set key   [lindex $args 0]

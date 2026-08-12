@@ -1,0 +1,52 @@
+proc loadModel { filename name s pos } {
+  set obj [readModel $filename]
+
+  setObjectValue $obj name $name
+
+  setObjectValue $obj scale     [list $s $s $s] set
+  setObjectValue $obj translate $pos
+
+  return $obj
+}
+
+proc mapPos { pos } {
+  set x [lindex $pos 0]
+  set y [lindex $pos 1]
+  set z [lindex $pos 2]
+
+  set x1 [expr {$x*2}]
+  set y1 [expr {$y*2}]
+  set z1 [expr {$z*2}]
+
+  return [list $x1 $y1 $z1]
+}
+
+addModelDir "Dungeon_Assets/obj"
+
+proc tileFloor { model nx ny } {
+  for {set iy 0} {$iy < $ny} {incr ny} {
+    for {set ix 0} {$ix < $nx} {incr nx} {
+      set tile($ix,$iy) [getObjectValue $model ref_object]
+
+      set pos [mapPos $x 0 $y]
+
+      setObjectValue $tile($ix,$iy) translate $pos
+    }
+  }
+}
+
+if {0} {
+loadModel "Dungeon_Assets/obj/floor_dirt_large.obj"                  "floor" 0.3 [mapPos {-1 0 0}]
+loadModel "Dungeon_Assets/obj/floor_dirt_large_rocky.obj"            "floor" 0.3 [mapPos { 0 0 0}]
+loadModel "Dungeon_Assets/obj/floor_tile_extralarge_grates.obj"      "floor" 0.3 [mapPos { 1 0 0}]
+loadModel "Dungeon_Assets/obj/floor_tile_extralarge_grates_open.obj" "floor" 0.3 [mapPos { 2 0 0}]
+loadModel "Dungeon_Assets/obj/floor_tile_large.obj"                  "floor" 0.3 [mapPos {-1 0 1}]
+loadModel "Dungeon_Assets/obj/floor_tile_large_rocks.obj"            "floor" 0.3 [mapPos { 0 0 1}]
+loadModel "Dungeon_Assets/obj/floor_wood_large_dark.obj"             "floor" 0.3 [mapPos { 1 0 1}]
+loadModel "Dungeon_Assets/obj/floor_wood_large.obj"                  "floor" 0.3 [mapPos { 2 0 1}]
+}
+
+set tileObj [loadModel "Dungeon_Assets/obj/floor_wood_large.obj" "floor" 0.3 [mapPos { 2 0 1}]
+
+setViewportValue "" bbox [list -5 -5 -5 5 5 5]
+setViewportValue "" camera.distance 10

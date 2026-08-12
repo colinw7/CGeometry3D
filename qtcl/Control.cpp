@@ -118,6 +118,8 @@ Control(App *app) :
 
   ui.endGroup();
 
+  cameraData_.resetButton = ui.addButton("Reset", SLOT(cameraResetSlot()));
+
   ui.addStretch();
 
   ui.endTabPage();
@@ -586,6 +588,13 @@ showOverviewSolidSlot(int s)
   overview->setSolid(s);
 
   overview->update();
+}
+
+void
+Control::
+cameraResetSlot()
+{
+  return app_->canvas()->updateCamera();
 }
 
 Camera *

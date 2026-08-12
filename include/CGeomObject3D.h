@@ -1,6 +1,8 @@
 #ifndef CGEOM_OBJECT_3D_H
 #define CGEOM_OBJECT_3D_H
 
+#include <CGeomMesh.h>
+#include <CGeomSkeleton.h>
 #include <CGeomFace3D.h>
 #include <CGeomPoint3D.h>
 #include <CCoordFrame3D.h>
@@ -25,6 +27,7 @@ class CGeomNodeData;
 
 class CGeomObject3D {
  public:
+  using ObjectList       = std::vector<CGeomObject3D *>;
   using FaceList         = std::vector<CGeomFace3D *>;
   using FaceIList        = std::vector<uint>;
   using LineList         = std::vector<CGeomLine3D *>;
@@ -33,8 +36,9 @@ class CGeomObject3D {
   using VertexFaceList   = std::map<uint, FaceIList>;
   using VertexFaceNormal = std::map<uint, CVector3D>;
   using TexturePoints    = std::vector<CPoint3D>;
-  using EdgeList         = std::vector<CGeomEdge3D *>;
+  using Normals          = std::vector<CVector3D>;
   using EdgeFaces        = std::map<CGeomEdge3D *, FaceList>;
+  using EdgeList         = std::vector<CGeomEdge3D *>;
 
   enum class Transform {
     NONE,
@@ -82,7 +86,7 @@ class CGeomObject3D {
     FaceIList   faceList_;
   };
 
-  using Groups = std::map<std::string,Group>;
+  using Groups = std::map<std::string, Group>;
 
   //---
 
@@ -103,6 +107,8 @@ class CGeomObject3D {
   virtual CGeomObject3D *hierDup() const;
 
   virtual CGeomObject3D *dup() const;
+
+  virtual CGeomObject3D *createRef() const;
 
   //---
 
@@ -137,6 +143,8 @@ class CGeomObject3D {
   bool getVisible() const { return visible_; }
   void setVisible(bool b) { visible_ = b; }
 
+  void setHierVisible(bool b);
+
   // generates shadows
   bool getShadowed() const { return shadowed_; }
   void setShadowed(bool b) { shadowed_ = b; }
@@ -152,8 +160,10 @@ class CGeomObject3D {
 
   //---
 
-  CGeomObject3D *parent() const { return parent_; }
-  const std::vector<CGeomObject3D *> &children() const { return children_; }
+  CGeomObject3D *parent() const;
+  const ObjectList &children() const;
+
+  ObjectList hierChildren() const;
 
   void addChild(CGeomObject3D *child);
 
@@ -234,9 +244,9 @@ class CGeomObject3D {
 
   //---
 
-  const TexturePoints &getTexturePoints() const { return texturePoints_; }
+  const TexturePoints &getTexturePoints() const;
 
-  uint getNumTextuePoints() const { return uint(texturePoints_.size()); }
+  uint getNumTextuePoints() const;
 
   uint addTexturePoint(const CPoint2D &point);
   uint addTexturePoint(const CPoint3D &point);
@@ -244,7 +254,7 @@ class CGeomObject3D {
 
   //---
 
-  uint getNumNormals() const { return uint(normals_.size()); }
+  uint getNumNormals() const;
 
   uint addNormal(const CVector3D &point);
   const CVector3D &normal(uint i) const;
@@ -284,43 +294,43 @@ class CGeomObject3D {
 
   //---
 
-  const VertexList &getVertices() const { return vertices_; }
+  const VertexList &getVertices() const;
 
-  uint getNumVertices() const { return uint(vertices_.size()); }
+  uint getNumVertices() const;
 
-  const CGeomVertex3D &getVertex(uint i) const { return *vertices_[i]; }
-  CGeomVertex3D &getVertex(uint i) { return *vertices_[i]; }
+  const CGeomVertex3D &getVertex(uint i) const;
+  CGeomVertex3D &getVertex(uint i);
 
-  const CGeomVertex3D *getVertexP(uint i) const { return vertices_[i]; }
-  CGeomVertex3D *getVertexP(uint i) { return vertices_[i]; }
+  const CGeomVertex3D *getVertexP(uint i) const;
+  CGeomVertex3D *getVertexP(uint i);
 
   void removeVertex(CGeomVertex3D *vertex);
 
   //---
 
-  const LineList &getLines() const { return lines_; }
+  const LineList &getLines() const;
 
-  LineList &getLines() { return lines_; }
+  LineList &getLines();
 
-  uint getNumLines() const { return uint(lines_.size()); }
+  uint getNumLines() const;
 
-  const CGeomLine3D &getLine(uint i) const { return *lines_[i]; }
-  CGeomLine3D *getLineP(uint i) const { return lines_[i]; }
+  const CGeomLine3D &getLine(uint i) const;
+  CGeomLine3D *getLineP(uint i) const;
 
-  CGeomLine3D &getLine(uint i) { return *lines_[i]; }
+  CGeomLine3D &getLine(uint i);
 
   //---
 
-  const FaceList &getFaces() const { return faces_; }
+  const FaceList &getFaces() const;
 
-  FaceList &getFaces() { return faces_; }
+  FaceList &getFaces();
 
-  uint getNumFaces() const { return uint(faces_.size()); }
+  uint getNumFaces() const;
 
-  const CGeomFace3D &getFace(uint i) const { return *faces_[i]; }
-  CGeomFace3D *getFaceP(uint i) const { return faces_[i]; }
+  const CGeomFace3D &getFace(uint i) const;
+  CGeomFace3D *getFaceP(uint i) const;
 
-  CGeomFace3D &getFace(uint i) { return *faces_[i]; }
+  CGeomFace3D &getFace(uint i);
 
   //---
 
@@ -405,6 +415,12 @@ class CGeomObject3D {
 
   //---
 
+  CGeomObject3D *refObject() const { return refObject_; }
+
+  const ObjectList &refObjects() const { return refObjects_; }
+
+  //---
+
   CGeomObject3D *getRootObject() const;
 
   CMatrix3D getMeshGlobalTransform() const;
@@ -423,8 +439,8 @@ class CGeomObject3D {
   bool hasNode(int i) const;
   void addNode(int i, const CGeomNodeData &data);
 
-  const NodeDatas &getNodes() const { return nodes_; }
-  const NodeIds &getNodeIds() const { return nodeIds_; }
+  const NodeDatas &getNodes() const;
+  const NodeIds &getNodeIds() const;
 
   int mapNodeId(int id) const;
   int mapNodeIndex(int id) const;
@@ -566,7 +582,7 @@ class CGeomObject3D {
   virtual void rotateModelY(double dy);
   virtual void rotateModelZ(double dz);
 
-  void rotateModel(double angle, const CVector3D &axis);
+  void rotateModel(double angle, const CVector3D &axis, bool hier=false);
 
   // scale
   virtual void resizeModel(double factor);
@@ -581,12 +597,15 @@ class CGeomObject3D {
   void setTransform(const CMatrix3D &m);
 
   CMatrix3D getTranslate() const;
+  void setTranslate(double x, double y, double z);
   void setTranslate(const CMatrix3D &m);
 
   CMatrix3D getRotate() const;
+  void setRotate(double angle, const CVector3D &axis);
   void setRotate(const CMatrix3D &m);
 
   CMatrix3D getScale() const;
+  void setScale(double x, double y, double z);
   void setScale(const CMatrix3D &m);
 
   CMatrix3D getHierTransform() const;
@@ -712,7 +731,7 @@ class CGeomObject3D {
 
   bool triangulate();
 
-  bool splitFacesByMaterial(std::vector<CGeomObject3D *> &newObjects) const;
+  bool splitFacesByMaterial(ObjectList &newObjects) const;
 
   //---
 
@@ -720,7 +739,7 @@ class CGeomObject3D {
 
   //---
 
-  bool edgesValid() const { return edgesValid_; }
+  bool edgesValid() const;
 
   const EdgeList &getEdges() const;
 
@@ -751,23 +770,27 @@ class CGeomObject3D {
 
   //---
 
-  std::vector<CGeomObject3D *> mirror(MirrorDir dir, const CPoint3D &c) const;
+  ObjectList mirror(MirrorDir dir, const CPoint3D &c) const;
 
-  bool scaleFaces(const std::vector<CGeomFace3D *> &faces, const CPoint3D &c, const CVector3D &s);
+  bool scaleFaces(const FaceList &faces, const CPoint3D &c, const CVector3D &s);
 
-  bool extrudeFaces(const std::vector<CGeomFace3D *> &faces, double d);
+  bool extrudeFaces(const FaceList &faces, double d);
 
-  bool circularizeFaces(const std::vector<CGeomFace3D *> &faces);
+  bool circularizeFaces(const FaceList &faces);
 
   //---
 
-  CGeomFace3D *fillVertices(const std::vector<CGeomVertex3D *> &vertices);
+  CGeomFace3D *fillVertices(const VertexList &vertices);
 
  private:
+  CGeomMesh *mesh() const { return mesh_; }
+
+  CGeomSkeleton *skeleton() const { return skeleton_; }
+
+  //---
   void validatePObject();
 
  protected:
-  using Normals = std::vector<CVector3D>;
   using OptReal = std::optional<double>;
 
   // scene
@@ -787,9 +810,13 @@ class CGeomObject3D {
 
   bool jointed_ { false };
 
+  //---
+
   // position
   CCoordFrame3D coordFrame_;
   CGeomPoint3D  position_ { CPoint3D(0, 0, 0) };
+
+  //---
 
   // textures
   CGeomTexture* diffuseTexture_  { nullptr };
@@ -800,21 +827,26 @@ class CGeomObject3D {
   // material
   CGeomMaterial* materialP_ { nullptr };
 
-  // geometry
-  FaceList         faces_;
-  LineList         lines_;
-  VertexList       vertices_;
-  VertexFaceList   vertexFaceList_;
-  VertexFaceNormal vertexFaceNormal_;
-  Groups           groups_;
-  TexturePoints    texturePoints_;
-  Normals          normals_;
+  //---
+
+  // reference object
+  CGeomObject3D* refObject_ { nullptr };
+  ObjectList     refObjects_;
+
+  //---
+
+  // mesh
+  CGeomMesh* mesh_ { nullptr };
 
   // skeleton
-  NodeDatas nodes_;
-  NodeIds   nodeIds_;
-  int       meshNode_ { -1 };
-  int       rootNode_ { -1 };
+  CGeomSkeleton* skeleton_ { nullptr };
+
+  //---
+
+  // groups (used ?)
+  Groups groups_;
+
+  //---
 
   CMatrix3D viewMatrix_;
 
@@ -855,19 +887,8 @@ class CGeomObject3D {
   CVector3D da_ { 0, 0, 0 };
 
   // hierarchy (parent, children)
-  CGeomObject3D*               parent_ { nullptr };
-  std::vector<CGeomObject3D *> children_;
-
-  // edges
-  bool      edgesValid_ { false };
-  EdgeFaces edgeFaces_;
-  EdgeList  edges_;
-
-  using VertexEdgeMap       = std::map<uint, CGeomEdge3D *>;
-  using VertexVertexEdgeMap = std::map<uint, VertexEdgeMap>;
-
-  VertexVertexEdgeMap vertexVertexEdgeMap_;
-  uint                edgeInd_ { 0 };
+  CGeomObject3D* parent_ { nullptr };
+  ObjectList     children_;
 };
 
 //------

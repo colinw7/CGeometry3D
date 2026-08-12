@@ -1,6 +1,6 @@
 # Blender 5.1.1
 # www.blender.org
-mtllib data/invader1.mtl
+mtllib invader1.mtl
 o Body
 v -3.571296 0.000000 -0.500000
 v -3.571296 0.000000 0.500000

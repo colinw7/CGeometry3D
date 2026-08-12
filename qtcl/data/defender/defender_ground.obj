@@ -1,6 +1,6 @@
 # Blender 5.1.1
 # www.blender.org
-mtllib data/defender_ground.mtl
+mtllib defender_ground.mtl
 o Cube
 v 64.000000 1.906307 -0.500000
 v 64.000000 -0.062549 -0.500000

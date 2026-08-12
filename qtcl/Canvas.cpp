@@ -871,10 +871,11 @@ drawScene()
 
   program->setUniformValue("diffuseStrength", float(diffuseStrength()));
 
-  program->setUniformValue("emissionColor"   , CQGLUtil::toVector(emissiveColor()));
-  program->setUniformValue("emissiveStrength", float(emissiveStrength()));
   program->setUniformValue("specularColor"   , CQGLUtil::toVector(specularColor()));
   program->setUniformValue("specularStrength", float(specularStrength()));
+
+  program->setUniformValue("emissionColor"   , CQGLUtil::toVector(emissiveColor()));
+  program->setUniformValue("emissiveStrength", float(emissiveStrength()));
 
   program->setUniformValue("fixedDiffuse", isFixedDiffuse());
 #endif
@@ -1045,6 +1046,7 @@ drawObject(CGeomObject3D *object)
 
     //---
 
+    // diffuse (texture 0)
     bool useDiffuseTexture = (isTextured() ? !!faceData.diffuseTexture : false);
 
     program->setUniformValue("diffuseTexture.enabled", useDiffuseTexture);
@@ -1056,6 +1058,7 @@ drawObject(CGeomObject3D *object)
 
     //---
 
+    // normal (texture 1)
     bool useNormalTexture = (isTextured() ? !!faceData.normalTexture : false);
 
     program->setUniformValue("normalTexture.enabled", useNormalTexture);
@@ -1067,6 +1070,7 @@ drawObject(CGeomObject3D *object)
 
     //---
 
+    // specular (texture 2)
     bool useSpecularTexture = (isTextured() ? !!faceData.specularTexture : false);
 
     program->setUniformValue("specularTexture.enabled", useSpecularTexture);
@@ -1078,6 +1082,7 @@ drawObject(CGeomObject3D *object)
 
     //---
 
+    // emissive (texture 3)
     bool useEmissiveTexture = (isTextured() ? !!faceData.emissiveTexture : false);
 
     program->setUniformValue("emissiveTexture.enabled", useEmissiveTexture);
@@ -1655,6 +1660,8 @@ mousePressEvent(QMouseEvent *e)
   mouseData_.isShift   = (e->modifiers() & Qt::ShiftModifier);
   mouseData_.isControl = (e->modifiers() & Qt::ControlModifier);
 
+  //---
+
   if (mouseData_.button == Qt::LeftButton) {
     if (editType() == EditType::SELECT) {
       rubberBand_->setBounds(QPoint(mouseData_.press.x, mouseData_.press.y),
@@ -1681,8 +1688,7 @@ void
 Canvas::
 mouseMoveEvent(QMouseEvent *e)
 {
-  mouseData_.move.x = e->x();
-  mouseData_.move.y = e->y();
+  mouseData_.move = CPoint2D(e->x(), e->y());
 
   mouseData_.isShift   = (e->modifiers() & Qt::ShiftModifier);
   mouseData_.isControl = (e->modifiers() & Qt::ControlModifier);
@@ -1722,6 +1728,8 @@ mouseReleaseEvent(QMouseEvent *e)
 {
   mouseData_.move.x = e->x();
   mouseData_.move.y = e->y();
+
+  //----
 
   auto *camera = this->camera();
 
@@ -1766,6 +1774,8 @@ mouseReleaseEvent(QMouseEvent *e)
       rubberBand_->hide();
     }
   }
+
+  //---
 
   mouseData_.pressed = false;
   mouseData_.button  = Qt::NoButton;

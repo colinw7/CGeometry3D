@@ -1,6 +1,6 @@
 # Blender 5.1.1
 # www.blender.org
-mtllib data/defender_alien1.mtl
+mtllib defender_alien1.mtl
 o Vert.001
 v -0.484679 1.773287 0.297854
 v -0.567766 1.814427 0.287669

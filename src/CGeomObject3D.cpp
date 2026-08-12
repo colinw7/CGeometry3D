@@ -15,6 +15,8 @@ CGeomObject3D::
 CGeomObject3D(CGeomScene3D *pscene, const std::string &name) :
  pscene_(pscene), name_(name)
 {
+  mesh_     = new CGeomMesh;
+  skeleton_ = new CGeomSkeleton;
 }
 
 CGeomObject3D::
@@ -35,48 +37,61 @@ CGeomObject3D(const CGeomObject3D &object) :
  normalTexture_   (object.normalTexture_),
  emissiveTexture_ (object.emissiveTexture_),
  materialP_       (object.materialP_),
- vertexFaceList_  (object.vertexFaceList_),
- vertexFaceNormal_(object.vertexFaceNormal_),
  groups_          (object.groups_),
- texturePoints_   (object.texturePoints_),
- normals_         (object.normals_),
- nodes_           (object.nodes_),
- nodeIds_         (object.nodeIds_),
- meshNode_        (object.meshNode_),
- rootNode_        (object.rootNode_),
  viewMatrix_      (object.viewMatrix_),
  transformData_   (object.transformData_),
  animData_        (object.animData_),
  dv_              (object.dv_),
  da_              (object.da_)
 {
-  // copy faces
-  for (auto *face : object.faces_) {
+  // copy mesh
+  mesh_ = new CGeomMesh;
+
+  for (auto *face : object.getFaces()) {
     auto *face1 = face->dup();
 
     addFace(face1);
   }
 
-  // copy lines
-  for (auto *line : object.lines_) {
+  for (auto *line : object.getLines()) {
     auto *line1 = line->dup();
 
     addLine(line1);
   }
 
-  // copy vertices
-  for (auto *vertex : object.vertices_) {
+  for (auto *vertex : object.getVertices()) {
     auto *vertex1 = vertex->dup();
 
     addVertex(vertex1);
   }
+
+  auto *mesh1 = object.mesh();
+
+  mesh_->vertexFaceList   = mesh1->vertexFaceList;
+  mesh_->vertexFaceNormal = mesh1->vertexFaceNormal;
+  mesh_->texturePoints    = mesh1->texturePoints;
+  mesh_->normals          = mesh1->normals;
+
+  //---
+
+  // copy skeleton
+  skeleton_ = new CGeomSkeleton;
+
+  auto *skeleton1 = object.skeleton();
+
+  skeleton_->nodes    = skeleton1->nodes;
+  skeleton_->nodeIds  = skeleton1->nodeIds;
+  skeleton_->meshNode = skeleton1->meshNode;
+  skeleton_->rootNode = skeleton1->rootNode;
+
+  //---
 
   // children done by hierDup
 
   updatePosition();
 
   // fix nodes object
-  for (auto &pn : nodes_) {
+  for (auto &pn : skeleton_->nodes) {
     auto &nodeData = pn.second;
 
     nodeData.setAnimObject(this);
@@ -87,18 +102,27 @@ CGeomObject3D(const CGeomObject3D &object) :
 CGeomObject3D::
 ~CGeomObject3D()
 {
-  for (auto *face : faces_)
-    delete face;
+  auto refObjects = this->refObjects();
 
-  for (auto *line : lines_)
-    delete line;
+  if (refObject()) {
+    ObjectList refObjects1;
 
-  for (auto *vertex : vertices_)
-    delete vertex;
+    for (auto *obj : refObjects) {
+      if (obj != this)
+        refObjects1.push_back(obj);
+    }
 
-  for (auto &pe1 : vertexVertexEdgeMap_)
-    for (auto &pe2 : pe1.second)
-      delete pe2.second;
+    std::swap(refObjects_, refObjects1);
+  }
+  else {
+    delete mesh_;
+    delete skeleton_;
+
+    for (auto *obj : refObjects)
+      delete obj;
+
+    refObjects_.clear();
+  }
 
   // TODO: delete (or detach) children
 }
@@ -113,7 +137,7 @@ hierDup() const
 
   obj->setInd(CGeometry3DInst->nextObjectId());
 
-  for (auto *child : children_) {
+  for (auto *child : children()) {
     auto *child1 = child->hierDup();
 
     obj->addChild(child1);
@@ -131,41 +155,48 @@ dup() const
 
 //---
 
+CGeomObject3D *
+CGeomObject3D::
+createRef() const
+{
+  auto *th = const_cast<CGeomObject3D *>(this);
+
+  auto *obj = dup();
+
+  obj->refObject_ = th;
+
+  delete obj->mesh_;
+  delete obj->skeleton_;
+
+  obj->mesh_     = nullptr;
+  obj->skeleton_ = nullptr;
+
+  th->refObjects_.push_back(obj);
+
+#if 1
+  for (auto *child : children()) {
+    auto *child1 = child->createRef();
+
+    obj->addChild(child1);
+  }
+#endif
+
+  return obj;
+}
+
+//---
+
 void
 CGeomObject3D::
 clearGeometry(bool destroy)
 {
-  if (destroy) {
-    for (auto *face : faces_)
-      delete face;
+  if (! refObject())
+    mesh_->clear(destroy);
 
-    for (auto *line : lines_)
-      delete line;
-
-    for (auto *vertex : vertices_)
-      delete vertex;
-  }
-
-  faces_    .clear();
-  lines_    .clear();
-  vertices_ .clear();
-
-  vertexFaceList_  .clear();
-  vertexFaceNormal_.clear();
+  if (! refObject())
+    skeleton_->clear();
 
   groups_.clear();
-
-  texturePoints_.clear();
-
-  normals_.clear();
-
-  nodes_  .clear();
-  nodeIds_.clear();
-
-  meshNode_ = -1;
-  rootNode_ = -1;
-
-  edgesValid_ = false;
 }
 
 //---
@@ -201,6 +232,15 @@ getTranslate() const
 
 void
 CGeomObject3D::
+setTranslate(double x, double y, double z)
+{
+  auto m = CMatrix3D::translation(x, y, z);
+
+  setTranslate(m);
+}
+
+void
+CGeomObject3D::
 setTranslate(const CMatrix3D &m)
 {
   transformData_.global    = false;
@@ -219,6 +259,15 @@ getRotate() const
 
 void
 CGeomObject3D::
+setRotate(double angle, const CVector3D &axis)
+{
+  auto m = CMatrix3D::rotation(angle, axis);
+
+  setRotate(m);
+}
+
+void
+CGeomObject3D::
 setRotate(const CMatrix3D &m)
 {
   transformData_.global = false;
@@ -233,6 +282,15 @@ getScale() const
     return CMatrix3D::identity();
   else
     return transformData_.scale;
+}
+
+void
+CGeomObject3D::
+setScale(double x, double y, double z)
+{
+  auto m = CMatrix3D::scale(x, y, z);
+
+  setTranslate(m);
 }
 
 void
@@ -264,10 +322,20 @@ getHierSelected() const
   if (getSelected())
     return true;
 
-  if (parent_)
-    return parent_->getHierSelected();
+  if (parent())
+    return parent()->getHierSelected();
 
   return false;
+}
+
+void
+CGeomObject3D::
+setHierVisible(bool b)
+{
+  setVisible(b);
+
+  for (auto *child : children())
+    child->setHierVisible(b);
 }
 
 //---
@@ -279,7 +347,7 @@ setIsPrimitive(bool b, bool hier)
   isPrimitive_ = b;
 
   if (hier) {
-    for (auto *child : children_)
+    for (auto *child : children())
       child->setIsPrimitive(b, hier);
   }
 
@@ -292,10 +360,59 @@ setIsPrimitive(bool b, bool hier)
 
 //---
 
+CGeomObject3D *
+CGeomObject3D::
+parent() const
+{
+#if 0
+  if (refObject())
+    return refObject()->parent();
+#endif
+
+  return parent_;
+}
+
+const CGeomObject3D::ObjectList &
+CGeomObject3D::
+children() const
+{
+#if 0
+  if (refObject())
+    return refObject()->children();
+#endif
+
+  return children_;
+}
+
+CGeomObject3D::ObjectList
+CGeomObject3D::
+hierChildren() const
+{
+#if 0
+  if (refObject())
+    return refObject()->hierChildren();
+#endif
+
+  auto children = this->children();
+
+  for (auto *child : this->children()) {
+    auto children1 = child->hierChildren();
+
+    for (auto *child1 : children1)
+      children.push_back(child1);
+  }
+
+  return children;
+}
+
 void
 CGeomObject3D::
 addChild(CGeomObject3D *child)
 {
+#if 0
+  assert(! refObject());
+#endif
+
   child->parent_ = this;
 
   children_.push_back(child);
@@ -305,6 +422,10 @@ void
 CGeomObject3D::
 resetHier()
 {
+#if 0
+  assert(! refObject());
+#endif
+
   parent_ = nullptr;
 
   resetChildren();
@@ -314,6 +435,10 @@ void
 CGeomObject3D::
 resetChildren()
 {
+#if 0
+  assert(! refObject());
+#endif
+
   children_.clear();
 }
 
@@ -356,13 +481,13 @@ void
 CGeomObject3D::
 validatePObject()
 {
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     assert(face->getObject() == this);
 
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     assert(line->getObject() == this);
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     assert(vertex->getObject() == this);
 }
 
@@ -372,7 +497,10 @@ void
 CGeomObject3D::
 setTexture(CGeomTexture *texture)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setTexture(texture);
+
+  for (auto *face : getFaces())
     face->setTexture(texture);
 }
 
@@ -405,7 +533,10 @@ void
 CGeomObject3D::
 setMask(CGeomMask *mask)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setMask(mask);
+
+  for (auto *face : getFaces())
     face->setMask(mask);
 }
 
@@ -438,7 +569,10 @@ void
 CGeomObject3D::
 setFaceFlags(uint flags)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setFaceFlags(flags);
+
+  for (auto *face : getFaces())
     face->setFlags(flags);
 }
 
@@ -446,7 +580,10 @@ void
 CGeomObject3D::
 unsetFaceFlags(uint flags)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->unsetFaceFlags(flags);
+
+  for (auto *face : getFaces())
     face->unsetFlags(flags);
 }
 
@@ -454,9 +591,12 @@ bool
 CGeomObject3D::
 findVertex(const CPoint3D &point, uint *ind)
 {
+  if (refObject())
+    return refObject()->findVertex(point, ind);
+
   uint i = 0;
 
-  for (auto *vertex : vertices_) {
+  for (auto *vertex : getVertices()) {
     const auto &actual = vertex->getModel();
 
     if (point == actual) {
@@ -485,15 +625,17 @@ uint
 CGeomObject3D::
 addVertex(CGeomVertex3D *vertex)
 {
+  assert(! refObject());
+
   vertex->setObject(this);
 
-  vertices_.push_back(vertex);
+  mesh_->vertices.push_back(vertex);
 
-  auto ind = uint(vertices_.size() - 1);
+  auto ind = uint(mesh_->vertices.size() - 1);
 
   vertex->setInd(ind);
 
-  edgesValid_ = false;
+  mesh_->edgesValid = false;
 
   return ind;
 }
@@ -502,7 +644,7 @@ void
 CGeomObject3D::
 addVertexFace(uint vertex_ind, uint face_ind)
 {
-  auto &faceList = vertexFaceList_[vertex_ind];
+  auto &faceList = mesh_->vertexFaceList[vertex_ind];
 
   faceList.push_back(face_ind);
 }
@@ -518,6 +660,20 @@ dupVertex(uint i)
 
 //---
 
+const CGeomObject3D::TexturePoints &
+CGeomObject3D::
+getTexturePoints() const
+{
+  return mesh_->texturePoints;
+}
+
+uint
+CGeomObject3D::
+getNumTextuePoints() const
+{
+  return uint(mesh_->texturePoints.size());
+}
+
 uint
 CGeomObject3D::
 addTexturePoint(const CPoint2D &point)
@@ -529,9 +685,9 @@ uint
 CGeomObject3D::
 addTexturePoint(const CPoint3D &point)
 {
-  texturePoints_.push_back(point);
+  mesh_->texturePoints.push_back(point);
 
-  auto ind = uint(texturePoints_.size() - 1);
+  auto ind = uint(mesh_->texturePoints.size() - 1);
 
   return ind;
 }
@@ -540,20 +696,27 @@ const CPoint3D &
 CGeomObject3D::
 texturePoint(uint i) const
 {
-  assert(i < texturePoints_.size());
+  assert(i < mesh_->texturePoints.size());
 
-  return texturePoints_[i];
+  return mesh_->texturePoints[i];
 }
 
 //---
 
 uint
 CGeomObject3D::
+getNumNormals() const
+{
+  return uint(mesh_->normals.size());
+}
+
+uint
+CGeomObject3D::
 addNormal(const CVector3D &v)
 {
-  normals_.push_back(v);
+  mesh_->normals.push_back(v);
 
-  auto ind = uint(normals_.size() - 1);
+  auto ind = uint(mesh_->normals.size() - 1);
 
   return ind;
 }
@@ -562,9 +725,9 @@ const CVector3D &
 CGeomObject3D::
 normal(uint i) const
 {
-  assert(i < normals_.size());
+  assert(i < mesh_->normals.size());
 
-  return normals_[i];
+  return mesh_->normals[i];
 }
 
 //---
@@ -582,11 +745,13 @@ uint
 CGeomObject3D::
 addLine(CGeomLine3D *line)
 {
+  assert(! refObject());
+
   line->setObject(this);
 
-  lines_.push_back(line);
+  mesh_->lines.push_back(line);
 
-  auto ind = uint(lines_.size() - 1);
+  auto ind = uint(mesh_->lines.size() - 1);
 
   line->setInd(ind);
 
@@ -647,15 +812,17 @@ uint
 CGeomObject3D::
 addFace(CGeomFace3D *face)
 {
+  assert(! refObject());
+
   face->setObject(this);
 
-  faces_.push_back(face);
+  mesh_->faces.push_back(face);
 
-  auto ind = uint(faces_.size() - 1);
+  auto ind = uint(mesh_->faces.size() - 1);
 
   face->setInd(ind);
 
-  edgesValid_ = false;
+  mesh_->edgesValid = false;
 
   return ind;
 }
@@ -664,18 +831,20 @@ void
 CGeomObject3D::
 removeFace(CGeomFace3D *face)
 {
+  assert(! refObject());
+
   face->setObject(nullptr);
 
   FaceList faces;
 
-  for (auto *face1 : faces_) {
+  for (auto *face1 : mesh_->faces) {
     if (face1 != face)
       faces.push_back(face1);
   }
 
-  std::swap(faces_, faces);
+  std::swap(mesh_->faces, faces);
 
-  edgesValid_ = false;
+  mesh_->edgesValid = false;
 }
 
 uint
@@ -698,41 +867,218 @@ addFaceSubLine(uint faceNum, uint start, uint end)
 
 //---
 
+const CGeomObject3D::VertexList &
+CGeomObject3D::
+getVertices() const
+{
+  if (refObject())
+    return refObject()->getVertices();
+
+  return mesh_->vertices;
+}
+
+uint
+CGeomObject3D::
+getNumVertices() const
+{
+  return uint(getVertices().size());
+}
+
+const CGeomVertex3D &
+CGeomObject3D::
+getVertex(uint i) const
+{
+  if (refObject())
+    return refObject()->getVertex(i);
+
+  return *mesh_->vertices[i];
+}
+
+CGeomVertex3D &
+CGeomObject3D::
+getVertex(uint i)
+{
+  if (refObject())
+    return refObject()->getVertex(i);
+
+  return *mesh_->vertices[i];
+}
+
+const CGeomVertex3D *
+CGeomObject3D::
+getVertexP(uint i) const
+{
+  if (refObject())
+    return refObject()->getVertexP(i);
+
+  return mesh_->vertices[i];
+}
+
+CGeomVertex3D *
+CGeomObject3D::
+getVertexP(uint i)
+{
+  if (refObject())
+    return refObject()->getVertexP(i);
+
+  return mesh_->vertices[i];
+}
+
 void
 CGeomObject3D::
 removeVertex(CGeomVertex3D *vertex)
 {
+  assert(! refObject());
+
   auto vind = vertex->getInd();
 
   vertex->setObject(nullptr);
 
   VertexList vertices;
 
-  for (auto *vertex1 : vertices_) {
+  for (auto *vertex1 : mesh_->vertices) {
     if (vertex1 != vertex)
       vertices.push_back(vertex1);
     else
       vertices.push_back(nullptr);
   }
 
-  std::swap(vertices_, vertices);
+  std::swap(mesh_->vertices, vertices);
 
   // TODO: allow degenerate faces
-  for (auto *face1 : faces_) {
+  for (auto *face1 : mesh_->faces) {
     // TODO: fast check ?
     if (face1->hasVertex(vind))
-    face1->removeVertex(vind);
+      face1->removeVertex(vind);
   }
 
 #if 0
   // TODO: allow degenerate lines
-  for (auto *line1 : lines_) {
+  for (auto *line1 : mesh_->lines) {
     // TODO: fast check ?
     line1->removeVertex(vind);
   }
 #endif
 
-  edgesValid_ = false;
+  mesh_->edgesValid = false;
+}
+
+//---
+
+const CGeomObject3D::LineList &
+CGeomObject3D::
+getLines() const
+{
+  if (refObject())
+    return refObject()->getLines();
+
+  return mesh_->lines;
+}
+
+CGeomObject3D::LineList &
+CGeomObject3D::
+getLines()
+{
+  if (refObject())
+    return refObject()->getLines();
+
+  return mesh_->lines;
+}
+
+uint
+CGeomObject3D::
+getNumLines() const
+{
+  return uint(getLines().size());
+}
+
+const CGeomLine3D &
+CGeomObject3D::
+getLine(uint i) const
+{
+  if (refObject())
+    return refObject()->getLine(i);
+
+  return *mesh_->lines[i];
+}
+
+CGeomLine3D *
+CGeomObject3D::
+getLineP(uint i) const
+{
+  if (refObject())
+    return refObject()->getLineP(i);
+
+  return mesh_->lines[i];
+}
+
+CGeomLine3D &
+CGeomObject3D::
+getLine(uint i)
+{
+  if (refObject())
+    return refObject()->getLine(i);
+
+  return *mesh_->lines[i];
+}
+
+//---
+
+const CGeomObject3D::FaceList &
+CGeomObject3D::
+getFaces() const
+{
+  if (refObject())
+    return refObject()->getFaces();
+
+  return mesh_->faces;
+}
+
+CGeomObject3D::FaceList &
+CGeomObject3D::
+getFaces()
+{
+  if (refObject())
+    return refObject()->getFaces();
+
+  return mesh_->faces;
+}
+
+uint
+CGeomObject3D::
+getNumFaces() const
+{
+  return uint(getFaces().size());
+}
+
+const CGeomFace3D &
+CGeomObject3D::
+getFace(uint i) const
+{
+  if (refObject())
+    return refObject()->getFace(i);
+
+  return *mesh_->faces[i];
+}
+
+CGeomFace3D *
+CGeomObject3D::
+getFaceP(uint i) const
+{
+  if (refObject())
+    return refObject()->getFaceP(i);
+
+  return mesh_->faces[i];
+}
+
+CGeomFace3D &
+CGeomObject3D::
+getFace(uint i)
+{
+  if (refObject())
+    return refObject()->getFace(i);
+
+  return *mesh_->faces[i];
 }
 
 //---
@@ -756,7 +1102,7 @@ CRGBA
 CGeomObject3D::
 getFaceColor() const
 {
-  if (faces_.empty())
+  if (getFaces().empty())
     return CRGBA::white();
 
   return getFaceColor(0);
@@ -766,7 +1112,10 @@ void
 CGeomObject3D::
 setFaceColor(const CRGBA &rgba)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setFaceColor(rgba);
+
+  for (auto *face : mesh_->faces)
     face->setColor(rgba);
 }
 
@@ -792,7 +1141,10 @@ void
 CGeomObject3D::
 setFaceDiffuse(const CRGBA &rgba)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setFaceDiffuse(rgba);
+
+  for (auto *face : mesh_->faces)
     face->setDiffuse(rgba);
 }
 
@@ -800,7 +1152,10 @@ void
 CGeomObject3D::
 setFaceSpecular(const CRGBA &rgba)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setFaceSpecular(rgba);
+
+  for (auto *face : mesh_->faces)
     face->setSpecular(rgba);
 }
 
@@ -808,7 +1163,10 @@ void
 CGeomObject3D::
 setFaceEmission(const CRGBA &rgba)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setFaceEmission(rgba);
+
+  for (auto *face : mesh_->faces)
     face->setEmission(rgba);
 }
 
@@ -868,7 +1226,10 @@ void
 CGeomObject3D::
 setSubFaceColor(const CRGBA &rgba)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setSubFaceColor(rgba);
+
+  for (auto *face : mesh_->faces)
     face->setSubFaceColor(rgba);
 }
 
@@ -894,7 +1255,10 @@ void
 CGeomObject3D::
 setSubFaceMaterialP(CGeomMaterial *material)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setSubFaceMaterialP(material);
+
+  for (auto *face : mesh_->faces)
     face->setSubFaceMaterialP(material);
 }
 
@@ -902,7 +1266,7 @@ void
 CGeomObject3D::
 setLineColor(const CRGBA &rgba)
 {
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->setColor(rgba);
 }
 
@@ -910,7 +1274,7 @@ void
 CGeomObject3D::
 setLineColor(uint lineNum, const CRGBA &rgba)
 {
-  lines_[lineNum]->setColor(rgba);
+  getLineP(lineNum)->setColor(rgba);
 }
 
 void
@@ -926,35 +1290,50 @@ void
 CGeomObject3D::
 setVertexColor(uint i, const CRGBA &rgba)
 {
-  vertices_[i]->setColor(rgba);
+  if (refObject())
+    return refObject()->setVertexColor(i, rgba);
+
+  mesh_->vertices[i]->setColor(rgba);
 }
 
 void
 CGeomObject3D::
 setVertexPixel(uint i, const CPoint3D &pixel)
 {
-  vertices_[i]->setPixel(pixel);
+  if (refObject())
+    return refObject()->setVertexPixel(i, pixel);
+
+  mesh_->vertices[i]->setPixel(pixel);
 }
 
 void
 CGeomObject3D::
 setVertexNormal(uint i, const CVector3D &n)
 {
-  vertices_[i]->setNormal(n);
+  if (refObject())
+    return refObject()->setVertexNormal(i, n);
+
+  mesh_->vertices[i]->setNormal(n);
 }
 
 void
 CGeomObject3D::
 setVertexTextureMap(uint i, const CPoint2D &p)
 {
-  vertices_[i]->setTextureMap(p);
+  if (refObject())
+    return refObject()->setVertexTextureMap(i, p);
+
+  mesh_->vertices[i]->setTextureMap(p);
 }
 
 void
 CGeomObject3D::
 setFrontMaterial(const CGeomMaterial &material)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setFrontMaterial(material);
+
+  for (auto *face : mesh_->faces)
     face->setFrontMaterial(material);
 }
 
@@ -962,7 +1341,10 @@ void
 CGeomObject3D::
 setBackMaterial(const CGeomMaterial &material)
 {
-  for (auto *face : faces_)
+  if (refObject())
+    return refObject()->setBackMaterial(material);
+
+  for (auto *face : mesh_->faces)
     face->setBackMaterial(material);
 }
 
@@ -972,13 +1354,13 @@ CGeomObject3D *
 CGeomObject3D::
 getChildOfName(const std::string &name) const
 {
-  for (auto *child : children_) {
+  for (auto *child : children()) {
     if (child->getName() == name)
       return child;
   }
 
-  for (auto *child : children_) {
-    if (child->children_.empty())
+  for (auto *child : children()) {
+    if (child->children().empty())
       continue;
 
     auto *child1 = child->getChildOfName(name);
@@ -999,14 +1381,14 @@ getAnimObject() const
   if (isAnimObject())
     return const_cast<CGeomObject3D *>(this);
 
-  return (parent_ ? parent_->getAnimObject() : nullptr);
+  return (parent() ? parent()->getAnimObject() : nullptr);
 }
 
 bool
 CGeomObject3D::
 isAnimObject() const
 {
-  return (! nodes_.empty());
+  return (! skeleton_->nodes.empty());
 }
 
 bool
@@ -1015,9 +1397,9 @@ hasNode(int i) const
 {
   if (i < 0) return false;
 
-  auto pn = nodes_.find(i);
+  auto pn = skeleton_->nodes.find(i);
 
-  return (pn != nodes_.end());
+  return (pn != skeleton_->nodes.end());
 }
 
 void
@@ -1027,16 +1409,16 @@ addNode(int i, const CGeomNodeData &data)
   assert(i >= 0);
 
 #if 1
-  auto pn = nodes_.find(i);
-  assert(pn == nodes_.end());
+  auto pn = skeleton_->nodes.find(i);
+  assert(pn == skeleton_->nodes.end());
 
-  pn = nodes_.insert(pn, NodeDatas::value_type(i, data));
+  pn = skeleton_->nodes.insert(pn, NodeDatas::value_type(i, data));
 
   auto &data1 = (*pn).second;
 #else
-  nodes_[i] = data;
+  skeleton_->nodes[i] = data;
 
-  auto &data1 = nodes_[i];
+  auto &data1 = skeleton_->nodes[i];
 #endif
 
   data1.setInd    (i);
@@ -1045,7 +1427,21 @@ addNode(int i, const CGeomNodeData &data)
 
   data1.setAnimObject(this);
 
-  nodeIds_.push_back(i);
+  skeleton_->nodeIds.push_back(i);
+}
+
+const CGeomObject3D::NodeDatas &
+CGeomObject3D::
+getNodes() const
+{
+  return skeleton_->nodes;
+}
+
+const CGeomObject3D::NodeIds &
+CGeomObject3D::
+getNodeIds() const
+{
+  return skeleton_->nodeIds;
 }
 
 // map bone id into position in globalBoneTransform array
@@ -1053,8 +1449,8 @@ int
 CGeomObject3D::
 mapNodeId(int id) const
 {
-  for (size_t i = 0; i < nodeIds_.size(); ++i) {
-    if (nodeIds_[i] == id)
+  for (size_t i = 0; i < skeleton_->nodeIds.size(); ++i) {
+    if (skeleton_->nodeIds[i] == id)
       return int(i);
   }
 
@@ -1067,7 +1463,7 @@ mapNodeIndex(int index) const
 {
   int i = 0;
 
-  for (auto &pn : nodes_) {
+  for (auto &pn : skeleton_->nodes) {
     auto &nodeData = pn.second;
 
     if (nodeData.index() == index)
@@ -1086,9 +1482,9 @@ getNode(int i) const
   static CGeomNodeData noData;
 
   if (i >= 0) {
-    auto pn = nodes_.find(i);
+    auto pn = skeleton_->nodes.find(i);
 
-    if (pn != nodes_.end())
+    if (pn != skeleton_->nodes.end())
       return (*pn).second;
   }
 
@@ -1106,7 +1502,7 @@ CGeomNodeData *
 CGeomObject3D::
 getNodeByInd(int ind) const
 {
-  for (auto &pn : nodes_) {
+  for (auto &pn : skeleton_->nodes) {
     auto &nodeData = pn.second;
 
     if (nodeData.ind() == ind)
@@ -1127,7 +1523,7 @@ getMeshObject() const
   if (meshNodeId >= 0)
     return const_cast<CGeomObject3D *>(this);
 
-  for (auto *child : children_) {
+  for (auto *child : children()) {
     auto *object = child->getMeshObject();
 
     if (object)
@@ -1141,14 +1537,20 @@ int
 CGeomObject3D::
 getMeshNode() const
 {
-  return meshNode_;
+  if (refObject())
+    return refObject()->getMeshNode();
+
+  return skeleton_->meshNode;
 }
 
 void
 CGeomObject3D::
 setMeshNode(int id)
 {
-  meshNode_ = id;
+  if (refObject())
+    return refObject()->setMeshNode(id);
+
+  skeleton_->meshNode = id;
 }
 
 //---
@@ -1228,17 +1630,17 @@ int
 CGeomObject3D::
 getRootNode() const
 {
-  if (rootNode_ < 0)
-    return (! nodeIds_.empty() ? nodeIds_[0] : -1);
+  if (skeleton_->rootNode < 0)
+    return (! skeleton_->nodeIds.empty() ? skeleton_->nodeIds[0] : -1);
   else
-    return rootNode_;
+    return skeleton_->rootNode;
 }
 
 void
 CGeomObject3D::
 setRootNode(int id)
 {
-  rootNode_ = id;
+  skeleton_->rootNode = id;
 }
 
 void
@@ -1248,8 +1650,8 @@ setNodeLocalTransforms(int i, const CTranslate3D &translation, const CRotate3D &
 {
   assert(i >= 0);
 
-  auto pn = nodes_.find(i);
-  assert(pn != nodes_.end());
+  auto pn = skeleton_->nodes.find(i);
+  assert(pn != skeleton_->nodes.end());
 
   auto &nodeData = (*pn).second;
 
@@ -1265,8 +1667,8 @@ setNodeLocalTransform(int i, const CMatrix3D &m)
 {
   assert(i >= 0);
 
-  auto pn = nodes_.find(i);
-  assert(pn != nodes_.end());
+  auto pn = skeleton_->nodes.find(i);
+  assert(pn != skeleton_->nodes.end());
 
   auto &nodeData = (*pn).second;
 
@@ -1280,8 +1682,8 @@ setNodeGlobalTransform(int i, const CMatrix3D &m)
 {
   assert(i >= 0);
 
-  auto pn = nodes_.find(i);
-  assert(pn != nodes_.end());
+  auto pn = skeleton_->nodes.find(i);
+  assert(pn != skeleton_->nodes.end());
 
   auto &nodeData = (*pn).second;
 
@@ -1434,8 +1836,8 @@ setNodeAnimationData(int i, const std::string &name, const CGeomAnimationData &d
 {
   assert(i >= 0);
 
-  auto pn = nodes_.find(i);
-  assert(pn != nodes_.end());
+  auto pn = skeleton_->nodes.find(i);
+  assert(pn != skeleton_->nodes.end());
 
   auto &nodeData = (*pn).second;
 
@@ -1449,8 +1851,8 @@ setNodeAnimationTransformData(int i, const std::string &name, const Transform &t
 {
   assert(i >= 0);
 
-  auto pn = nodes_.find(i);
-  assert(pn != nodes_.end());
+  auto pn = skeleton_->nodes.find(i);
+  assert(pn != skeleton_->nodes.end());
 
   auto &nodeData = (*pn).second;
 
@@ -1493,7 +1895,7 @@ updateNodesAnimationData(const std::string &name, double t)
   // update animation data for all nodes (skeleton/joints) of object
   bool rc = false;
 
-  for (auto &pn : nodes_) {
+  for (auto &pn : skeleton_->nodes) {
     auto &nodeData = pn.second;
 
     if (updateNodeAnimationData(nodeData, name, t))
@@ -1505,7 +1907,7 @@ updateNodesAnimationData(const std::string &name, double t)
 //int rootId = getRootNode();
 
   // calc hierarchical animation matrix for all nodes (joints)
-  for (auto &pn : nodes_) {
+  for (auto &pn : skeleton_->nodes) {
     auto &nodeData = pn.second;
 
     auto hierAnimMatrix = nodeData.animMatrix();
@@ -1537,8 +1939,8 @@ updateNodeAnimationData(int i, const std::string &name, double t)
 {
   assert(i >= 0);
 
-  auto pn = nodes_.find(i);
-  if (pn == nodes_.end()) return false;
+  auto pn = skeleton_->nodes.find(i);
+  if (pn == skeleton_->nodes.end()) return false;
 
   return updateNodeAnimationData((*pn).second, name, t);
 }
@@ -1854,7 +2256,7 @@ getAnimationNames(std::vector<std::string> &names) const
 {
   std::set<std::string> nameSet;
 
-  for (const auto &pn : nodes_) {
+  for (const auto &pn : skeleton_->nodes) {
     const auto &nodeData = pn.second;
 
     for (const auto &pn1 : nodeData.animationDatas()) {
@@ -1881,7 +2283,7 @@ getAnimationTranslationRange(const std::string &name, double &min, double &max) 
     range.min = 0.0;
     range.max = 1.0;
 
-    for (const auto &pn : nodes_) {
+    for (const auto &pn : skeleton_->nodes) {
       const auto &nodeData = pn.second;
 
       if (! nodeData.hasAnimationData(name))
@@ -1918,8 +2320,8 @@ getNodeAnimationData(int i, const std::string &name)
 
   assert(i >= 0);
 
-  auto pn = nodes_.find(i);
-  if (pn == nodes_.end()) return noAnimationData;
+  auto pn = skeleton_->nodes.find(i);
+  if (pn == skeleton_->nodes.end()) return noAnimationData;
 
   auto &nodeData = (*pn).second;
 
@@ -2289,25 +2691,28 @@ void
 CGeomObject3D::
 translate(double x, double y, double z, bool hier)
 {
-  auto s = CMatrix3D::translation(x, y, z);
+  auto m = CMatrix3D::translation(x, y, z);
 
-  transform(s, hier);
+  transform(m, hier);
 }
 
 void
 CGeomObject3D::
 transform(const CMatrix3D &matrix, bool hier)
 {
+  if (refObject())
+    return refObject()->transform(matrix, hier);
+
   CPoint3D point;
 
-  for (auto *vertex : vertices_) {
+  for (auto *vertex : mesh_->vertices) {
     matrix.multiplyPoint(vertex->getModel(), point);
 
     vertex->setModel(point);
   }
 
   if (hier) {
-    for (auto *child : children_)
+    for (auto *child : children())
       child->transform(matrix, hier);
   }
 }
@@ -2318,13 +2723,16 @@ void
 CGeomObject3D::
 getMeshBBox(CBBox3D &bbox, bool hier) const
 {
+  if (refObject())
+    return refObject()->getMeshBBox(bbox, hier);
+
   auto m = getMeshGlobalTransform();
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : mesh_->vertices)
     bbox += m*vertex->getModel();
 
   if (hier) {
-    for (auto *child : children_) {
+    for (auto *child : children()) {
       CBBox3D bbox1;
       child->getMeshBBox(bbox1, hier);
 
@@ -2337,11 +2745,14 @@ void
 CGeomObject3D::
 getModelBBox(CBBox3D &bbox, bool hier) const
 {
-  for (auto *vertex : vertices_)
+  if (refObject())
+    return refObject()->getModelBBox(bbox, hier);
+
+  for (auto *vertex : mesh_->vertices)
     bbox += vertex->getModel();
 
   if (hier) {
-    for (auto *child : children_) {
+    for (auto *child : children()) {
       CBBox3D bbox1;
       child->getModelBBox(bbox1, hier);
 
@@ -2356,11 +2767,11 @@ getTransformedModelBBox(CBBox3D &bbox, bool hier) const
 {
   auto t = getTransform();
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     bbox += t*vertex->getModel();
 
   if (hier) {
-    for (auto *child : children_) {
+    for (auto *child : children()) {
       CBBox3D bbox1;
       child->getTransformedModelBBox1(t, bbox1);
 
@@ -2375,11 +2786,11 @@ getTransformedModelBBox1(const CMatrix3D &t, CBBox3D &bbox, bool hier) const
 {
   auto t1 = t*getTransform();
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     bbox += t1*vertex->getModel();
 
   if (hier) {
-    for (auto *child : children_) {
+    for (auto *child : children()) {
       CBBox3D bbox1;
       child->getTransformedModelBBox1(t1, bbox1, hier);
 
@@ -2409,8 +2820,11 @@ verticesModelMidPoint(const VertexIList &ivertices) const
 
   double n1 = 1.0/double(ivertices.size());
 
-  for (const auto &iv : ivertices)
-    mid_point += n1*vertices_[iv]->getModel();
+  for (const auto &iv : ivertices) {
+    auto *v = getVertexP(iv);
+
+    mid_point += n1*v->getModel();
+  }
 
   return mid_point;
 }
@@ -2423,8 +2837,11 @@ verticesViewedMidPoint(const VertexIList &ivertices) const
 
   double n1 = 1.0/double(ivertices.size());
 
-  for (const auto &iv : ivertices)
-    mid_point += n1*vertices_[iv]->getViewed();
+  for (const auto &iv : ivertices) {
+    auto *v = getVertexP(iv);
+
+    mid_point += n1*v->getViewed();
+  }
 
   return mid_point;
 }
@@ -2436,9 +2853,9 @@ verticesModelNormal(const VertexIList &vertices) const
   if (vertices.size() < 3)
     return CVector3D(0, 1, 0);
 
-  auto *v1 = vertices_[vertices[0]];
-  auto *v2 = vertices_[vertices[1]];
-  auto *v3 = vertices_[vertices[2]];
+  auto *v1 = getVertexP(vertices[0]);
+  auto *v2 = getVertexP(vertices[1]);
+  auto *v3 = getVertexP(vertices[2]);
 
   CVector3D diff1(v1->getModel(), v2->getModel());
   CVector3D diff2(v2->getModel(), v3->getModel());
@@ -2453,9 +2870,9 @@ verticesViewedNormal(const VertexIList &vertices) const
   if (vertices.size() < 3)
     return CVector3D(0, 1, 0);
 
-  auto *v1 = vertices_[vertices[0]];
-  auto *v2 = vertices_[vertices[1]];
-  auto *v3 = vertices_[vertices[2]];
+  auto *v1 = getVertexP(vertices[0]);
+  auto *v2 = getVertexP(vertices[1]);
+  auto *v3 = getVertexP(vertices[2]);
 
   CVector3D diff1(v1->getViewed(), v2->getViewed());
   CVector3D diff2(v2->getViewed(), v3->getViewed());
@@ -2467,14 +2884,14 @@ CVector3D
 CGeomObject3D::
 getVertexFaceNormal(uint ind) const
 {
-  auto p = vertexFaceNormal_.find(ind);
+  auto p = mesh_->vertexFaceNormal.find(ind);
 
-  if (p != vertexFaceNormal_.end())
+  if (p != mesh_->vertexFaceNormal.end())
     return (*p).second;
 
   auto *th = const_cast<CGeomObject3D *>(this);
 
-  auto &faces = th->vertexFaceList_[ind];
+  auto &faces = th->mesh_->vertexFaceList[ind];
 
   assert(! faces.empty());
 
@@ -2490,7 +2907,7 @@ getVertexFaceNormal(uint ind) const
     n += fn;
   }
 
-  th->vertexFaceNormal_[ind] = n;
+  th->mesh_->vertexFaceNormal[ind] = n;
 
   return n;
 }
@@ -2575,7 +2992,7 @@ modelToPixel(const CGeomCamera3D &camera)
 {
   position_.currentToPixel(camera);
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->modelToPixel(coordFrame_, camera);
 }
 
@@ -2583,7 +3000,7 @@ void
 CGeomObject3D::
 toCurrent(const CGeomCamera3D &)
 {
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->setCurrent(coordFrame_.transformFrom(vertex->getModel()));
 }
 
@@ -2591,7 +3008,7 @@ void
 CGeomObject3D::
 toView(const CGeomCamera3D &camera)
 {
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->setViewed(camera.transformTo(vertex->getCurrent()));
 }
 
@@ -2601,7 +3018,7 @@ toView(CGeom3DRenderer *renderer)
 {
   createViewMatrix(renderer, viewMatrix_);
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->view(viewMatrix_);
 }
 
@@ -2633,7 +3050,7 @@ void
 CGeomObject3D::
 project(const CGeomCamera3D &camera)
 {
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->project(camera);
 }
 
@@ -2641,7 +3058,7 @@ void
 CGeomObject3D::
 toPixel(const CGeomCamera3D &camera)
 {
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->toPixel(camera);
 }
 
@@ -2649,7 +3066,7 @@ void
 CGeomObject3D::
 drawSolidFaces(CGeom3DRenderer *renderer)
 {
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->drawSolid(renderer);
 }
 
@@ -2657,7 +3074,7 @@ void
 CGeomObject3D::
 drawSolidFaces(CGeomZBuffer *zbuffer)
 {
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->drawSolid(zbuffer);
 }
 
@@ -2665,7 +3082,7 @@ void
 CGeomObject3D::
 drawLineFaces(CGeom3DRenderer *renderer)
 {
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->drawLines(renderer);
 }
 
@@ -2673,7 +3090,7 @@ void
 CGeomObject3D::
 drawLineFaces(CGeomZBuffer *zbuffer)
 {
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->drawLines(zbuffer);
 }
 
@@ -2681,7 +3098,7 @@ void
 CGeomObject3D::
 drawSubLines(CGeomZBuffer *zbuffer)
 {
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->draw(zbuffer);
 }
 
@@ -2867,12 +3284,12 @@ rotateModelX(double dx)
 
 void
 CGeomObject3D::
-rotateModel(double angle, const CVector3D &axis)
+rotateModel(double angle, const CVector3D &axis, bool hier)
 {
   CMatrix3D m;
   m.setRotation(angle, axis);
 
-  transform(m, /*hier*/false);
+  transform(m, hier);
 }
 
 void
@@ -2922,17 +3339,17 @@ CGeomObject3D::
 swapXY()
 {
 #if 0
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->swapXY();
 
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->swapXY();
 #endif
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->swapXY();
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->swapXY();
 }
 
@@ -2941,17 +3358,17 @@ CGeomObject3D::
 swapYZ()
 {
 #if 0
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->swapYZ();
 
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->swapYZ();
 #endif
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->swapYZ();
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->swapYZ();
 }
 
@@ -2960,17 +3377,17 @@ CGeomObject3D::
 swapZX()
 {
 #if 0
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->swapZX();
 
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->swapZX();
 #endif
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->swapZX();
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->swapZX();
 }
 
@@ -2979,17 +3396,17 @@ CGeomObject3D::
 invertX()
 {
 #if 0
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->invertX();
 
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->invertX();
 #endif
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->invertX();
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->invertX();
 }
 
@@ -2998,17 +3415,17 @@ CGeomObject3D::
 invertY()
 {
 #if 0
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->invertY();
 
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->invertY();
 #endif
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->invertY();
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->invertY();
 }
 
@@ -3017,17 +3434,17 @@ CGeomObject3D::
 invertZ()
 {
 #if 0
-  for (auto *face : faces_)
+  for (auto *face : getFaces())
     face->invertZ();
 
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->invertZ();
 #endif
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->invertZ();
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->invertZ();
 }
 
@@ -3035,7 +3452,7 @@ void
 CGeomObject3D::
 flipX(double x)
 {
-  for (auto *face : faces_) {
+  for (auto *face : getFaces()) {
     if (face->getNormalSet()) {
       auto n = face->getNormal();
       n.scaleX(-1);
@@ -3044,14 +3461,14 @@ flipX(double x)
   }
 
 #if 0
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->flipX(x);
 #endif
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->flipX(x);
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->flipX(x);
 }
 
@@ -3059,7 +3476,7 @@ void
 CGeomObject3D::
 flipY(double y)
 {
-  for (auto *face : faces_) {
+  for (auto *face : getFaces()) {
     if (face->getNormalSet()) {
       auto n = face->getNormal();
       n.scaleY(-1);
@@ -3068,14 +3485,14 @@ flipY(double y)
   }
 
 #if 0
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->flipY(y);
 #endif
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->flipY(y);
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->flipY(y);
 }
 
@@ -3083,7 +3500,7 @@ void
 CGeomObject3D::
 flipZ(double z)
 {
-  for (auto *face : faces_) {
+  for (auto *face : getFaces()) {
     if (face->getNormalSet()) {
       auto n = face->getNormal();
       n.scaleZ(-1);
@@ -3092,14 +3509,14 @@ flipZ(double z)
   }
 
 #if 0
-  for (auto *line : lines_)
+  for (auto *line : getLines())
     line->flipZ(z);
 #endif
 
-  for (auto *vertex : vertices_)
+  for (auto *vertex : getVertices())
     vertex->flipZ(z);
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->flipZ(z);
 }
 
@@ -3124,7 +3541,7 @@ getMaterialFaces(CGeomMaterial *material) const
 {
   FaceList faces;
 
-  for (auto *face : faces_) {
+  for (auto *face : getFaces()) {
     if (face->getMaterialP() == material)
       faces.push_back(face);
   }
@@ -3188,7 +3605,7 @@ triangulate()
   for (auto *face : faces)
     face->triangulate();
 
-  for (auto *child : children_)
+  for (auto *child : children())
     child->triangulate();
 
   return true;
@@ -3198,12 +3615,14 @@ bool
 CGeomObject3D::
 splitFacesByMaterial(std::vector<CGeomObject3D *> &newObjects) const
 {
+  assert(! refObject());
+
   using Faces         = std::vector<CGeomFace3D *>;
   using MaterialFaces = std::map<CGeomMaterial *, Faces>;
 
   MaterialFaces materialFaces;
 
-  for (auto *face : faces_) {
+  for (auto *face : mesh_->faces) {
     materialFaces[face->getMaterialP()].push_back(face);
   }
 
@@ -3287,7 +3706,7 @@ updateMaterials()
 
   uint materialNum = 1;
 
-  for (auto *face : faces_) {
+  for (auto *face : getFaces()) {
     auto *faceMaterial = face->getMaterialP();
     if (faceMaterial) continue;
 
@@ -3314,18 +3733,28 @@ updateMaterials()
 
 //---
 
+bool
+CGeomObject3D::
+edgesValid() const
+{
+  return mesh_->edgesValid;
+}
+
 const CGeomObject3D::EdgeList &
 CGeomObject3D::
 getEdges() const
 {
-  if (! edgesValid_) {
+  if (refObject())
+    return refObject()->getEdges();
+
+  if (! mesh_->edgesValid) {
     auto *th = const_cast<CGeomObject3D *>(this);
 
-    th->edges_    .clear();
-    th->edgeFaces_.clear();
+    th->mesh_->edges    .clear();
+    th->mesh_->edgeFaces.clear();
 
     // add edges to faces
-    for (auto *face : th->faces_) {
+    for (auto *face : th->mesh_->faces) {
       const auto &vertices = face->getVertices();
 
       auto nv = vertices.size();
@@ -3338,10 +3767,10 @@ getEdges() const
         if (! edge)
           edge = th->addVertexVertexEdge(vertices[i1], vertices[i2]);
 
-        auto pe = th->edgeFaces_.find(edge);
+        auto pe = th->mesh_->edgeFaces.find(edge);
 
-        if (pe == th->edgeFaces_.end())
-          pe = th->edgeFaces_.insert(pe, EdgeFaces::value_type(edge, FaceList()));
+        if (pe == th->mesh_->edgeFaces.end())
+          pe = th->mesh_->edgeFaces.insert(pe, EdgeFaces::value_type(edge, FaceList()));
 
         (*pe).second.push_back(face);
       }
@@ -3349,16 +3778,16 @@ getEdges() const
 
     std::map<uint, CGeomEdge3D *> sortedEdges;
 
-    for (auto &pe : th->edgeFaces_)
+    for (auto &pe : th->mesh_->edgeFaces)
       sortedEdges[pe.first->getInd()] = pe.first;
 
     for (auto &pe : sortedEdges)
-      th->edges_.push_back(pe.second);
+      th->mesh_->edges.push_back(pe.second);
 
-    th->edgesValid_ = true;
+    th->mesh_->edgesValid = true;
   }
 
-  return edges_;
+  return mesh_->edges;
 }
 
 const CGeomEdge3D *
@@ -3383,7 +3812,7 @@ getFaceEdges(const CGeomFace3D *face) const
 
   EdgeList edges;
 
-  for (const auto &pe : edgeFaces_) {
+  for (const auto &pe : mesh_->edgeFaces) {
     bool found = false;
 
     for (auto *face1 : pe.second) {
@@ -3408,9 +3837,9 @@ getEdgeFaces(const CGeomEdge3D *edge) const
 
   (void) getEdges();
 
-  auto pe = edgeFaces_.find(const_cast<CGeomEdge3D *>(edge));
+  auto pe = mesh_->edgeFaces.find(const_cast<CGeomEdge3D *>(edge));
 
-  if (pe != edgeFaces_.end())
+  if (pe != mesh_->edgeFaces.end())
     faces = (*pe).second;
 
   return faces;
@@ -3424,7 +3853,7 @@ getVertexEdges(const CGeomVertex3D *v) const
 
   (void) getEdges();
 
-  for (auto &edge : edges_) {
+  for (auto &edge : mesh_->edges) {
     if (! edge->hasVertex(v->getInd()))
       continue;
 
@@ -3445,7 +3874,7 @@ getVertexFaces(const CGeomVertex3D *v) const
 {
   std::set<CGeomFace3D *> faceSet;
 
-  for (auto &face : faces_) {
+  for (auto &face : getFaces()) {
     if (! face->hasVertex(v->getInd()))
       continue;
 
@@ -3466,8 +3895,8 @@ getVertexVertexEdge(uint v1, uint v2) const
 {
   if (v1 < v2) std::swap(v1, v2);
 
-  auto p1 = vertexVertexEdgeMap_.find(v1);
-  if (p1 == vertexVertexEdgeMap_.end())
+  auto p1 = mesh_->vertexVertexEdgeMap.find(v1);
+  if (p1 == mesh_->vertexVertexEdgeMap.end())
     return nullptr;
 
   auto p2 = (*p1).second.find(v2);
@@ -3485,9 +3914,9 @@ addVertexVertexEdge(uint v1, uint v2)
 
   auto *edge = CGeometry3DInst->createEdge3D(this, v1, v2);
 
-  edge->setInd(++edgeInd_);
+  edge->setInd(++mesh_->edgeInd);
 
-  vertexVertexEdgeMap_[v1][v2] = edge;
+  mesh_->vertexVertexEdgeMap[v1][v2] = edge;
 
   return edge;
 }
@@ -3520,7 +3949,7 @@ mergeVertices(uint vind1, uint vind2)
   // remove other vertex
   removeMergedVertex(vind2, vind1);
 
-  edgesValid_ = false;
+  mesh_->edgesValid = false;
 
   return vind1;
 }
@@ -3529,7 +3958,9 @@ void
 CGeomObject3D::
 removeMergedVertex(uint oldInd, uint newInd)
 {
-  for (auto *face : faces_) {
+  assert(! refObject());
+
+  for (auto *face : mesh_->faces) {
     auto b1 = face->hasVertex(oldInd);
     if (! b1) continue;
 

@@ -428,6 +428,10 @@ Tcl_Obj *matrixToObj(const CMatrix3D &m) {
   return CTclMatrix3D::newObj(m);
 }
 
+Tcl_Obj *array2DToObj(const CArray2D<double> &a) {
+  return CTclArray2D::newObj(a);
+}
+
 CTcl::RealList pointToRealArray(const CPoint3D &p) {
   CTcl::RealList realList;
 
@@ -570,8 +574,9 @@ CTCL_DCL_OBJECT_PROC(App, deleteVertices, deleteVerticesProc, this)
 
 CTCL_DCL_OBJECT_PROC(App, animateReal, animateRealProc, this)
 
-CTCL_DCL_OBJECT_PROC(App, readModel, readModelProc, this)
-CTCL_DCL_OBJECT_PROC(App, writeObj , writeObjProc , this)
+CTCL_DCL_OBJECT_PROC(App, addModelDir, addModelDirProc, this)
+CTCL_DCL_OBJECT_PROC(App, readModel  , readModelProc  , this)
+CTCL_DCL_OBJECT_PROC(App, writeObj   , writeObjProc   , this)
 
 CTCL_DCL_OBJECT_PROC (App, vector     , vectorProc    , this)
 CTCL_DCL_TCL_OBJ_PROC(App, get_vector , getVectorProc , this)
@@ -582,6 +587,11 @@ CTCL_DCL_OBJECT_PROC (App, matrix     , matrixProc    , this)
 CTCL_DCL_TCL_OBJ_PROC(App, get_matrix , getMatrixProc , this)
 CTCL_DCL_TCL_OBJ_PROC(App, set_matrix , setMatrixProc , this)
 CTCL_DCL_OBJECT_PROC (App, calc_matrix, calcMatrixProc, this)
+
+CTCL_DCL_OBJECT_PROC (App, array2D     , array2DProc    , this)
+CTCL_DCL_TCL_OBJ_PROC(App, get_array2D , getArray2DProc , this)
+CTCL_DCL_TCL_OBJ_PROC(App, set_array2D , setArray2DProc , this)
+CTCL_DCL_OBJECT_PROC (App, calc_array2D, calcArray2DProc, this)
 
 App::
 App()
@@ -669,6 +679,9 @@ loadModel(const std::string &fileName, CGeom3DType format, LoadData &loadData)
     return false;
   }
 
+  for (const auto &dir : modelDirs_)
+    im->addModelDir(dir);
+
   CFile file(fileName);
 
   if (! im->read(file)) {
@@ -736,6 +749,8 @@ initTcl()
   tcl_ = new CTcl;
 
   CTclVector3D::init(tcl_->interp());
+  CTclMatrix3D::init(tcl_->interp());
+  CTclArray2D ::init(tcl_->interp());
 
   tcl_->createAlias("echo", "puts");
 
@@ -824,8 +839,9 @@ initTcl()
   CTCL_OBJECT_PROC(tcl_, animateReal, App, this);
 
   // import/export
-  CTCL_OBJECT_PROC(tcl_, readModel, App, this)
-  CTCL_OBJECT_PROC(tcl_, writeObj , App, this)
+  CTCL_OBJECT_PROC(tcl_, addModelDir, App, this)
+  CTCL_OBJECT_PROC(tcl_, readModel  , App, this)
+  CTCL_OBJECT_PROC(tcl_, writeObj   , App, this)
 
   // vector
   CTCL_OBJECT_PROC (tcl_, vector     , App, this);
@@ -838,6 +854,12 @@ initTcl()
   CTCL_TCL_OBJ_PROC(tcl_, get_matrix , App, this);
   CTCL_TCL_OBJ_PROC(tcl_, set_matrix , App, this);
   CTCL_OBJECT_PROC (tcl_, calc_matrix, App, this);
+
+  // array2D
+  CTCL_OBJECT_PROC (tcl_, array2D     , App, this);
+  CTCL_TCL_OBJ_PROC(tcl_, get_array2D , App, this);
+  CTCL_TCL_OBJ_PROC(tcl_, set_array2D , App, this);
+  CTCL_OBJECT_PROC (tcl_, calc_array2D, App, this);
 
   //---
 
@@ -1040,7 +1062,7 @@ setAppValueProc(const CTclUtil::StringList &args)
 
     canvas()->camera()->setRoll(degToRad(roll));
   }
-  else if (name == "camera_distance") {
+  else if (name == "camera.distance") {
     double distance;
     if (! stringToReal(args[1], distance))
       return tclErrorMsg("Invalid distance '" + args[1] + "'");
@@ -1140,12 +1162,66 @@ setViewportValueProc(const CTclUtil::StringList &args)
 
     canvas()->setBBox(viewportData, bbox);
   }
-  else if (name == "camera_distance") {
+  else if (name == "camera.distance") {
     double distance;
     if (! stringToReal(args[2], distance))
       return tclErrorMsg("Invalid distance '" + args[1] + "'");
 
     viewportData->camera->setDistance(distance);
+  }
+  else if (name == "camera.origin.x") {
+    double x;
+    if (! stringToReal(args[2], x))
+      return tclErrorMsg("Invalid x '" + args[1] + "'");
+
+    auto p = viewportData->camera->origin(); p.setX(x);
+
+    viewportData->camera->setOrigin(p);
+  }
+  else if (name == "camera.origin.y") {
+    double y;
+    if (! stringToReal(args[2], y))
+      return tclErrorMsg("Invalid y '" + args[1] + "'");
+
+    auto p = viewportData->camera->origin(); p.setY(y);
+
+    viewportData->camera->setOrigin(p);
+  }
+  else if (name == "camera.origin.z") {
+    double z;
+    if (! stringToReal(args[2], z))
+      return tclErrorMsg("Invalid z '" + args[1] + "'");
+
+    auto p = viewportData->camera->origin(); p.setZ(z);
+
+    viewportData->camera->setOrigin(p);
+  }
+  else if (name == "camera.position.x") {
+    double x;
+    if (! stringToReal(args[2], x))
+      return tclErrorMsg("Invalid x '" + args[1] + "'");
+
+    auto p = viewportData->camera->position(); p.setX(x);
+
+    viewportData->camera->setPosition(p);
+  }
+  else if (name == "camera.position.y") {
+    double y;
+    if (! stringToReal(args[2], y))
+      return tclErrorMsg("Invalid y '" + args[1] + "'");
+
+    auto p = viewportData->camera->position(); p.setY(y);
+
+    viewportData->camera->setPosition(p);
+  }
+  else if (name == "camera.position.z") {
+    double z;
+    if (! stringToReal(args[2], z))
+      return tclErrorMsg("Invalid z '" + args[1] + "'");
+
+    auto p = viewportData->camera->position(); p.setZ(z);
+
+    viewportData->camera->setPosition(p);
   }
   else if (name == "clip") {
     if (args.size() < 4)
@@ -2566,7 +2642,17 @@ setObjectValueProc(const StringList &args)
     else
       return tclErrorMsg("Invalid scale value");
 
-    object->scale(sx, sy, sz, /*hier*/true);
+    bool transform = false;
+
+    if (args.size() > 3) {
+      if (args[3] == "set")
+        transform = true;
+    }
+
+    if (transform)
+      object->setScale(sx, sy, sz);
+    else
+      object->scale(sx, sy, sz, /*hier*/true);
 
     canvas()->updateScene(/*updateBBox*/false);
   }
@@ -2582,7 +2668,17 @@ setObjectValueProc(const StringList &args)
     if (! stringToReal(args[3], a))
       return tclErrorMsg("Invalid rotate angle '" + args[3] + "'");
 
-    object->rotateModel(degToRad(a), v, /*hier*/true);
+    bool transform = false;
+
+    if (args.size() > 4) {
+      if (args[4] == "set")
+        transform = true;
+    }
+
+    if (transform)
+      object->setRotate(degToRad(a), v);
+    else
+      object->rotateModel(degToRad(a), v, /*hier*/true);
 
     canvas()->updateScene(/*updateBBox*/false);
   }
@@ -4097,6 +4193,18 @@ writeObjProc(const CTclUtil::StringList &args)
   return TCL_OK;
 }
 
+int
+App::
+addModelDirProc(const CTclUtil::StringList &args)
+{
+  if (args.size() != 1)
+    return tclErrorMsg("Invalid args");
+
+  modelDirs_.push_back(args[0]);
+
+  return TCL_OK;
+}
+
 //---
 
 int
@@ -4507,6 +4615,93 @@ calcMatrixProc(const CTclUtil::StringList &args)
 
   return TCL_OK;
 }
+
+//---
+
+int
+App::
+array2DProc(const CTclUtil::StringList &args)
+{
+  CArray2D<double> m;
+
+  if (args.size() >= 1) {
+    if (! CTclArray2D::fromString(args[0], m))
+      return tclErrorMsg("Invalid array2D '" + args[0] + "'");
+  }
+
+  tcl()->setResult(array2DToObj(m));
+
+  return TCL_OK;
+}
+
+int
+App::
+getArray2DProc(const std::vector<Tcl_Obj *> &objs)
+{
+  if (objs.size() < 2)
+    return tclErrorMsg("Invalid args");
+
+  if (! CTclArray2D::isObj(objs[0]))
+    return tclErrorMsg("Invalid array2D");
+
+  CArray2D<double> m;
+  if (! objToArray2D(objs[0], m))
+    return tclErrorMsg("Invalid array2D");
+
+  auto name = CTclUtil::stringFromObj(objs[1]);
+
+  return tclErrorMsg("Invalid value name '" + name + "'");
+
+  //return TCL_OK;
+}
+
+int
+App::
+setArray2DProc(const std::vector<Tcl_Obj *> &objs)
+{
+  if (objs.size() < 2)
+    return tclErrorMsg("Invalid args");
+
+  if (! CTclArray2D::isObj(objs[0]))
+    return tclErrorMsg("Invalid array2D");
+
+  CArray2D<double> m;
+  if (! objToArray2D(objs[0], m))
+    return tclErrorMsg("Invalid array2D");
+
+  auto *res = objs[0];
+
+  auto name = CTclUtil::stringFromObj(objs[1]);
+
+  if (name != "")
+    return tclErrorMsg("Invalid value name '" + name + "'");
+
+  if (CTclArray2D::setObj(tcl_->interp(), objs[0], m) == TCL_ERROR)
+    return tclErrorMsg("Invalid array2D");
+
+  tcl()->setResult(res);
+
+  return TCL_OK;
+}
+
+int
+App::
+calcArray2DProc(const CTclUtil::StringList &args)
+{
+  if (args.size() < 2)
+    return tclErrorMsg("Invalid args");
+
+  CArray2D<double> m;
+  if (! stringToArray2D(args[0], m))
+    return tclErrorMsg("Invalid array2D '" + args[0] + "'");
+
+  auto name = args[1];
+
+  return tclErrorMsg("Invalid value name '" + name + "'");
+
+  return TCL_OK;
+}
+
 //---
 
 void
@@ -5121,6 +5316,26 @@ objToMatrix(Tcl_Obj *obj, CMatrix3D &m) const
     return false;
 
   if (CTclMatrix3D::getObj(tcl_->interp(), obj, m) == TCL_ERROR)
+    return false;
+
+  return true;
+}
+
+bool
+App::
+stringToArray2D(const std::string &str, CArray2D<double> &m) const
+{
+  return CTclArray2D::fromString(str, m);
+}
+
+bool
+App::
+objToArray2D(Tcl_Obj *obj, CArray2D<double> &m) const
+{
+  if (! CTclArray2D::isObj(obj))
+    return false;
+
+  if (CTclArray2D::getObj(tcl_->interp(), obj, m) == TCL_ERROR)
     return false;
 
   return true;

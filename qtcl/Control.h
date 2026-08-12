@@ -7,6 +7,7 @@ class CQRealSpin;
 
 class QTabWidget;
 class QCheckBox;
+class QPushButton;
 
 namespace CQTclModel3DView {
 
@@ -82,6 +83,8 @@ class Control : public QFrame {
   void showOverviewCameraSlot(int);
   void showOverviewSolidSlot(int);
 
+  void cameraResetSlot();
+
  private:
   App* app_ { nullptr };
 
@@ -131,6 +134,8 @@ class Control : public QFrame {
     CQRealSpin* farEdit  { nullptr };
 
     CQRealSpin* fovEdit { nullptr };
+
+    QPushButton* resetButton { nullptr };
   };
 
   CameraData cameraData_;
