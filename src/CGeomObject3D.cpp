@@ -1388,7 +1388,7 @@ bool
 CGeomObject3D::
 isAnimObject() const
 {
-  return (! skeleton_->nodes.empty());
+  return (skeleton_ && ! skeleton_->nodes.empty());
 }
 
 bool

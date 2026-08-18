@@ -946,17 +946,17 @@ drawObject(CGeomObject3D *object)
   if (! object->getVisible())
     return;
 
-  auto *object1 = dynamic_cast<GeomObject *>(object);
-  assert(object1);
+  auto *geomObject = dynamic_cast<GeomObject *>(object);
+  assert(geomObject);
 
-  auto *particle = object1->particle();
+  auto *particle = geomObject->particle();
 
   if (particle && particle->isDead())
     return;
 
   //---
 
-  auto *geomObject1 = object1;
+  auto *geomObject1 = geomObject;
 
   if (object->refObject()) {
     geomObject1 = dynamic_cast<GeomObject *>(object->refObject());
@@ -994,7 +994,7 @@ drawObject(CGeomObject3D *object)
 
   // model matrix
   //auto modelMatrix = CMatrix3DH::identity();
-  auto modelMatrix = object1->getHierTransform();
+  auto modelMatrix = geomObject->getHierTransform();
 
 #if 0
   if (refObject && refObject != object)
@@ -1276,10 +1276,10 @@ drawSelection()
   drawSelectionData_.lineIndex = 0;
 
   for (auto *object : scene->getObjects()) {
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
+    auto *geomObject = dynamic_cast<GeomObject *>(object);
+    assert(geomObject);
 
-    auto modelMatrix = CMatrix3DH(object1->getHierTransform());
+    auto modelMatrix = CMatrix3DH(geomObject->getHierTransform());
 
     const auto &edges = object->getEdges();
 
@@ -1292,10 +1292,10 @@ drawSelection()
   drawSelectionData_.vertexIndex = drawSelectionData_.buffer->numPoints();
 
   for (auto *object : scene->getObjects()) {
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
+    auto *geomObject = dynamic_cast<GeomObject *>(object);
+    assert(geomObject);
 
-    auto modelMatrix = CMatrix3DH(object1->getHierTransform());
+    auto modelMatrix = CMatrix3DH(geomObject->getHierTransform());
 
     const auto &vertices = object->getVertices();
 
@@ -1808,6 +1808,8 @@ keyPressEvent(QKeyEvent *e)
 
   auto k = e->key();
 
+  //---
+
   auto bbox = this->bbox();
 
   auto d  = bbox.getMaxSize()/100.0;
@@ -1935,12 +1937,12 @@ selectFaceAt(const CPoint2D &pos, bool flip)
   CGeomFace3D *minFace = nullptr;
 
   for (auto *object : getDrawObjects()) {
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
+    auto *geomObject = dynamic_cast<GeomObject *>(object);
+    assert(geomObject);
 
     //---
 
-    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+    drawData_.modelMatrix = CMatrix3DH(geomObject->getHierTransform());
 
     //---
 
@@ -2000,12 +2002,12 @@ selectFaceIn(const CPoint2D &p1, const CPoint2D &p2, bool flip)
   std::vector<CGeomFace3D *> faces1;
 
   for (auto *object : getDrawObjects()) {
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
+    auto *geomObject = dynamic_cast<GeomObject *>(object);
+    assert(geomObject);
 
     //---
 
-    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+    drawData_.modelMatrix = CMatrix3DH(geomObject->getHierTransform());
 
     //---
 
@@ -2060,12 +2062,12 @@ selectEdgeAt(const CPoint2D &pos, bool flip)
   CGeomEdge3D *minEdge = nullptr;
 
   for (auto *object : getDrawObjects()) {
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
+    auto *geomObject = dynamic_cast<GeomObject *>(object);
+    assert(geomObject);
 
     //---
 
-    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+    drawData_.modelMatrix = CMatrix3DH(geomObject->getHierTransform());
 
     //---
 
@@ -2109,12 +2111,12 @@ selectVertexAt(const CPoint2D &pos, bool flip)
   CGeomVertex3D *minVertex = nullptr;
 
   for (auto *object : getDrawObjects()) {
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
+    auto *geomObject = dynamic_cast<GeomObject *>(object);
+    assert(geomObject);
 
     //---
 
-    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+    drawData_.modelMatrix = CMatrix3DH(geomObject->getHierTransform());
 
     //---
 
@@ -2161,12 +2163,12 @@ selectVertexIn(const CPoint2D &p1, const CPoint2D &p2, bool flip)
   std::vector<CGeomVertex3D *> vertices1;
 
   for (auto *object : getDrawObjects()) {
-    auto *object1 = dynamic_cast<GeomObject *>(object);
-    assert(object1);
+    auto *geomObject = dynamic_cast<GeomObject *>(object);
+    assert(geomObject);
 
     //---
 
-    drawData_.modelMatrix = CMatrix3DH(object1->getHierTransform());
+    drawData_.modelMatrix = CMatrix3DH(geomObject->getHierTransform());
 
     //---
 

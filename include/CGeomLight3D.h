@@ -29,6 +29,8 @@ class CGeomLight3DData {
    ambient_(ambient), diffuse_(diffuse), specular_(specular) {
   }
 
+  virtual ~CGeomLight3DData() { }
+
   //---
 
   // color
@@ -293,7 +295,7 @@ class CGeomLight3D {
   // point light
 
   double getPointRadius() const { return data_.getPointRadius(); }
-  void setPointRadius(double r) { data_.setPointRadius(r); }
+  virtual void setPointRadius(double r) { data_.setPointRadius(r); }
 
   //---
 
