@@ -250,30 +250,30 @@ class CGeomLight3D {
   //---
 
   const uint &id() const { return id_; }
-  void setId(const uint &v) { id_ = v; }
+  void setId(const uint &v) { id_ = v; notifyChanged(); }
 
   const std::string &name() const { return name_; }
-  void setName(const std::string &s) { name_ = s; }
+  void setName(const std::string &s) { name_ = s; notifyChanged(); }
 
   //---
 
   // position
 
   virtual const CPoint3D &getPosition() const { return position_; }
-  virtual void setPosition(const CPoint3D &point) { position_ = point; }
+  virtual void setPosition(const CPoint3D &point) { position_ = point; notifyChanged(); }
 
   //---
 
   // colors
 
   const CRGBA &getAmbient() const { return data_.getAmbient (); }
-  virtual void setAmbient(const CRGBA &rgba) { data_.setAmbient (rgba); }
+  virtual void setAmbient(const CRGBA &rgba) { data_.setAmbient (rgba); notifyChanged(); }
 
   const CRGBA &getDiffuse() const { return data_.getDiffuse (); }
-  virtual void setDiffuse(const CRGBA &rgba) { data_.setDiffuse (rgba); }
+  virtual void setDiffuse(const CRGBA &rgba) { data_.setDiffuse (rgba); notifyChanged(); }
 
   const CRGBA &getSpecular() const { return data_.getSpecular(); }
-  virtual void setSpecular(const CRGBA &rgba) { data_.setSpecular(rgba); }
+  virtual void setSpecular(const CRGBA &rgba) { data_.setSpecular(rgba); notifyChanged(); }
 
   //---
 
@@ -282,40 +282,43 @@ class CGeomLight3D {
   bool getDirectional() const { return data_.getDirectional(); }
 
   const Type &getType() const { return data_.getType(); }
-  virtual void setType(const Type &t) { data_.setType(t); }
+  virtual void setType(const Type &t) { data_.setType(t); notifyChanged(); }
 
   //---
 
   // directional light
   virtual const CVector3D &getDirection() const { return data_.getDirection(); }
-  virtual void setDirection(const CVector3D &dir) { data_.setDirection(dir); }
+  virtual void setDirection(const CVector3D &dir) { data_.setDirection(dir); notifyChanged(); }
 
   //---
 
   // point light
 
   double getPointRadius() const { return data_.getPointRadius(); }
-  virtual void setPointRadius(double r) { data_.setPointRadius(r); }
+  virtual void setPointRadius(double r) { data_.setPointRadius(r); notifyChanged(); }
 
   //---
 
   // spot light
 
   const CVector3D &getSpotDirection() const { return data_.getSpotDirection(); }
-  virtual void setSpotDirection(const CVector3D &dir) { data_.setSpotDirection(dir); }
+  virtual void setSpotDirection(const CVector3D &dir) {
+    data_.setSpotDirection(dir); notifyChanged(); }
 
   virtual double getSpotEffect(const CPoint3D &point) const {
     return data_.getSpotEffect(getPosition(), point);
   }
 
   double getSpotExponent() const { return data_.getSpotExponent(); }
-  virtual void setSpotExponent(double exponent) { data_.setSpotExponent(exponent); }
+  virtual void setSpotExponent(double exponent) {
+    data_.setSpotExponent(exponent); notifyChanged(); }
 
   double getSpotCutOffAngle() const { return data_.getSpotCutOffAngle(); }
-  virtual void setSpotCutOffAngle(double a) { data_.setSpotCutOffAngle(a); }
+  virtual void setSpotCutOffAngle(double a) { data_.setSpotCutOffAngle(a); notifyChanged(); }
 
   double getSpotOuterCutOffAngle() const { return data_.getSpotOuterCutOffAngle(); }
-  virtual void setSpotOuterCutOffAngle(double a) { data_.setSpotOuterCutOffAngle(a); }
+  virtual void setSpotOuterCutOffAngle(double a) {
+    data_.setSpotOuterCutOffAngle(a); notifyChanged(); }
 
   //---
 
@@ -324,19 +327,19 @@ class CGeomLight3D {
   double getConstantAttenuation() const { return data_.getConstantAttenuation(); }
 
   virtual void setConstantAttenuation(double attenuation) {
-    data_.setConstantAttenuation(attenuation);
+    data_.setConstantAttenuation(attenuation); notifyChanged();
   }
 
   double getLinearAttenuation() const { return data_.getLinearAttenuation(); }
 
   virtual void setLinearAttenuation(double attenuation) {
-    data_.setLinearAttenuation(attenuation);
+    data_.setLinearAttenuation(attenuation); notifyChanged();
   }
 
   double getQuadraticAttenuation() const { return data_.getQuadraticAttenuation(); }
 
   virtual void setQuadraticAttenuation(double attenuation) {
-    data_.setQuadraticAttenuation(attenuation);
+    data_.setQuadraticAttenuation(attenuation); notifyChanged();
   }
 
   virtual double calcAttenuation(double dist) const {
@@ -347,13 +350,17 @@ class CGeomLight3D {
 
   // enabled
   bool getEnabled() const { return enabled_; }
-  virtual void setEnabled(bool enabled) { enabled_ = enabled; }
+  virtual void setEnabled(bool enabled) { enabled_ = enabled; notifyChanged(); }
 
   //---
 
   // light
   void lightPoint(CRGBA &rgba, const CPoint3D &point, const CVector3D &normal,
                   const CGeomMaterial &material, bool bothSides=false) const;
+
+  //---
+
+  virtual void notifyChanged() { }
 
  protected:
   CGeomLight3DMgr* mgr_     { nullptr };

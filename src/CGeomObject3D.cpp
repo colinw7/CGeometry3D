@@ -1481,7 +1481,7 @@ getNode(int i) const
 {
   static CGeomNodeData noData;
 
-  if (i >= 0) {
+  if (i >= 0 && skeleton_) {
     auto pn = skeleton_->nodes.find(i);
 
     if (pn != skeleton_->nodes.end())
@@ -1742,7 +1742,7 @@ getNodeAnimHierTransform(const CGeomNodeData &nodeData, const std::string &animN
     else {
       auto *animObject = getAnimObject();
 
-      if (animObject != this) {
+      if (animObject && animObject != this) {
         const auto &pnode1 = animObject->getNode(parentId);
 
         if (pnode1.isValid())
