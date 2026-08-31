@@ -1391,6 +1391,13 @@ isAnimObject() const
   return (skeleton_ && ! skeleton_->nodes.empty());
 }
 
+uint
+CGeomObject3D::
+numNodes() const
+{
+  return (skeleton_ ? uint(skeleton_->nodes.size()) : 0U);
+}
+
 bool
 CGeomObject3D::
 hasNode(int i) const

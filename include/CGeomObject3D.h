@@ -436,6 +436,7 @@ class CGeomObject3D {
   CGeomObject3D *getAnimObject() const;
   bool isAnimObject() const;
 
+  uint numNodes() const;
   bool hasNode(int i) const;
   void addNode(int i, const CGeomNodeData &data);
 
