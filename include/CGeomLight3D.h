@@ -69,7 +69,7 @@ class CGeomLight3DData {
 
   //---
 
-  // spot light
+  // spot light (angles in degrees)
 
   const CVector3D &getSpotDirection() const { return spotData_.direction; }
   void setSpotDirection(const CVector3D &dir) { spotData_.direction = dir; }
@@ -104,6 +104,11 @@ class CGeomLight3DData {
 
     return 1.0/(attenuation_.constant + dist*(attenuation_.linear + dist*attenuation_.quadratic));
   }
+
+  //---
+
+  float getPower() const { return power_; }
+  void setPower(float r) { power_ = r; }
 
   //---
 
@@ -156,6 +161,8 @@ class CGeomLight3DData {
   PointData     pointData_;
   SpotData      spotData_;
   Attenuation   attenuation_;
+
+  float power_ { 1.0f };
 };
 
 //------
@@ -345,6 +352,11 @@ class CGeomLight3D {
   virtual double calcAttenuation(double dist) const {
     return data_.calcAttenuation(dist);
   }
+
+  //---
+
+  float getPower() const { return data_.getPower(); }
+  void setPower(float r) { data_.setPower(r); }
 
   //---
 
