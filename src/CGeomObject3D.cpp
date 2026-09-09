@@ -205,18 +205,14 @@ CMatrix3D
 CGeomObject3D::
 getTransform() const
 {
-  if (transformData_.global)
-    return transformData_.transform;
-  else
-    return transformData_.translate*transformData_.rotate*transformData_.scale;
+  return transformData_.transform;
 }
 
 void
 CGeomObject3D::
 setTransform(const CMatrix3D &m)
 {
-  transformData_.global = true;
-
+  transformData_.global    = true;
   transformData_.transform = m;
 }
 
@@ -245,6 +241,7 @@ setTranslate(const CMatrix3D &m)
 {
   transformData_.global    = false;
   transformData_.translate = m;
+  transformData_.transform = transformData_.translate*transformData_.rotate*transformData_.scale;
 }
 
 CMatrix3D
@@ -270,8 +267,60 @@ void
 CGeomObject3D::
 setRotate(const CMatrix3D &m)
 {
+  transformData_.global    = false;
+  transformData_.euler     = false;
+  transformData_.rotate    = m;
+  transformData_.transform = transformData_.translate*transformData_.rotate*transformData_.scale;
+}
+
+void
+CGeomObject3D::
+setRotatePitch(double pitch)
+{
+  setRotateAngles(CPoint3D(pitch, transformData_.angles.y, transformData_.angles.z));
+}
+
+void
+CGeomObject3D::
+setRotateYaw(double yaw)
+{
+  setRotateAngles(CPoint3D(transformData_.angles.x, yaw, transformData_.angles.z));
+}
+
+void
+CGeomObject3D::
+setRotateRoll(double roll)
+{
+  setRotateAngles(CPoint3D(transformData_.angles.x, transformData_.angles.y, roll));
+}
+
+CPoint3D
+CGeomObject3D::
+getRotateAngles() const
+{
+  if (transformData_.global)
+    return CPoint3D(0, 0, 0);
+
+  if (transformData_.euler)
+    return transformData_.angles;
+  else
+    return CPoint3D(0, 0, 0);
+}
+
+void
+CGeomObject3D::
+setRotateAngles(const CPoint3D &a)
+{
   transformData_.global = false;
-  transformData_.rotate = m;
+  transformData_.euler  = true;
+  transformData_.angles = a;
+
+  transformData_.rotate =
+    CMatrix3D::rotation(transformData_.angles.x, CVector3D(1.0, 0.0, 0.0))*
+    CMatrix3D::rotation(transformData_.angles.y, CVector3D(0.0, 1.0, 0.0))*
+    CMatrix3D::rotation(transformData_.angles.z, CVector3D(0.0, 0.0, 1.0));
+
+  transformData_.transform = transformData_.translate*transformData_.rotate*transformData_.scale;
 }
 
 CMatrix3D
@@ -297,8 +346,9 @@ void
 CGeomObject3D::
 setScale(const CMatrix3D &m)
 {
-  transformData_.global = false;
-  transformData_.scale  = m;
+  transformData_.global    = false;
+  transformData_.scale     = m;
+  transformData_.transform = transformData_.translate*transformData_.rotate*transformData_.scale;
 }
 
 CMatrix3D

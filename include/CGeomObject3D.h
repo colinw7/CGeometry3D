@@ -605,6 +605,13 @@ class CGeomObject3D {
   void setRotate(double angle, const CVector3D &axis);
   void setRotate(const CMatrix3D &m);
 
+  CPoint3D getRotateAngles() const;
+  void setRotateAngles(const CPoint3D &a);
+
+  void setRotatePitch(double a);
+  void setRotateYaw  (double a);
+  void setRotateRoll (double a);
+
   CMatrix3D getScale() const;
   void setScale(double x, double y, double z);
   void setScale(const CMatrix3D &m);
@@ -853,11 +860,15 @@ class CGeomObject3D {
 
   struct TransformData {
     bool global { true };
-    CMatrix3D transform { CMatrix3D::identity() };
+    bool euler  { true };
 
     CMatrix3D translate { CMatrix3D::identity() };
-    CMatrix3D rotate    { CMatrix3D::identity() };
     CMatrix3D scale     { CMatrix3D::identity() };
+
+    CMatrix3D rotate { CMatrix3D::identity() };
+    CPoint3D  angles { 0.0, 0.0, 0.0 };
+
+    CMatrix3D transform { CMatrix3D::identity() };
   };
 
   TransformData transformData_;
