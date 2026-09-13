@@ -339,7 +339,7 @@ setScale(double x, double y, double z)
 {
   auto m = CMatrix3D::scale(x, y, z);
 
-  setTranslate(m);
+  setScale(m);
 }
 
 void
