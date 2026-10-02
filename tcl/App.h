@@ -83,7 +83,7 @@ class App {
   bool stringToPoint(const std::string &str, CPoint3D &p) const;
 
  public:
-  int readObjProc(const std::vector<std::string> &args);
+  int readModelProc(const std::vector<std::string> &args);
 
  private:
   CGeomScene3D* scene_ { nullptr };

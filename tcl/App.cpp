@@ -65,7 +65,7 @@ std::string encodeMaterialId(uint materialId) {
 }
 
 std::string encodeMaterial(const CGeomMaterial *material) {
-  return "m:" + std::to_string(material->id());
+  return encodeMaterialId(material->id());
 }
 
 bool decodeMaterialId(const std::string &id, int &materialId) {
@@ -108,7 +108,7 @@ std::string encodeObjectVertexId(const CGeomObject3D *object, int vertexId) {
   return encodeObjectVertexId(object->getInd(), vertexId);
 }
 
-std::string encodeObjectVertex(const CGeomVertex3D *vertex) {
+std::string encodeVertex(const CGeomVertex3D *vertex) {
   return encodeObjectVertexId(vertex->getObject()->getInd(), vertex->getInd());
 }
 
@@ -139,7 +139,7 @@ std::string encodeObjectFaceId(uint objId, uint faceId) {
   return "f:" + std::to_string(objId) + ":" + std::to_string(faceId);
 }
 
-std::string encodeObjectFace(CGeomFace3D *face) {
+std::string encodeFace(CGeomFace3D *face) {
   return encodeObjectFaceId(face->getObject()->getInd(), face->getInd());
 }
 
@@ -170,8 +170,8 @@ std::string encodeObjectEdgeId(uint objId, uint edgeId) {
   return "e:" + std::to_string(objId) + ":" + std::to_string(edgeId);
 }
 
-std::string encodeObjectEdge(CGeomObject3D *object, CGeomEdge3D *edge) {
-  return encodeObjectEdgeId(object->getInd(), edge->getInd());
+std::string encodeEdge(CGeomEdge3D *edge) {
+  return encodeObjectEdgeId(edge->getObject()->getInd(), edge->getInd());
 }
 
 bool decodeObjectEdgeId(const std::string &id, int &objId, int &edgeId) {
@@ -197,9 +197,41 @@ bool decodeObjectEdgeId(const std::string &id, int &objId, int &edgeId) {
   return true;
 }
 
-int errorMsg(const std::string &msg) {
+std::string encodeObjectLineId(uint objId, uint lineId) {
+  return "l:" + std::to_string(objId) + ":" + std::to_string(lineId);
+}
+
+bool decodeObjectLineId(const std::string &id, int &objId, int &lineId) {
+  if (id == "null") { objId = -1; return true; }
+
+  if (id.size() < 3 || id.substr(0, 2) != "l:")
+    return false;
+
+  uint i1 = 2;
+  uint i2 = i1;
+
+  while (id[i2] && id[i2] != ':')
+    ++i2;
+
+  if (! stringToInteger(id.substr(i1, i2 - i1), objId))
+    return false;
+
+  ++i2;
+
+  if (! stringToInteger(id.substr(i2), lineId))
+    return false;
+
+  return true;
+}
+
+int tclErrorMsg(const std::string &msg) {
   std::cerr << msg << "\n";
   return TCL_ERROR;
+}
+
+bool errorMsg(const std::string &msg) {
+  std::cerr << msg << "\n";
+  return false;
 }
 
 CTcl::RealList pointToRealArray(const CPoint3D &p) {
@@ -231,7 +263,7 @@ double degToRad(double d) {
 
 namespace CTclGeometry3D {
 
-CTCL_DCL_OBJECT_PROC(App, readObj, readObjProc, this)
+CTCL_DCL_OBJECT_PROC(App, readModel, readModelProc, this)
 
 App::
 App()
@@ -296,10 +328,10 @@ initTcl()
   tcl_->createObjCommand("deleteObjects", deleteObjectsProc, this);
 
   // import/export
-//tcl_->createObjCommand("readObj" , readObjProc , this);
-  tcl_->createObjCommand("writeObj", writeObjProc, this);
+//tcl_->createObjCommand("readModel", readModelProc, this);
+  tcl_->createObjCommand("writeObj" , writeObjProc , this);
 
-  CTCL_OBJECT_PROC(tcl_, readObj, App, this)
+  CTCL_OBJECT_PROC(tcl_, readModel, App, this)
 }
 
 int
@@ -320,7 +352,7 @@ addObjectProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj *
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 0)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto name = "object." + std::to_string(app->scene_->getObjects().size() + 1);
 
@@ -343,15 +375,15 @@ addVertexProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj *
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
   if (! app->decodeObject(args[0], object))
-    return errorMsg("Invalid object id '" + args[0] + "'");
+    return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   CPoint3D p;
   if (! app->stringToPoint(args[1], p))
-    return errorMsg("Invalid point '" + args[1] + "'");
+    return tclErrorMsg("Invalid point '" + args[1] + "'");
 
   auto vind = object->addVertex(p);
 
@@ -370,11 +402,11 @@ addFaceProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * c
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
   if (! app->decodeObject(args[0], object))
-    return errorMsg("Invalid object id '" + args[0] + "'");
+    return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   std::vector<std::string> strs;
   app->tcl_->splitList(args[1], strs);
@@ -384,15 +416,13 @@ addFaceProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * c
   for (const auto &str : strs) {
     int objId1, vertexId;
     if (! decodeObjectVertexId(str, objId1, vertexId) || objId1 != int(object->getInd()))
-      return errorMsg("Invalid vertex '" + str + "'");
+      return tclErrorMsg("Invalid vertex '" + str + "'");
 
     vertices.push_back(vertexId);
   }
 
-  if (vertices.size() < 3) {
-    std::cerr << "Invalid number of faces\n";
-    return TCL_ERROR;
-  }
+  if (vertices.size() < 3)
+    return tclErrorMsg("Invalid number of faces");
 
   auto faceId = object->addFace(vertices);
 
@@ -411,7 +441,7 @@ addMaterialProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto name = args[0];
 
@@ -436,7 +466,7 @@ addTextureProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj 
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto name = args[0];
 
@@ -466,16 +496,16 @@ addPlaneProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * 
 
   if      (args.size() == 2) {
     if (! stringToReal(args[0], w) || ! stringToReal(args[1], h))
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
   }
   else if (args.size() == 1) {
     if (! stringToReal(args[0], w))
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     h = w;
   }
   else if (! args.empty())
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto c = app->cursor();
 
@@ -507,10 +537,10 @@ addCubeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * c
 
   if      (args.size() == 1) {
     if (! stringToReal(args[0], r))
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
   }
   else if (! args.empty())
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto c = app->cursor();
 
@@ -543,16 +573,16 @@ addConeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * c
 
   if      (args.size() == 2) {
     if (! stringToReal(args[0], w) || ! stringToReal(args[1], h))
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
   }
   else if (args.size() == 1) {
     if (! stringToReal(args[0], w))
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     h = w;
   }
   else if (! args.empty())
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto c = app->cursor();
 
@@ -585,16 +615,16 @@ addCylinderProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
 
   if      (args.size() == 2) {
     if (! stringToReal(args[0], w) || ! stringToReal(args[1], h))
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
   }
   else if (args.size() == 1) {
     if (! stringToReal(args[0], w))
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     h = w;
   }
   else if (! args.empty())
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto c = app->cursor();
 
@@ -626,10 +656,10 @@ addSphereProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj *
 
   if      (args.size() == 1) {
     if (! stringToReal(args[0], r))
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
   }
   else if (! args.empty())
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto c = app->cursor();
 
@@ -660,7 +690,7 @@ addTerrainProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj 
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 3)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   double width  = 1.0;
   double height = 1.0;
@@ -669,7 +699,7 @@ addTerrainProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj 
   if (! stringToReal(args[0], width) ||
       ! stringToReal(args[1], height) ||
       ! stringToReal(args[2], depth))
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   double xmin = 0.0;
   double ymin = 0.0;
@@ -840,7 +870,7 @@ getAppValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto name = args[0];
 
@@ -851,18 +881,18 @@ getAppValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
   }
   else if (name == "nearest_object") {
     if (args.size() < 2)
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     CPoint3D p;
     if (! app->stringToPoint(args[2], p))
-      return errorMsg("Invalid point '" + args[2] + "'");
+      return tclErrorMsg("Invalid point '" + args[2] + "'");
 
     auto *object = app->getNearestObject(p);
 
     app->tcl_->setResult(encodeObject(object));
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   return TCL_OK;
 }
@@ -877,19 +907,19 @@ setAppValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto name = args[0];
 
   if      (name == "cursor") {
     CPoint3D p;
     if (! app->stringToPoint(args[1], p))
-      return errorMsg("Invalid point '" + args[1] + "'");
+      return tclErrorMsg("Invalid point '" + args[1] + "'");
 
     app->setCursor(p);
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   return TCL_OK;
 }
@@ -904,11 +934,11 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
   if (! app->decodeObject(args[0], object))
-    return errorMsg("Invalid object id '" + args[0] + "'");
+    return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   auto name = args[1];
 
@@ -918,7 +948,7 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
     std::vector<std::string> faceIds1;
 
     for (auto *face : faces) {
-      auto faceId1 = encodeObjectFace(face);
+      auto faceId1 = encodeFace(face);
 
       faceIds1.push_back(faceId1);
     }
@@ -931,7 +961,7 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
     std::vector<std::string> edgeIds1;
 
     for (auto *edge : edges) {
-      auto edgeId1 = encodeObjectEdge(object, edge);
+      auto edgeId1 = encodeEdge(edge);
 
       edgeIds1.push_back(edgeId1);
     }
@@ -944,7 +974,7 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
     std::vector<std::string> vertices1;
 
     for (auto *vertex : vertices) {
-      auto vertexId1 = encodeObjectVertex(vertex);
+      auto vertexId1 = encodeVertex(vertex);
 
       vertices1.push_back(vertexId1);
     }
@@ -953,42 +983,42 @@ getObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
   }
   else if (name == "nearest_face") {
     if (args.size() < 2)
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     CPoint3D p;
     if (! app->stringToPoint(args[2], p))
-      return errorMsg("Invalid point '" + args[2] + "'");
+      return tclErrorMsg("Invalid point '" + args[2] + "'");
 
     auto *face = app->getNearestFace(object, p);
 
-    app->tcl_->setResult(encodeObjectFace(face));
+    app->tcl_->setResult(encodeFace(face));
   }
   else if (name == "nearest_edge") {
     if (args.size() < 2)
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     CPoint3D p;
     if (! app->stringToPoint(args[2], p))
-      return errorMsg("Invalid point '" + args[2] + "'");
+      return tclErrorMsg("Invalid point '" + args[2] + "'");
 
     auto *edge = app->getNearestEdge(object, p);
 
-    app->tcl_->setResult(encodeObjectEdge(object, edge));
+    app->tcl_->setResult(encodeEdge(edge));
   }
   else if (name == "nearest_vertex") {
     if (args.size() < 2)
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     CPoint3D p;
     if (! app->stringToPoint(args[2], p))
-      return errorMsg("Invalid point '" + args[2] + "'");
+      return tclErrorMsg("Invalid point '" + args[2] + "'");
 
     auto *vertex = app->getNearestVertex(object, p);
 
-    app->tcl_->setResult(encodeObjectVertex(vertex));
+    app->tcl_->setResult(encodeVertex(vertex));
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   return TCL_OK;
 }
@@ -1003,11 +1033,11 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 3)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
   if (! app->decodeObject(args[0], object))
-    return errorMsg("Invalid object id '" + args[0] + "'");
+    return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   auto name = args[1];
 
@@ -1017,11 +1047,11 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
   else if (name == "material") {
     int materialId;
     if (! decodeMaterialId(args[2], materialId))
-      return errorMsg("Invalid material id '" + args[2] + "'");
+      return tclErrorMsg("Invalid material id '" + args[2] + "'");
 
     auto *material = app->scene_->getMaterialById(materialId);
     if (! material)
-      return errorMsg("Invalid material id " + std::to_string(materialId));
+      return tclErrorMsg("Invalid material id " + std::to_string(materialId));
 
     object->setMaterialP(material);
   }
@@ -1035,17 +1065,17 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
       if (! stringToReal(strs[0], tx) ||
           ! stringToReal(strs[1], ty) ||
           ! stringToReal(strs[2], tz))
-        return errorMsg("Invalid translate value");
+        return tclErrorMsg("Invalid translate value");
     }
     else if (strs.size() == 1) {
       if (! stringToReal(strs[0], tx))
-        return errorMsg("Invalid translate value");
+        return tclErrorMsg("Invalid translate value");
 
       ty = tx;
       tz = tx;
     }
     else
-      return errorMsg("Invalid translate value");
+      return tclErrorMsg("Invalid translate value");
 
     object->translate(tx, ty, tz);
   }
@@ -1059,17 +1089,17 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
       if (! stringToReal(strs[0], sx) ||
           ! stringToReal(strs[1], sy) ||
           ! stringToReal(strs[2], sz))
-        return errorMsg("Invalid scale value");
+        return tclErrorMsg("Invalid scale value");
     }
     else if (strs.size() == 1) {
       if (! stringToReal(strs[0], sx))
-        return errorMsg("Invalid scale value");
+        return tclErrorMsg("Invalid scale value");
 
       sy = sx;
       sz = sx;
     }
     else
-      return errorMsg("Invalid scale value");
+      return tclErrorMsg("Invalid scale value");
 
     object->scale(sx, sy, sz);
   }
@@ -1083,24 +1113,24 @@ setObjectValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
       if (! stringToReal(strs[0], ax) ||
           ! stringToReal(strs[1], ay) ||
           ! stringToReal(strs[2], az))
-        return errorMsg("Invalid rotate value");
+        return tclErrorMsg("Invalid rotate value");
     }
     else if (strs.size() == 1) {
       if (! stringToReal(strs[0], ax))
-        return errorMsg("Invalid rotate value");
+        return tclErrorMsg("Invalid rotate value");
 
       ay = ax;
       az = ax;
     }
     else
-      return errorMsg("Invalid rotate value");
+      return tclErrorMsg("Invalid rotate value");
 
     object->rotateModelX(degToRad(ax));
     object->rotateModelY(degToRad(ay));
     object->rotateModelZ(degToRad(az));
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   app->tcl_->setResult(encodeObject(object));
 
@@ -1117,11 +1147,11 @@ getFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomFace3D *face;
   if (! app->decodeObjectFace(args[0], face))
-    return errorMsg("Invalid face id '" + args[0] + "'");
+    return tclErrorMsg("Invalid face id '" + args[0] + "'");
 
   auto *object = face->getObject();
 
@@ -1151,7 +1181,7 @@ getFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
     std::vector<std::string> edges1;
 
     for (const auto &edge : edges) {
-      auto edgeId1 = encodeObjectEdge(object, edge);
+      auto edgeId1 = encodeEdge(edge);
 
       edges1.push_back(edgeId1);
     }
@@ -1165,7 +1195,7 @@ getFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
     app->tcl_->setResult(bboxToRealArrays(bbox));
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   return TCL_OK;
 }
@@ -1180,38 +1210,38 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 3)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomFace3D *face;
   if (! app->decodeObjectFace(args[0], face))
-    return errorMsg("Invalid face id '" + args[0] + "'");
+    return tclErrorMsg("Invalid face id '" + args[0] + "'");
 
   auto name = args[1];
 
   if      (name == "color") {
     if (args.size() != 3)
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     face->setColor(CRGBName::toRGBA(args[2]));
   }
   else if (name == "normal") {
     if (args.size() != 3)
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     CPoint3D p;
     if (! app->stringToPoint(args[2], p))
-      return errorMsg("Invalid point '" + args[2] + "'");
+      return tclErrorMsg("Invalid point '" + args[2] + "'");
 
     face->setNormal(CVector3D(p));
   }
   else if (name == "material") {
     int materialId;
     if (! decodeMaterialId(args[2], materialId))
-      return errorMsg("Invalid material id '" + args[2] + "'");
+      return tclErrorMsg("Invalid material id '" + args[2] + "'");
 
     auto *material = app->scene_->getMaterialById(materialId);
     if (! material)
-      return errorMsg("Invalid material id " + std::to_string(materialId));
+      return tclErrorMsg("Invalid material id " + std::to_string(materialId));
 
     face->setMaterialP(material);
   }
@@ -1225,17 +1255,17 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       if (! stringToReal(strs[0], tx) ||
           ! stringToReal(strs[1], ty) ||
           ! stringToReal(strs[2], tz))
-        return errorMsg("Invalid translate value");
+        return tclErrorMsg("Invalid translate value");
     }
     else if (strs.size() == 1) {
       if (! stringToReal(strs[0], tx))
-        return errorMsg("Invalid translate value");
+        return tclErrorMsg("Invalid translate value");
 
       ty = tx;
       tz = tx;
     }
     else
-      return errorMsg("Invalid translate value");
+      return tclErrorMsg("Invalid translate value");
 
     face->moveBy(CVector3D(tx, ty, tz));
   }
@@ -1249,17 +1279,17 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       if (! stringToReal(strs[0], sx) ||
           ! stringToReal(strs[1], sy) ||
           ! stringToReal(strs[2], sz))
-        return errorMsg("Invalid scale value");
+        return tclErrorMsg("Invalid scale value");
     }
     else if (strs.size() == 1) {
       if (! stringToReal(strs[0], sx))
-        return errorMsg("Invalid scale value");
+        return tclErrorMsg("Invalid scale value");
 
       sy = sx;
       sz = sx;
     }
     else
-      return errorMsg("Invalid scale value");
+      return tclErrorMsg("Invalid scale value");
 
     face->scale(sx, sy, sz);
   }
@@ -1273,17 +1303,17 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       if (! stringToReal(strs[0], ax) ||
           ! stringToReal(strs[1], ay) ||
           ! stringToReal(strs[2], az))
-        return errorMsg("Invalid rotate value");
+        return tclErrorMsg("Invalid rotate value");
     }
     else if (strs.size() == 1) {
       if (! stringToReal(strs[0], ax))
-        return errorMsg("Invalid rotate value");
+        return tclErrorMsg("Invalid rotate value");
 
       ay = ax;
       az = ax;
     }
     else
-      return errorMsg("Invalid rotate value");
+      return tclErrorMsg("Invalid rotate value");
 
     face->rotateModelX(degToRad(ax));
     face->rotateModelY(degToRad(ay));
@@ -1292,21 +1322,21 @@ setFaceValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
   else if (name == "bevel") {
     double d;
     if (! stringToReal(args[2], d))
-      return errorMsg("Invalid bevel '" + args[2] + "'");
+      return tclErrorMsg("Invalid bevel '" + args[2] + "'");
 
     face->bevel(d);
   }
   else if (name == "inset") {
     double d;
     if (! stringToReal(args[2], d))
-      return errorMsg("Invalid inset '" + args[2] + "'");
+      return tclErrorMsg("Invalid inset '" + args[2] + "'");
 
     face->inset(d);
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
-  app->tcl_->setResult(encodeObjectFace(face));
+  app->tcl_->setResult(encodeFace(face));
 
   return TCL_OK;
 }
@@ -1321,11 +1351,11 @@ getEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
   if (! app->decodeObjectEdge(args[0], edge))
-    return errorMsg("Invalid edge id '" + args[0] + "'");
+    return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   auto name = args[1];
 
@@ -1345,7 +1375,7 @@ getEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
     app->tcl_->setResult(pointToRealArray(normal.point()));
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   return TCL_OK;
 }
@@ -1360,11 +1390,11 @@ setEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 3)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
   if (! app->decodeObjectEdge(args[0], edge))
-    return errorMsg("Invalid edge id '" + args[0] + "'");
+    return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   auto name = args[1];
 
@@ -1378,29 +1408,29 @@ setEdgeValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
       if (! stringToReal(strs[0], x) ||
           ! stringToReal(strs[1], y) ||
           ! stringToReal(strs[2], z))
-        return errorMsg("Invalid delta '" + args[2] + "'");
+        return tclErrorMsg("Invalid delta '" + args[2] + "'");
     }
     else
-      return errorMsg("Invalid delta '" + args[2] + "'");
+      return tclErrorMsg("Invalid delta '" + args[2] + "'");
 
     edge->moveBy(CVector3D(x, y, z));
   }
   else if (name == "scale") {
     double s;
     if (! stringToReal(args[2], s))
-      return errorMsg("Invalid scale '" + args[2] + "'");
+      return tclErrorMsg("Invalid scale '" + args[2] + "'");
 
     edge->scale(s);
   }
   else if (name == "bevel") {
     double s;
     if (! stringToReal(args[2], s))
-      return errorMsg("Invalid bevel '" + args[2] + "'");
+      return tclErrorMsg("Invalid bevel '" + args[2] + "'");
 
     edge->bevel(s);
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   return TCL_OK;
 }
@@ -1415,11 +1445,11 @@ getVertexValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomVertex3D *vertex;
   if (! app->decodeObjectVertex(args[0], vertex))
-    return errorMsg("Invalid vertex id '" + args[0] + "'");
+    return tclErrorMsg("Invalid vertex id '" + args[0] + "'");
 
   auto name = args[1];
 
@@ -1429,7 +1459,7 @@ getVertexValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_
     app->tcl_->setResult(pointToRealArray(p));
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   return TCL_OK;
 }
@@ -1444,37 +1474,37 @@ setMaterialValueProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tc
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() < 3)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   int materialId;
   if (! decodeMaterialId(args[0], materialId))
-    return errorMsg("Invalid material id '" + args[2] + "'");
+    return tclErrorMsg("Invalid material id '" + args[2] + "'");
 
   auto *material = app->scene_->getMaterialById(materialId);
   if (! material)
-    return errorMsg("Invalid material id " + std::to_string(materialId));
+    return tclErrorMsg("Invalid material id " + std::to_string(materialId));
 
   auto name = args[1];
 
   if      (name == "diffuse") {
     if (args.size() != 3)
-      return errorMsg("Invalid args");
+      return tclErrorMsg("Invalid args");
 
     material->setDiffuse(CRGBName::toRGBA(args[2]));
   }
   else if (name == "diffuse_texture") {
     int textureId;
     if (! decodeMaterialId(args[2], textureId))
-      return errorMsg("Invalid text id '" + args[2] + "'");
+      return tclErrorMsg("Invalid text id '" + args[2] + "'");
 
     auto *texture = app->scene_->getTextureById(textureId);
     if (! texture)
-      return errorMsg("Invalid texture id " + std::to_string(textureId));
+      return tclErrorMsg("Invalid texture id " + std::to_string(textureId));
 
     material->setDiffuseTexture(texture);
   }
   else
-    return errorMsg("Invalid value name '" + name + "'");
+    return tclErrorMsg("Invalid value name '" + name + "'");
 
   app->tcl_->setResult(encodeMaterial(material));
 
@@ -1491,7 +1521,7 @@ intersectObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tc
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   std::vector<std::string> strs;
   app->tcl_->splitList(args[0], strs);
@@ -1501,7 +1531,7 @@ intersectObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tc
   for (const auto &str : strs) {
     CGeomObject3D *object;
     if (! app->decodeObject(str, object))
-      return errorMsg("Invalid object id '" + str + "'");
+      return tclErrorMsg("Invalid object id '" + str + "'");
 
     objects.push_back(object);
   }
@@ -1525,11 +1555,11 @@ inverseObjectProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_O
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
   if (! app->decodeObject(args[0], object))
-    return errorMsg("Invalid object id '" + args[0] + "'");
+    return tclErrorMsg("Invalid object id '" + args[0] + "'");
 
   auto *object1 = app->scene_->inverseObject(object);
 
@@ -1550,7 +1580,7 @@ unionObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   std::vector<std::string> strs;
   app->tcl_->splitList(args[0], strs);
@@ -1560,7 +1590,7 @@ unionObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
   for (const auto &str : strs) {
     CGeomObject3D *object;
     if (! app->decodeObject(str, object))
-      return errorMsg("Invalid object id '" + str + "'");
+      return tclErrorMsg("Invalid object id '" + str + "'");
 
     objects.push_back(object);
   }
@@ -1584,7 +1614,7 @@ subtractObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   std::vector<std::string> strs;
   app->tcl_->splitList(args[0], strs);
@@ -1594,7 +1624,7 @@ subtractObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl
   for (const auto &str : strs) {
     CGeomObject3D *object;
     if (! app->decodeObject(str, object))
-      return errorMsg("Invalid object id '" + str + "'");
+      return tclErrorMsg("Invalid object id '" + str + "'");
 
     objects.push_back(object);
   }
@@ -1618,19 +1648,19 @@ extrudeFaceProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomFace3D *face;
   if (! app->decodeObjectFace(args[0], face))
-    return errorMsg("Invalid face id '" + args[0] + "'");
+    return tclErrorMsg("Invalid face id '" + args[0] + "'");
 
   double d;
   if (! stringToReal(args[1], d))
-    return errorMsg("Invalid delta '" + args[1] + "'");
+    return tclErrorMsg("Invalid delta '" + args[1] + "'");
 
-  auto *face1 = face->extrude(d);
+  auto extrudeData = face->extrude(d);
 
-  auto faceId2 = encodeObjectFace(face1);
+  auto faceId2 = encodeFace(extrudeData.topFace);
 
   app->tcl_->setResult(faceId2);
 
@@ -1647,19 +1677,19 @@ extrudeEdgeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
   if (! app->decodeObjectEdge(args[0], edge))
-    return errorMsg("Invalid edge id '" + args[0] + "'");
+    return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   double d;
   if (! stringToReal(args[1], d))
-    return errorMsg("Invalid delta '" + args[1] + "'");
+    return tclErrorMsg("Invalid delta '" + args[1] + "'");
 
   auto *face1 = edge->extrude(d);
 
-  auto faceId1 = encodeObjectFace(face1);
+  auto faceId1 = encodeFace(face1);
 
   app->tcl_->setResult(faceId1);
 
@@ -1676,11 +1706,11 @@ mergeEdgeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj *
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
   if (! app->decodeObjectEdge(args[0], edge))
-    return errorMsg("Invalid edge id '" + args[0] + "'");
+    return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   auto vind = edge->getObject()->mergeEdge(edge->getInd());
 
@@ -1701,11 +1731,11 @@ separateFaceProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomFace3D *face;
   if (! app->decodeObjectFace(args[0], face))
-    return errorMsg("Invalid face id '" + args[0] + "'");
+    return tclErrorMsg("Invalid face id '" + args[0] + "'");
 
   auto *object1 = face->getObject()->separateFace(face);
 
@@ -1724,11 +1754,11 @@ separateEdgeProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomEdge3D *edge;
   if (! app->decodeObjectEdge(args[0], edge))
-    return errorMsg("Invalid edge id '" + args[0] + "'");
+    return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   auto *object1 = edge->getObject()->separateEdge(edge);
 
@@ -1747,11 +1777,11 @@ mirrorObjectProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 2)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CGeomObject3D *object;
   if (! app->decodeObject(args[0], object))
-    return errorMsg("Invalid edge id '" + args[0] + "'");
+    return tclErrorMsg("Invalid edge id '" + args[0] + "'");
 
   uint mirrorDir = 0;
 
@@ -1763,7 +1793,7 @@ mirrorObjectProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Ob
     else if (args[1][i] == 'z' || args[1][i] == 'Z')
        mirrorDir |= uint(CGeomObject3D::MirrorDir::Z);
     else {
-      return errorMsg("Invalid mirror direction '" + args[1] + "'");
+      return tclErrorMsg("Invalid mirror direction '" + args[1] + "'");
   }
 
   auto c = app->cursor();
@@ -1801,7 +1831,7 @@ deleteObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_O
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   std::vector<std::string> strs;
   app->tcl_->splitList(args[0], strs);
@@ -1811,7 +1841,7 @@ deleteObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_O
   for (const auto &str : strs) {
     CGeomObject3D *object;
     if (! app->decodeObject(str, object))
-      return errorMsg("Invalid object id '" + str + "'");
+      return tclErrorMsg("Invalid object id '" + str + "'");
 
     objects.push_back(object);
   }
@@ -1829,10 +1859,10 @@ deleteObjectsProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_O
 
 int
 App::
-readObjProc(const CTclUtil::StringList &args)
+readModelProc(const CTclUtil::StringList &args)
 {
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   auto filename = args[0];
 
@@ -1841,13 +1871,13 @@ readObjProc(const CTclUtil::StringList &args)
   auto *im = CImportBase::createModel(format, filename);
 
   if (! im)
-    return errorMsg("File format not recognised for '" + filename + "'");
+    return tclErrorMsg("File format not recognised for '" + filename + "'");
 
   CFile file(filename);
 
   if (! im->read(file)) {
     delete im;
-    return errorMsg("Failed to read model for '" + filename + "'");
+    return tclErrorMsg("Failed to read model for '" + filename + "'");
   }
 
   auto *scene = im->releaseScene();
@@ -1908,7 +1938,7 @@ writeObjProc(ClientData clientData, Tcl_Interp* /*interp*/, int objc, Tcl_Obj * 
 
   auto args = CTclUtil::getObjArgs(objc, objv);
   if (args.size() != 1)
-    return errorMsg("Invalid args");
+    return tclErrorMsg("Invalid args");
 
   CFile file(args[0]);
 
