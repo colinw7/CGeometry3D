@@ -15,9 +15,9 @@ class CGeomLight3DData {
   using Type = CGeomLight3DType;
 
   struct Attenuation {
-    double constant  { 1.000 };
-    double linear    { 0.090 };
-    double quadratic { 0.032 };
+    double constant  { 1.0000 };
+    double linear    { 0.0050 };
+    double quadratic { 0.0005 };
 
     Attenuation() { }
   };

@@ -73,6 +73,11 @@ CGeomMaterial()
 }
 
 CGeomMaterial::
+~CGeomMaterial()
+{
+}
+
+CGeomMaterial::
 CGeomMaterial(const CMaterial &material) :
  material_(material)
 {

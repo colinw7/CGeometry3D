@@ -30,6 +30,10 @@ class CGeomMaterial {
 
   explicit CGeomMaterial(const CMaterial &material);
 
+  virtual ~CGeomMaterial();
+
+  //---
+
   const uint &id() const { return id_; }
   void setId(const uint &v) { id_ = v; }
 
