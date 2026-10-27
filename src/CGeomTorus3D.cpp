@@ -90,12 +90,12 @@ double
 CGeomTorus3D::
 power(double f, double p)
 {
-  double absf = fabs(f);
+  double absf = std::abs(f);
 
   if (absf < 0.00001)
     return 0.0;
 
-  double pp = pow(absf, p);
+  double pp = std::pow(absf, p);
 
   if (f < 0)
     return -pp;
