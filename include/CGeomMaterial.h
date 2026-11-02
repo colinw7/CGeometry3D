@@ -110,26 +110,26 @@ class CGeomMaterial {
 
   //---
 
-  CGeomTexture *ambientTexture() const { return ambientTexture_; }
-  void setAmbientTexture(CGeomTexture *p) { ambientTexture_ = p; }
+  virtual CGeomTexture *ambientTexture() const { return ambientTexture_; }
+  virtual void setAmbientTexture(CGeomTexture *p) { ambientTexture_ = p; }
 
-  CGeomTexture *diffuseTexture() const { return diffuseTexture_; }
-  void setDiffuseTexture(CGeomTexture *p) { diffuseTexture_ = p; }
+  virtual CGeomTexture *diffuseTexture() const { return diffuseTexture_; }
+  virtual void setDiffuseTexture(CGeomTexture *p) { diffuseTexture_ = p; }
 
-  CGeomTexture *normalTexture() const { return normalTexture_; }
-  void setNormalTexture(CGeomTexture *p) { normalTexture_ = p; }
+  virtual CGeomTexture *normalTexture() const { return normalTexture_; }
+  virtual void setNormalTexture(CGeomTexture *p) { normalTexture_ = p; }
 
-  CGeomTexture *specularTexture() const { return specularTexture_; }
-  void setSpecularTexture(CGeomTexture *p) { specularTexture_ = p; }
+  virtual CGeomTexture *specularTexture() const { return specularTexture_; }
+  virtual void setSpecularTexture(CGeomTexture *p) { specularTexture_ = p; }
 
-  CGeomTexture *emissiveTexture() const { return emissiveTexture_; }
-  void setEmissiveTexture(CGeomTexture *p) { emissiveTexture_ = p; }
+  virtual CGeomTexture *emissiveTexture() const { return emissiveTexture_; }
+  virtual void setEmissiveTexture(CGeomTexture *p) { emissiveTexture_ = p; }
 
-  CGeomTexture *metallicTexture() const { return metallicTexture_; }
-  void setMetallicTexture(CGeomTexture *p) { metallicTexture_ = p; }
+  virtual CGeomTexture *metallicTexture() const { return metallicTexture_; }
+  virtual void setMetallicTexture(CGeomTexture *p) { metallicTexture_ = p; }
 
-  CGeomTexture *ORMTexture() const { return ORMTexture_; }
-  void setORMTexture(CGeomTexture *p) { ORMTexture_ = p; }
+  virtual CGeomTexture *ORMTexture() const { return ORMTexture_; }
+  virtual void setORMTexture(CGeomTexture *p) { ORMTexture_ = p; }
 
  private:
   uint id_ { 0 };

@@ -95,6 +95,15 @@ class CGeomTextureMapping {
 
 class CGeomTexture {
  public:
+  enum class Type {
+    NONE,
+    DIFFUSE,
+    NORMAL,
+    SPECULAR,
+    EMISSIVE
+  };
+
+ public:
   CGeomTexture() { }
 
   CGeomTexture(CGeomTextureImage *image, CGeomTextureMapping *mapping=nullptr) :
@@ -122,6 +131,7 @@ class CGeomTexture {
   }
 
   CGeomTexture(const CGeomTexture &texture) :
+   type_      (texture.type_),
    image_     (texture.image_),
    mapping_   (new CGeomTextureMapping(*texture.mapping_)),
    num_points_(texture.num_points_) {
@@ -141,8 +151,11 @@ class CGeomTexture {
   int id() const { return id_; }
   void setId(int i) { id_ = i; }
 
-  const std::string &name() const { return image_->name(); }
-  void setName(const std::string &s) { image_->setName(s); }
+  const Type &type() const { return type_; }
+  void setType(const Type &t) { type_ = t; }
+
+  const std::string &name() const { return name_; }
+  void setName(const std::string &s) { name_ = s; }
 
   const std::string &fileName() const { return filename_; }
   void setFilename(const std::string &s) { filename_ = s; }
@@ -164,6 +177,9 @@ class CGeomTexture {
     image_ = image;
 
     setMapping(image_, num_points_);
+
+    if (image_ && name_ == "")
+      name_ = image_->name();
   }
 
   void setMapping(CGeomTextureMapping *mapping) {
@@ -212,7 +228,9 @@ class CGeomTexture {
 
  private:
   int                  id_         { -1 };
+  Type                 type_       { Type::NONE };
   bool                 selected_   { false };
+  std::string          name_;
   std::string          filename_;
   CGeomTextureImage*   image_      { nullptr };
   CGeomTextureMapping* mapping_    { nullptr };

@@ -44,8 +44,8 @@ void
 CGeomVertex3D::
 swapXY()
 {
-  if (normal_)
-    normal_ = CVector3D(normal_->y(), normal_->x(), normal_->z());
+  for (auto &n : normal_)
+    n = CVector3D(n.y(), n.x(), n.z());
 
   CGeomPoint3D::swapXY();
 }
@@ -54,8 +54,8 @@ void
 CGeomVertex3D::
 swapYZ()
 {
-  if (normal_)
-    normal_ = CVector3D(normal_->x(), normal_->z(), normal_->y());
+  for (auto &n : normal_)
+    n = CVector3D(n.x(), n.z(), n.y());
 
   CGeomPoint3D::swapYZ();
 }
@@ -64,8 +64,8 @@ void
 CGeomVertex3D::
 swapZX()
 {
-  if (normal_)
-    normal_ = CVector3D(normal_->z(), normal_->y(), normal_->x());
+  for (auto &n : normal_)
+    n = CVector3D(n.z(), n.y(), n.x());
 
   CGeomPoint3D::swapZX();
 }
@@ -74,8 +74,8 @@ void
 CGeomVertex3D::
 invertX()
 {
-  if (normal_)
-    normal_ = CVector3D(-normal_->x(), normal_->y(), normal_->z());
+  for (auto &n : normal_)
+    n = CVector3D(-n.x(), n.y(), n.z());
 
   CGeomPoint3D::invertX();
 }
@@ -84,8 +84,8 @@ void
 CGeomVertex3D::
 invertY()
 {
-  if (normal_)
-    normal_ = CVector3D(normal_->x(), -normal_->y(), normal_->z());
+  for (auto &n : normal_)
+    n = CVector3D(n.x(), -n.y(), n.z());
 
   CGeomPoint3D::invertY();
 }
@@ -94,8 +94,8 @@ void
 CGeomVertex3D::
 invertZ()
 {
-  if (normal_)
-    normal_ = CVector3D(normal_->x(), normal_->y(), -normal_->z());
+  for (auto &n : normal_)
+    n = CVector3D(n.x(), n.y(), -n.z());
 
   CGeomPoint3D::invertZ();
 }
@@ -104,8 +104,8 @@ void
 CGeomVertex3D::
 flipX(double x)
 {
-  if (normal_)
-    normal_ = CVector3D(-normal_->x(), normal_->y(), normal_->z());
+  for (auto &n : normal_)
+    n = CVector3D(-n.x(), n.y(), n.z());
 
   CGeomPoint3D::flipX(x);
 }
@@ -114,8 +114,8 @@ void
 CGeomVertex3D::
 flipY(double y)
 {
-  if (normal_)
-    normal_ = CVector3D(normal_->x(), -normal_->y(), normal_->z());
+  for (auto &n : normal_)
+    n = CVector3D(n.x(), -n.y(), n.z());
 
   CGeomPoint3D::flipY(y);
 }
@@ -124,8 +124,8 @@ void
 CGeomVertex3D::
 flipZ(double z)
 {
-  if (normal_)
-    normal_ = CVector3D(normal_->x(), normal_->y(), -normal_->z());
+  for (auto &n : normal_)
+    n = CVector3D(n.x(), n.y(), -n.z());
 
   CGeomPoint3D::flipZ(z);
 }

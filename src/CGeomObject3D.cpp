@@ -3728,9 +3728,11 @@ splitFacesByMaterial(std::vector<CGeomObject3D *> &newObjects) const
 
       auto newFaceId = newObject->addFace(faceVertices);
 
-      auto *newFace = newObject->getFaceP(newFaceId);
+      if (! face->getTexturePoints().empty()) {
+        auto *newFace = newObject->getFaceP(newFaceId);
 
-      newFace->setTexturePoints(face->getTexturePoints());
+        newFace->setTexturePoints(face->getTexturePoints());
+      }
     }
 
     newObjects.push_back(newObject);

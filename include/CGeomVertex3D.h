@@ -75,13 +75,21 @@ class CGeomVertex3D : public CGeomPoint3D {
   CRGBA getColor(const CRGBA &c=CRGBA(1, 1, 1)) const { return color_.value_or(c); }
   void setColor(const CRGBA &c) { color_ = c; }
 
-  bool hasNormal() const { return bool(normal_); }
-  CVector3D getNormal(const CVector3D &n=CVector3D(0, 0, 1)) const { return normal_.value_or(n); }
-  void setNormal(const CVector3D &n) { normal_ = n; }
+  //---
 
-  bool hasTextureMap() const { return bool(tmap_); }
-  CPoint2D getTextureMap(const CPoint2D &p=CPoint2D(0, 0)) const { return tmap_.value_or(p); }
-  void setTextureMap(const CPoint2D &p) { tmap_ = p; }
+  bool hasNormal() const { return normal_.size() == 1; }
+  CVector3D getNormal(const CVector3D &n=CVector3D(0, 0, 1)) const {
+    return (hasNormal() ? normal_[0] : n); }
+  void setNormal(const CVector3D &n) { normal_.push_back(n); }
+  void clearNormal() { normal_.clear(); }
+
+  bool hasTextureMap() const { return tmap_.size() == 1; }
+  CPoint2D getTextureMap(const CPoint2D &p=CPoint2D(0, 0)) const {
+    return (hasTextureMap() ? tmap_[0] : p); }
+  void setTextureMap(const CPoint2D &p) { tmap_.push_back(p); }
+  void resetTextureMap() { tmap_.clear(); }
+
+  //---
 
   const CClipSide &getClipSide() const { return clipSide_; }
   void setClipSide(const CClipSide &v) { clipSide_ = v; }
@@ -135,17 +143,17 @@ class CGeomVertex3D : public CGeomPoint3D {
   }
 
  protected:
-  using OptColor  = std::optional<CRGBA>;
-  using OptVector = std::optional<CVector3D>;
-  using OptPoint2 = std::optional<CPoint2D>;
+  using OptColor = std::optional<CRGBA>;
+  using Normals  = std::vector<CVector3D>;
+  using TPoints  = std::vector<CPoint2D>;
 
   CGeomObject3D *pobject_ { nullptr };
 
   uint      ind_ { 0 };
   uint      tag_ { 0 };
   OptColor  color_;
-  OptVector normal_;
-  OptPoint2 tmap_;
+  Normals   normal_;
+  TPoints   tmap_;
   CClipSide clipSide_ { CCLIP_SIDE_NONE };
   JointData jointData_;
 };

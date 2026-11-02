@@ -126,7 +126,7 @@ class CGeomFace3D {
 
   bool hasVertexTexturePoints() const { return (texturePoints_.size() == vertices_.size()); }
   const std::vector<CPoint2D> &getTexturePoints() const { return texturePoints_; }
-  void setTexturePoints(const TexturePoints &points);
+  void setTexturePoints(const TexturePoints &points, bool propagate=true);
 
   CPoint2D getTexturePoint(const CGeomVertex3D &v, int iv) const;
 
@@ -188,7 +188,12 @@ class CGeomFace3D {
   CRGBA getColor() const { return getFrontColor(); }
   void setColor(const CRGBA &rgba) { setFrontColor(rgba); }
 
-  const OptColor &color() const { return initFrontMaterial()->diffuse(); }
+  OptColor color() const {
+    if (! frontMaterial_)
+      return OptColor();
+
+    return initFrontMaterial()->diffuse();
+  }
 
   CRGBA getFrontColor() const { return initFrontMaterial()->getDiffuse(); }
   void setFrontColor(const CRGBA &rgba) { initFrontMaterial()->setDiffuse(rgba); }
@@ -207,9 +212,19 @@ class CGeomFace3D {
 
   //---
 
-  const OptReal &shininess() const { return initFrontMaterial()->shininess(); }
+  OptReal shininess() const {
+    if (! frontMaterial_)
+      return OptReal();
 
-  const OptColor &emission() const { return initFrontMaterial()->emission(); }
+    return initFrontMaterial()->shininess();
+  }
+
+  OptColor emission() const {
+    if (! frontMaterial_)
+      return OptColor();
+
+    return initFrontMaterial()->emission();
+  }
 
   //---
 

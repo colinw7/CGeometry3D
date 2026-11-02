@@ -194,9 +194,20 @@ setTextureMapping(const std::vector<CPoint2D> &points)
 
 void
 CGeomFace3D::
-setTexturePoints(const std::vector<CPoint2D> &points)
+setTexturePoints(const std::vector<CPoint2D> &points, bool propagate)
 {
+  auto np = points.size();
+  assert(np == vertices_.size());
+
   texturePoints_ = points;
+
+  if (propagate) {
+    for (uint i = 0; i < np; ++i) {
+      auto &v = pobject_->getVertex(vertices_[i]);
+
+      v.setTextureMap(points[i]);
+    }
+  }
 }
 
 CPoint2D
