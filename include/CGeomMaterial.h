@@ -63,7 +63,7 @@ class CGeomMaterial {
 
   const OptColor &emission() const { return material_.emission(); }
   void setEmission(const CRGBA &c) { material_.setEmission(c); }
-  CRGBA getEmission(const CRGBA &c=CRGBA(0.0, 0.0, 0.0, 1.1)) const {
+  CRGBA getEmission(const CRGBA &c=CRGBA(0.0, 0.0, 0.0, 1.0)) const {
     return material_.getEmission(c); }
 
   const OptReal &shininess() const { return material_.shininess(); }
