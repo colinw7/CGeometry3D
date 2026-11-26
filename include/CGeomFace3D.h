@@ -1,6 +1,7 @@
 #ifndef CGEOM_FACE_3D_H
 #define CGEOM_FACE_3D_H
 
+#include <CGeomObject3D.h>
 #include <CGeomVertex3D.h>
 #include <CGeomLine3D.h>
 #include <CGeomMaterial.h>
@@ -370,6 +371,8 @@ class CGeomFace3D {
 
   CPoint3D calcModelCenter    () const;
   CPoint3D calcProjectedCenter() const;
+
+  void recolor(CGeomObject3D::RecolorData &data);
 
   //---
 

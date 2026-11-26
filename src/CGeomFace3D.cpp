@@ -1309,6 +1309,72 @@ calcProjectedCenter() const
   return c;
 }
 
+void
+CGeomFace3D::
+recolor(CGeomObject3D::RecolorData &data)
+{
+  auto *diffuseTexture = getDiffuseTexture();
+
+  if (! diffuseTexture) {
+    auto *faceMaterial = getMaterialP();
+
+    if (! faceMaterial)
+      faceMaterial = pobject_->getMaterialP();
+
+    if (faceMaterial)
+      diffuseTexture = faceMaterial->diffuseTexture();
+  }
+
+  if (! diffuseTexture)
+    diffuseTexture = pobject_->getDiffuseTexture();
+
+  if (! diffuseTexture)
+    return;
+
+  int tw, th;
+  diffuseTexture->getImageSize(&tw, &th);
+
+  auto image = diffuseTexture->image()->image();
+
+  int iv = 0;
+
+  CRGBA rgba;
+
+  for (auto &vertex : vertices_) {
+    auto *v = pobject_->getVertexP(vertex);
+
+    CPoint2D tpoint;
+
+    if      (v->hasTextureMap())
+      tpoint = v->getTextureMap();
+    else if (hasVertexTexturePoints())
+      tpoint = getTexturePoint(*v, iv);
+
+    auto tx = CMathUtil::clamp(tpoint.x, 0.0, 1.0);
+    auto ty = CMathUtil::clamp(tpoint.y, 0.0, 1.0);
+
+    CRGBA rgba1;
+    image->getRGBAPixel(int(tx*(tw - 1)), int(ty*(th - 1)), rgba1);
+
+    rgba += rgba1;
+
+    ++iv;
+  }
+
+  rgba /= iv;
+
+  if (data.mask) {
+    rgba.setRed  ((uint(rgba.getRed  ()*255.0) & data.mask)/255.0);
+    rgba.setGreen((uint(rgba.getGreen()*255.0) & data.mask)/255.0);
+    rgba.setBlue ((uint(rgba.getBlue ()*255.0) & data.mask)/255.0);
+  }
+
+  data.colorFaces[rgba].push_back(this);
+
+  setDiffuseTexture(nullptr);
+  setMaterialP(nullptr);
+}
+
 // duplicate face and move along normal
 CGeomFace3D::ExtrudeData
 CGeomFace3D::

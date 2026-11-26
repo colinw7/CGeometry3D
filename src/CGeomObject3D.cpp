@@ -1133,6 +1133,112 @@ getFace(uint i)
 
 //---
 
+void
+CGeomObject3D::
+recolorFaces(const std::vector<CRGBA> &colors)
+{
+  recolorFaces1(colors, 16);
+}
+
+void
+CGeomObject3D::
+recolorFaces(uint ncolors)
+{
+  std::vector<CRGBA> colors;
+
+  recolorFaces1(colors, ncolors);
+}
+
+void
+CGeomObject3D::
+recolorFaces1(const std::vector<CRGBA> &colors, uint ncolors)
+{
+  CRGBUtil::setColorCmpDelta(1000);
+
+  RecolorData data;
+
+  //data.mask = 0xFC;
+
+  for (auto *face : mesh_->faces)
+    face->recolor(data);
+
+  setDiffuseTexture(nullptr);
+  setMaterialP(nullptr);
+
+  std::vector<CGeomMaterial *> materials;
+
+  auto colors1 = colors;
+
+  if (colors1.empty()) {
+    using Colors = std::vector<CRGBA>;
+
+    std::map<int, Colors> colorCount;
+
+    for (const auto &pc : data.colorFaces)
+      colorCount[-int(pc.second.size())].push_back(pc.first);
+
+    for (const auto &pc : colorCount) {
+      for (const auto &c : pc.second)
+        colors1.push_back(c);
+
+      if (colors1.size() >= ncolors)
+        break;
+    }
+
+    while (colors1.size() >= ncolors)
+      colors1.pop_back();
+  }
+
+  //---
+
+  int i = 0;
+
+  for (const auto &c : colors1) {
+    auto *material = CGeometry3DInst->createMaterial();
+
+    material->setName("recolor." + std::to_string(++i));
+
+    material->setDiffuse(c);
+
+    materials.push_back(material);
+  }
+
+  //---
+
+  auto nearestMaterial = [&](const CRGBA &c) {
+    int            minD = -1;
+    CGeomMaterial* minMaterial = nullptr;
+
+    int i1 = 0;
+
+    for (const auto &c1 : colors1) {
+      auto d = std::abs(int(c1.getId()) - int(c.getId()));
+
+      if (! minMaterial || d < minD) {
+        minMaterial = materials[i1];
+        minD        = d;
+      }
+
+      ++i1;
+    }
+
+    return minMaterial;
+  };
+
+  for (const auto &pc : data.colorFaces) {
+    const auto &c = pc.first;
+
+    auto *material = nearestMaterial(c);
+
+    auto &faces = pc.second;
+
+    for (auto *face : faces)
+      face->setMaterialP(material);
+  }
+}
+
+//---
+
 CGeomObject3D::Group &
 CGeomObject3D::
 getGroup(const std::string &name)

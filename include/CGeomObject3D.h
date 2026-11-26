@@ -3,7 +3,6 @@
 
 #include <CGeomMesh.h>
 #include <CGeomSkeleton.h>
-#include <CGeomFace3D.h>
 #include <CGeomPoint3D.h>
 #include <CCoordFrame3D.h>
 #include <CBBox3D.h>
@@ -11,6 +10,9 @@
 #include <CTranslate3D.h>
 #include <CScale3D.h>
 #include <CRotate3D.h>
+#include <CImagePtr.h>
+#include <CRGBA.h>
+#include <CRGBUtil.h>
 
 #include <map>
 #include <optional>
@@ -22,6 +24,9 @@ class CGeomZBuffer;
 class CGeom3DRenderer;
 class CGeomAnimationData;
 class CGeomNodeData;
+class CGeomTexture;
+class CGeomMaterial;
+class CGeomMask;
 
 // If override need to implement constructor, copy constructor, destructor, dup
 
@@ -92,6 +97,13 @@ class CGeomObject3D {
 
   using NodeDatas = std::map<int, CGeomNodeData>;
   using NodeIds   = std::vector<int>;
+
+  //---
+
+  struct RecolorData {
+    std::map<CRGBA, FaceList, CRGBUtil::ColorCmp> colorFaces;
+    uint                                          mask { 0};
+  };
 
  public:
   CGeomObject3D(CGeomScene3D *pscene, const std::string &name);
@@ -331,6 +343,11 @@ class CGeomObject3D {
   CGeomFace3D *getFaceP(uint i) const;
 
   CGeomFace3D &getFace(uint i);
+
+  //---
+
+  void recolorFaces(const std::vector<CRGBA> &colors);
+  void recolorFaces(uint n=16);
 
   //---
 
@@ -796,6 +813,11 @@ class CGeomObject3D {
   CGeomSkeleton *skeleton() const { return skeleton_; }
 
   //---
+
+  void recolorFaces1(const std::vector<CRGBA> &colors, uint n);
+
+  //---
+
   void validatePObject();
 
  protected:

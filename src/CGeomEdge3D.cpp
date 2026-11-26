@@ -1,5 +1,7 @@
 #include <CGeomEdge3D.h>
 #include <CGeomObject3D.h>
+#include <CGeomFace3D.h>
+#include <CGeomVertex3D.h>
 
 #include <CMathGeom3D.h>
 #include <CLine3D.h>

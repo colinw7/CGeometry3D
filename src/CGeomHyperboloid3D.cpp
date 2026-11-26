@@ -1,4 +1,5 @@
 #include <CGeomHyperboloid3D.h>
+#include <CGeomFace3D.h>
 #include <CHyperboloid3D.h>
 
 CGeomHyperboloid3D::

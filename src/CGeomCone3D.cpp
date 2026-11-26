@@ -1,4 +1,5 @@
 #include <CGeomCone3D.h>
+#include <CGeomFace3D.h>
 #include <CCone3D.h>
 
 CGeomCone3D::

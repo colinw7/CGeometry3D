@@ -1,4 +1,5 @@
 #include <CGeomVertex3D.h>
+#include <CGeomFace3D.h>
 #include <CGeomEdge3D.h>
 #include <CGeomZBuffer.h>
 #include <CGeomCamera3D.h>

@@ -72,7 +72,7 @@ class CGeomVertex3D : public CGeomPoint3D {
   //---
 
   bool hasColor() const { return bool(color_); }
-  CRGBA getColor(const CRGBA &c=CRGBA(1, 1, 1)) const { return color_.value_or(c); }
+  CRGBA getColor(const CRGBA &c=CRGBA::white()) const { return color_.value_or(c); }
   void setColor(const CRGBA &c) { color_ = c; }
 
   //---

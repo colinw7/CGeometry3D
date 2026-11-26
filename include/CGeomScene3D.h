@@ -6,6 +6,7 @@
 #include <CGeomAxes3D.h>
 #include <CGeomZBuffer.h>
 #include <CGeomCamera3D.h>
+#include <CGeomMaterial.h>
 #include <CGeomTexture.h>
 
 class CGeomScene3D {

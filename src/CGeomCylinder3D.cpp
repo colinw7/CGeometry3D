@@ -1,4 +1,5 @@
 #include <CGeomCylinder3D.h>
+#include <CGeomFace3D.h>
 #include <CGeomTexture.h>
 #include <CGeomMask.h>
 #include <CCylinder3D.h>

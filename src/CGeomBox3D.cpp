@@ -1,4 +1,5 @@
 #include <CGeomBox3D.h>
+#include <CGeomFace3D.h>
 #include <CConv.h>
 
 CGeomBox3D::
